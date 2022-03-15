@@ -119,6 +119,9 @@ class SwitchConfigurationGenerator
     {
         $p                       = [];
         $p['type']               = 'edge';
+        $p['reseller']           = $vi->customer->reseller;
+        $p['resold']             = (bool)$vi->customer->reseller;
+        $p['asnum']              = $vi->customer->autsys;
         $p['description']        = $vi->customer->abbreviatedName;
         $p['dot1q']              = $vi->trunk;
         $p['virtualinterfaceid'] = $vi->id;
@@ -132,6 +135,8 @@ class SwitchConfigurationGenerator
         foreach( $vi->vlanInterfaces as $vli ) {
             $v = [];
             $v[ 'number' ] = $vli->vlan->number;
+
+            $v[ 'customVlanTag' ] = $vli->vlantag;
 
             $v[ 'macaddresses' ] = [];
             foreach( $vli->layer2addresses as $mac ) {
