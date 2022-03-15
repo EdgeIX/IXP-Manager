@@ -1,4 +1,3 @@
-
 .env
 .env*.local
 .project
@@ -75,3 +74,7 @@ tools/docker/containers/mysql/docker.sql
 .phpunit.result.cache
 
 tests/Browser/ExampleTest.php
+
+# edgeix ignored
+.idea/
+tools/runtime/sflow/*.json
