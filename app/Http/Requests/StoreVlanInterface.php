@@ -75,6 +75,7 @@ class StoreVlanInterface extends FormRequest
             'rsmorespecifics'       => 'boolean',
             'as112client'           => 'boolean',
             'busyhost'              => 'boolean',
+            'vlantag'               => 'integer',
             'ipv6enabled'           => 'boolean',
             'ipv6address'           => 'ipv6' . ( $this->ipv6enabled ? '|required' : '|nullable' ),
             'ipv6hostname'          => [ 'string', 'max:255' , ( ( config('ixp_fe.vlaninterfaces.hostname_required' ) && $this->ipv6enabled ) ? 'required' : 'nullable' ), new IdnValidate() ],
