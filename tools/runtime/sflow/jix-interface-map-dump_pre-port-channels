@@ -1,0 +1,81 @@
+#!/usr/bin/env perl
+#
+# sflow-to-rrd-handler
+#
+# Copyright (C) 2009 - 2019 Internet Neutral Exchange Association Company Limited By Guarantee.
+# All Rights Reserved.
+#
+# This file is part of IXP Manager.
+#
+# IXP Manager is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, version v2.0 of the License.
+#
+# IXP Manager is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License v2.0
+# along with IXP Manager.  If not, see:
+#
+# http://www.gnu.org/licenses/gpl-2.0.html
+#
+# Description:
+#
+# This script take the output from sflowtool, builds up a peer-to-peer
+# traffic matrix + aggregate stats and periodically writes the results out
+# to a stash of RRD files.
+
+use warnings;
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+use RRDs;
+use Time::HiRes qw(ualarm gettimeofday tv_interval);
+use JSON;
+use REST::Client;
+use IO::AtomicFile;
+
+use FindBin qw($Bin);
+use File::Spec;
+use lib File::Spec->catdir( $Bin, File::Spec->updir(), File::Spec->updir(), 'perl-lib', 'IXPManager', 'lib' );
+
+use IXPManager::Config;
+
+my $ixp = new IXPManager::Config (dbase_disable => 0);	# (configfile => $configfile);
+my $dbh = $ixp->{db};
+
+my $query = "SELECT
+   vlif.vlantag as vlan_tag,
+   vlan.number as ixp_vlan,
+   switchport.name as interface_name,
+   switchport.ifindex as ifindex,
+   switch.loopback_ip as ip
+FROM
+   vlaninterface vlif
+   JOIN vlan ON (vlif.vlanid = vlan.id)
+   JOIN virtualinterface ON (vlif.virtualinterfaceid = virtualinterface.id)
+   JOIN physicalinterface ON (virtualinterface.id = physicalinterface.virtualinterfaceid)
+   JOIN switchport ON (physicalinterface.switchportid = switchport.id)
+   JOIN switch ON (switchport.switchid = switch.id)";
+
+my $sth = $dbh->prepare($query);
+my $results = $sth->execute;
+my $data = ();
+
+while (my $row = $sth->fetchrow_hashref) {
+	if (!$data->{$row->{'ip'}}) { $data->{$row->{'ip'}} = (); }
+	$data->{$row->{'ip'}}->{$row->{'ifindex'}} = {
+		'ixp_vlan' => $row->{'ixp_vlan'},
+		'interface_name' => $row->{'interface_name'},
+		'egress_vlan' => $row->{'vlan_tag'}
+	};
+
+}
+
+my $json_output = encode_json($data);
+my $fh = IO::AtomicFile->open('/srv/ixpmanager/tools/runtime/sflow/interface_map.json', "w");
+print $fh $json_output;
+$fh->close || die "couldn't atomically write JSON, aborting";
+
