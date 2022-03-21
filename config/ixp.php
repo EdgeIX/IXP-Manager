@@ -167,7 +167,7 @@ return [
                 \OSS_SNMP\MIBS\Iface::IF_TYPE_ETHERNETCSMACD,        // 6
                 \OSS_SNMP\MIBS\Iface::IF_TYPE_L2VLAN,                // 135
                 \OSS_SNMP\MIBS\Iface::IF_TYPE_L3IPVLAN,              // 136
-                // \OSS_SNMP\MIBS\Iface::IF_TYPE_IEEE8023ADLAG,      // e.g. Juniper ae0.23
+                \OSS_SNMP\MIBS\Iface::IF_TYPE_IEEE8023ADLAG,      // e.g. Juniper ae0.23
             ];
         }),
     ],
