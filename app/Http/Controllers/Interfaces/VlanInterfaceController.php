@@ -175,6 +175,8 @@ class VlanInterfaceController extends Common
             'ipv6bgpmd5secret'          => $r->old( 'ipv6bgpmd5secret',         $vli->ipv6bgpmd5secret          ),
             'ipv6canping'               => $r->old( 'ipv6canping',              $vli->ipv6canping               ),
             'ipv6monitorrcbgp'          => $r->old( 'ipv6monitorrcbgp',         $vli->ipv6monitorrcbgp          ),
+
+            'vlantag'                   => $r->old( 'vlantag',                  $vli->vlantag                   ),
         ]);
 
         $redirect2vi = (bool) $vi;
