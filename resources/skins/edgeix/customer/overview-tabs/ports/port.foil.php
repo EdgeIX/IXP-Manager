@@ -313,8 +313,8 @@
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                
-                                <?php if( $vli->getVlantag() != 0 ): ?>
+
+                                <?php if( $vli->vlantag != 0 ): ?>
                                     <tr>
                                         <td>
                                             <b>
@@ -322,11 +322,11 @@
                                             </b>
                                         </td>
                                         <td>
-                                          <?= $vli->getVlantag() ?>
+                                          <?= $vli->vlantag ?>
                                         </td>
-                                    
+
                                 <?php else: ?>
-                                    
+
                                         <td>
                                             <b>
                                                 Peering VLAN:
@@ -335,11 +335,11 @@
                                         <td>
                                           Untagged
                                         </td>
-                                    
+
                                 <?php endif; ?>
 
                                 <?php if( $t->as112UiActive() ): ?>
-                                    
+
                                         <td>
                                             <b>
                                                 AS112 Client:
