@@ -119,7 +119,7 @@ class SwitchConfigurationGenerator
     {
         $p                       = [];
         $p['type']               = 'edge';
-        $p['reseller']           = $vi->customer->reseller;
+        $p['reseller']        = (bool)$vi->customer->isReseller;
         $p['resold']             = (bool)$vi->customer->reseller;
         $p['asnum']              = $vi->customer->autsys;
         $p['description']        = $vi->customer->abbreviatedName;
