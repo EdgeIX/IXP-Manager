@@ -52,6 +52,7 @@ use IXP\Traits\Observable;
  * @property bool $bgp_lc
  * @property string $template
  * @property bool $skip_md5
+ * @property \Illuminate\Support\Carbon|null $last_updated
  * @property bool $rpki
  * @property string|null $software_version
  * @property string|null $operating_system
@@ -77,6 +78,7 @@ use IXP\Traits\Observable;
  * @method static Builder|Router whereCreatedAt($value)
  * @method static Builder|Router whereHandle($value)
  * @method static Builder|Router whereId($value)
+ * @method static Builder|Router whereLastUpdated($value)
  * @method static Builder|Router whereLgAccess($value)
  * @method static Builder|Router whereMgmtHost($value)
  * @method static Builder|Router whereName($value)
@@ -218,6 +220,7 @@ class Router extends Model
      */
     public const API_TYPE_NONE                     = 0;
     public const API_TYPE_BIRDSEYE                 = 1;
+    public const API_TYPE_BIRDWATCHER              = 2;
     public const API_TYPE_OTHER                    = 99;
 
     /**
@@ -226,6 +229,7 @@ class Router extends Model
     public static $API_TYPES = [
         self::API_TYPE_NONE                 => 'None',
         self::API_TYPE_BIRDSEYE             => 'Birdseye',
+        self::API_TYPE_BIRDWATCHER          => 'Birdwatcher',
         self::API_TYPE_OTHER                => 'Other'
     ];
 

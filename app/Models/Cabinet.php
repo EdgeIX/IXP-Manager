@@ -41,9 +41,9 @@ use IXP\Traits\Observable;
  * @property string|null $name
  * @property string|null $colocation
  * @property int|null $height
+ * @property int|null $u_counts_from
  * @property string|null $type
  * @property string|null $notes
- * @property int|null $u_counts_from
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Collection|\IXP\Models\ConsoleServer[] $consoleServers

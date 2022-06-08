@@ -53,15 +53,15 @@ use IXP\Traits\Observable;
  * @property string|null $ipv6bgpmd5secret
  * @property int|null $maxbgpprefix
  * @property int|null $rsclient
+ * @property int $rsmorespecifics
  * @property int|null $ipv4canping
  * @property int|null $ipv6canping
  * @property int|null $ipv4monitorrcbgp
  * @property int|null $ipv6monitorrcbgp
  * @property int|null $as112client
  * @property int|null $busyhost
- * @property int|null $vlantag
  * @property string|null $notes
- * @property int $rsmorespecifics
+ * @property int $vlantag
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\IPv4Address|null $ipv4address

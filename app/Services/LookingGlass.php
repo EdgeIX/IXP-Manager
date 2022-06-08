@@ -28,6 +28,7 @@ use Auth;
 use IXP\Contracts\LookingGlass as LookingGlassContract;
 use IXP\Exceptions\Services\LookingGlass\ConfigurationException;
 use IXP\Services\LookingGlass\BirdsEye as BirdseyeLookingGlass;
+use IXP\Services\LookingGlass\BirdWatcher as BirdwatcherLookingGlass;
 
 use IXP\Models\Router;
 
@@ -58,6 +59,13 @@ class LookingGlass
             case Router::API_TYPE_BIRDSEYE:
                 $be = new BirdseyeLookingGlass( $router );
                 //Birdseye supports caching but if the user is logged in we want to disable that:
+                if( Auth::check() ) {
+                    $be->setCacheEnabled(false);
+                }
+                return $be;
+                break;
+            case Router::API_TYPE_BIRDWATCHER:
+                $be = new BirdwatcherLookingGlass( $router );    
                 if( Auth::check() ) {
                     $be->setCacheEnabled(false);
                 }

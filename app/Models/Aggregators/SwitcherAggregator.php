@@ -40,7 +40,11 @@ use IXP\Models\SwitchPort;
  * @property int|null $cabinetid
  * @property int|null $vendorid
  * @property string|null $name
+ * @property int|null $asn
  * @property string|null $hostname
+ * @property string|null $mgmt_mac_address
+ * @property string|null $loopback_ip
+ * @property string|null $loopback_name
  * @property string|null $ipv4addr
  * @property string|null $ipv6addr
  * @property string|null $snmppasswd
@@ -49,14 +53,10 @@ use IXP\Models\SwitchPort;
  * @property string|null $os
  * @property string|null $osDate
  * @property string|null $osVersion
- * @property string|null $lastPolled
- * @property string|null $notes
  * @property string|null $serialNumber
  * @property int|null $mauSupported
- * @property int|null $asn
- * @property string|null $loopback_ip
- * @property string|null $loopback_name
- * @property string|null $mgmt_mac_address
+ * @property string|null $lastPolled
+ * @property string|null $notes
  * @property int|null $snmp_engine_time
  * @property int|null $snmp_system_uptime
  * @property int|null $snmp_engine_boots

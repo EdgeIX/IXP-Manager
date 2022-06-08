@@ -15,7 +15,7 @@ class AddVlantagToVlanInterface extends Migration
     {
       Schema::table('vlaninterface', function (Blueprint $table) {
         $table->integer('vlantag')->default(0)->nullable();
-            //
+          //
         });
     }
 

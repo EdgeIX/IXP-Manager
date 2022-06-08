@@ -48,9 +48,9 @@ use IXP\Models\AtlasMeasurement;
  * IXP\Models\Customer
  *
  * @property int $id
- * @property int|null $irrdb
  * @property int|null $company_registered_detail_id
  * @property int|null $company_billing_details_id
+ * @property int|null $irrdb
  * @property int|null $reseller
  * @property string|null $name
  * @property int|null $type

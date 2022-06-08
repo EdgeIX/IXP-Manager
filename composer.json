@@ -52,7 +52,8 @@
         "bacon/bacon-qr-code": "^2.0.3",
         "wolfcast/browser-detection": "^2.9.5",
         "laravel/ui": "^3.0",
-        "doctrine/dbal": "^3.0"
+        "doctrine/dbal": "^3.0",
+        "bluntelk/ixpmanager-xero": "^1.1"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

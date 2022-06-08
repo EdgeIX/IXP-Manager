@@ -46,8 +46,8 @@ use IXP\Traits\Observable;
  * @property int|null $speed
  * @property string|null $duplex
  * @property int|null $rate_limit
- * @property string|null $notes
  * @property bool $autoneg
+ * @property string|null $notes
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\CoreInterface|null $coreInterface

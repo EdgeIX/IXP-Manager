@@ -3871,7 +3871,7 @@
          */ 
         public static function lock($name, $seconds = 0, $owner = null)
         {
-                        /** @var \Illuminate\Cache\NullStore $instance */
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
                         return $instance->lock($name, $seconds, $owner);
         }
                     /**
@@ -3884,7 +3884,7 @@
          */ 
         public static function restoreLock($name, $owner)
         {
-                        /** @var \Illuminate\Cache\NullStore $instance */
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
                         return $instance->restoreLock($name, $owner);
         }
                     /**
@@ -3895,8 +3895,19 @@
          */ 
         public static function flush()
         {
-                        /** @var \Illuminate\Cache\NullStore $instance */
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
                         return $instance->flush();
+        }
+                    /**
+         * Get the underlying Memcached connection.
+         *
+         * @return \Memcached 
+         * @static 
+         */ 
+        public static function getMemcached()
+        {
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
+                        return $instance->getMemcached();
         }
                     /**
          * Get the cache key prefix.
@@ -3906,8 +3917,20 @@
          */ 
         public static function getPrefix()
         {
-                        /** @var \Illuminate\Cache\NullStore $instance */
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
                         return $instance->getPrefix();
+        }
+                    /**
+         * Set the cache key prefix.
+         *
+         * @param string $prefix
+         * @return void 
+         * @static 
+         */ 
+        public static function setPrefix($prefix)
+        {
+                        /** @var \Illuminate\Cache\MemcachedStore $instance */
+                        $instance->setPrefix($prefix);
         }
          
     }
