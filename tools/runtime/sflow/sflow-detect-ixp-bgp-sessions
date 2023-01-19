@@ -116,7 +116,7 @@ while (<SFLOWTOOL>) {
 		$ipprotocol = 4;
 	} elsif ($ethertype eq '0x86dd') {
 		$ipprotocol = 6;
-		$srcip = NetAddr::IP->new($srcip)->short();
+    $srcip = NetAddr::IP->new($srcip)->short();
 		$dstip = NetAddr::IP->new($dstip)->short();
 	} else {
 		next;

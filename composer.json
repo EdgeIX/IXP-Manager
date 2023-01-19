@@ -53,7 +53,7 @@
         "wolfcast/browser-detection": "^2.9.5",
         "laravel/ui": "^3.0",
         "doctrine/dbal": "^3.0",
-        "bluntelk/ixpmanager-xero": "^1.1"
+        "bluntelk/ixpmanager-xero": "^1.2"
     },
     "require-dev": {
         "facade/ignition": "^2.5",
