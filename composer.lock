@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "54acee90914ae94df453591ef95b9b96",
+    "content-hash": "b92b92db5e934ebdc6114c7417db9fb2",
     "packages": [
         {
             "name": "anahkiasen/former",
@@ -372,16 +372,16 @@
         },
         {
             "name": "bluntelk/ixpmanager-xero",
-            "version": "v1.1",
+            "version": "v1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/bluntelk/ixpmanager-xero.git",
-                "reference": "d964e53e0294f04a0aad85d78fdad33ef3a50936"
+                "reference": "e18c07ed0e9d4120e24470da31d96cf24cb91eeb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bluntelk/ixpmanager-xero/zipball/d964e53e0294f04a0aad85d78fdad33ef3a50936",
-                "reference": "d964e53e0294f04a0aad85d78fdad33ef3a50936",
+                "url": "https://api.github.com/repos/bluntelk/ixpmanager-xero/zipball/e18c07ed0e9d4120e24470da31d96cf24cb91eeb",
+                "reference": "e18c07ed0e9d4120e24470da31d96cf24cb91eeb",
                 "shasum": ""
             },
             "require": {
@@ -415,9 +415,9 @@
             "description": "IXP Manager Integration with Xero",
             "support": {
                 "issues": "https://github.com/bluntelk/ixpmanager-xero/issues",
-                "source": "https://github.com/bluntelk/ixpmanager-xero/tree/v1.1"
+                "source": "https://github.com/bluntelk/ixpmanager-xero/tree/v1.2"
             },
-            "time": "2022-05-27T09:33:01+00:00"
+            "time": "2022-06-08T03:12:45+00:00"
         },
         {
             "name": "brick/math",
