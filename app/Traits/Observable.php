@@ -26,6 +26,7 @@ namespace IXP\Traits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
+use Illumintate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Model;
 
 use IXP\Models\{
@@ -76,6 +77,27 @@ trait Observable
      */
     public static function logChange( Model $model, string $action ): void
     {
+        $log = new Log;
+
+        if(Route::currentRouteName() === 'signup@store') {
+            $log->user_id = env('SIGNUP_USER');
+        } else {
+            $log->user_id = Auth::check() ? Auth::id() : null;
+        }
+
+        $log->model = self::getClass();
+        $log->model_id = $model->id;
+        $log->action = $action;
+        $log->message = static::logSubject( $model );
+        $log->models = [
+            'new'       => $action !== Log::ACTION_DELETED ? $model->getAttributes()  : null,
+            'old'       => $action !== Log::ACTION_CREATED ? $model->getOriginal()    : null,
+            'changed'   => $action === Log::ACTION_UPDATED ? $model->getChanges()     : null,
+        ];
+
+        $log->save();
+
+        /* Original Code for this trait is below
         Log::create(
             [
                 'user_id'   => Auth::check() ? Auth::id() : null,
@@ -90,6 +112,7 @@ trait Observable
                 ]
             ]
         );
+        */
     }
 
     /**
