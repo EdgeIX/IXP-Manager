@@ -73,6 +73,11 @@ class Authenticate
 	 */
 	public function handle( Request $r, Closure $next )
 	{
+		// Allow public access to the Signup Form
+		if ( ($r->route()->getName() === 'signup@create' || $r->route()->getName() === 'signup@store') && $this->auth->guest() ) {
+			return $next( $r );
+		}
+
 		if( $this->auth->guest() ) {
 			if( $r->ajax() ) {
 				return response('Unauthorized.', 401);
