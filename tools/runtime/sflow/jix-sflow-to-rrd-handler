@@ -86,7 +86,7 @@ if ($macdbtype eq 'configured') {
 }
 
 if ($insanedebug) {
-	$debug = 1;
+	$debug = 0;
 }
 
 if (!defined ($apikey)) {

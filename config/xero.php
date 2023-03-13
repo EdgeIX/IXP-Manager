@@ -44,6 +44,8 @@ return [
             'offline_access',
             'accounting.contacts',
             'accounting.settings.read',
+            'accounting.contacts',
+            'accounting.settings.read',
         ],
 
         /************************************************************************
