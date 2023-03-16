@@ -307,9 +307,8 @@ $this->layout( 'layouts/ixpv4' ) ?>
 
                 <?= Former::checkbox( 'msa' )
                     ->label( 'Agreement' )
-                    ->append('<a href="gigapuddi">Master Services Agreement</a>')
+                    ->append('<a href="'.env('SIGNUP_MSA').'">Master Services Agreement</a>')
                     ->inlineHelp( 'I have read, understand and agree to all conditions and obligations under the agreement linked above')
-                    ->tooltip('gigapuddi')
                     ->required(); 
                 ?>
                 <div class="form-group row required">
