@@ -19959,6 +19959,107 @@
      
 }
 
+    namespace Anhskohbo\NoCaptcha\Facades { 
+            /**
+     * 
+     *
+     */ 
+        class NoCaptcha {
+                    /**
+         * Render HTML captcha.
+         *
+         * @param array $attributes
+         * @return string 
+         * @static 
+         */ 
+        public static function display($attributes = [])
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->display($attributes);
+        }
+                    /**
+         * 
+         *
+         * @see display()
+         * @static 
+         */ 
+        public static function displayWidget($attributes = [])
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->displayWidget($attributes);
+        }
+                    /**
+         * Display a Invisible reCAPTCHA by embedding a callback into a form submit button.
+         *
+         * @param string $formIdentifier the html ID of the form that should be submitted.
+         * @param string $text the text inside the form button
+         * @param array $attributes array of additional html elements
+         * @return string 
+         * @static 
+         */ 
+        public static function displaySubmit($formIdentifier, $text = 'submit', $attributes = [])
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->displaySubmit($formIdentifier, $text, $attributes);
+        }
+                    /**
+         * Render js source
+         *
+         * @param null $lang
+         * @param bool $callback
+         * @param string $onLoadClass
+         * @return string 
+         * @static 
+         */ 
+        public static function renderJs($lang = null, $callback = false, $onLoadClass = 'onloadCallBack')
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->renderJs($lang, $callback, $onLoadClass);
+        }
+                    /**
+         * Verify no-captcha response.
+         *
+         * @param string $response
+         * @param string $clientIp
+         * @return bool 
+         * @static 
+         */ 
+        public static function verifyResponse($response, $clientIp = null)
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->verifyResponse($response, $clientIp);
+        }
+                    /**
+         * Verify no-captcha response by Symfony Request.
+         *
+         * @param \Request $request
+         * @return bool 
+         * @static 
+         */ 
+        public static function verifyRequest($request)
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->verifyRequest($request);
+        }
+                    /**
+         * Get recaptcha js link.
+         *
+         * @param string $lang
+         * @param boolean $callback
+         * @param string $onLoadClass
+         * @return string 
+         * @static 
+         */ 
+        public static function getJsLink($lang = null, $callback = false, $onLoadClass = 'onloadCallBack')
+        {
+                        /** @var \Anhskohbo\NoCaptcha\NoCaptcha $instance */
+                        return $instance->getJsLink($lang, $callback, $onLoadClass);
+        }
+         
+    }
+     
+}
+
     namespace Barryvdh\Debugbar\Facades { 
             /**
      * 
@@ -24623,6 +24724,7 @@ namespace  {
             class PDF extends \Barryvdh\DomPDF\Facade {}
             class Countries extends \Webpatser\Countries\CountriesFacade {}
             class Google2FA extends \PragmaRX\Google2FALaravel\Facade {}
+            class NoCaptcha extends \Anhskohbo\NoCaptcha\Facades\NoCaptcha {}
             class Debugbar extends \Barryvdh\Debugbar\Facades\Debugbar {}
             class Flare extends \Facade\Ignition\Facades\Flare {}
             class Horizon extends \Laravel\Horizon\Horizon {}

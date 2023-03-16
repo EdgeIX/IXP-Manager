@@ -281,6 +281,7 @@ return [
         'Countries' => Webpatser\Countries\CountriesFacade::class,
 
         'Google2FA' => PragmaRX\Google2FALaravel\Facade::class,
+
     ],
 
 ];

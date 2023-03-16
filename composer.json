@@ -53,7 +53,9 @@
         "wolfcast/browser-detection": "^2.9.5",
         "laravel/ui": "^3.0",
         "doctrine/dbal": "^3.0",
-        "bluntelk/ixpmanager-xero": "^1.2"
+        "bluntelk/ixpmanager-xero": "^1.2",
+        "socialiteproviders/peeringdb": "*",
+        "anhskohbo/no-captcha": "^3.5"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

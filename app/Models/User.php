@@ -55,7 +55,6 @@ use IXP\Traits\Observable;
  *
  * @property int $id
  * @property int|null $custid
- * @property string|null $name
  * @property string|null $username
  * @property string|null $password
  * @property string|null $email
@@ -63,10 +62,9 @@ use IXP\Traits\Observable;
  * @property int|null $uid
  * @property int|null $privs
  * @property int|null $disabled
- * @property int $fail_count
- * @property string|null $fail_locked_until
  * @property int|null $lastupdatedby
  * @property string|null $creator
+ * @property string|null $name
  * @property int|null $peeringdb_id
  * @property array|null $extra_attributes
  * @property array|null $prefs
@@ -96,8 +94,6 @@ use IXP\Traits\Observable;
  * @method static Builder|User whereDisabled($value)
  * @method static Builder|User whereEmail($value)
  * @method static Builder|User whereExtraAttributes($value)
- * @method static Builder|User whereFailCount($value)
- * @method static Builder|User whereFailLockedUntil($value)
  * @method static Builder|User whereId($value)
  * @method static Builder|User whereLastupdatedby($value)
  * @method static Builder|User whereName($value)

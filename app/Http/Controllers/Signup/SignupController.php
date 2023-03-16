@@ -67,6 +67,22 @@ class SignupController extends Controller
     public function store( SignupRequest $r ): RedirectResponse 
     {
 
+        $validator = \Validator::make($r->all(), [
+            'g-recaptcha-response' => 'required|captcha',
+            'msa' => 'accepted',
+        ]);
+
+        if($validator->fails()) {
+            $failed = $validator->failed();
+            if(isset($failed['g-recaptcha-response'])){
+                AlertContainer::push( 'Error - Invalid ReCAPTCHA', Alert::DANGER );
+            }
+            if(isset($failed['msa'])){
+                AlertContainer::push( 'Error - Master Services Agreement was not agreed to', Alert::DANGER );
+            }
+            return redirect( route( 'signup@create' ) );
+        }
+
         $form = $r->all();
 
         if(
@@ -78,7 +94,6 @@ class SignupController extends Controller
             AlertContainer::push( 'Error Processing Signup - Contact Administrator', Alert::DANGER );
             return redirect( route( 'signup@create' ) );
         }
-
 
         if(User::where('username', $form['username'])->exists() || User::where('email', $form['useremail'])->exists()){
             AlertContainer::push( 'Error Processing Signup - Contact Administrator', Alert::DANGER );
@@ -131,14 +146,12 @@ class SignupController extends Controller
             'type' => 1,
             'activepeeringmatrix' => 0,
             'creator' => env('SIGNUP_NAME'),
-            'irrdb' => 14,
+            'irrdb' => env('IRRDB_CONFIG_ID'),
             'company_registered_detail_id' => $registrationId->id,
             'company_billing_details_id' => $billingId->id,
         ];
 
         $customerId = Customer::create($customer);
-
-
 
         $user = new User;
 

@@ -20,6 +20,9 @@
         <link rel="stylesheet" type="text/css" href="<?= url ('') . mix('css/ixp-pack.css') ?>" />
 
         <link rel="shortcut icon" type="image/ico" href="<?= file_exists( base_path( 'public/favicon.ico' ) ) ? asset( "favicon.ico" ) : asset( "favicon.ico.dist" ) ?>" />
+        <?php if( \Route::currentRouteName() === 'signup@create'): ?>
+            <?= NoCaptcha::renderJs() ?>
+        <?php endif; ?>
 
         <?php $this->section('headers') ?>
         <?php $this->stop() ?>
@@ -149,6 +152,24 @@
                     $('#slide-reveal-overlay').toggleClass('collapse');
                     $('body').toggleClass('overflow-hidden');
                 }
+            <?php endif; ?>
+
+            <?php if( \Route::currentRouteName() === 'signup@create'): ?>
+                $('#reload').on('click', function (e) {
+                    e.preventDefault();
+                    var anchor = $(this);
+                    var captcha = anchor.prev('img')
+
+                    $.ajax({
+                        type: 'GET',
+                        url: '/captcha',
+                        success: function(data) {
+                            $("")
+                        }
+                    }).done(function( msg ) {
+                        captcha.attr('src', msg);
+                    });
+                });
             <?php endif; ?>
 
             $('[data-toggle="tooltip"]').tooltip();

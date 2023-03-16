@@ -36,7 +36,6 @@ use IXP\Traits\Observable;
  *
  * @property int $id
  * @property int|null $custid
- * @property int|null $console_server_id
  * @property string|null $description
  * @property string|null $port
  * @property int|null $speed
@@ -45,6 +44,7 @@ use IXP\Traits\Observable;
  * @property int|null $flowcontrol
  * @property int|null $autobaud
  * @property string|null $notes
+ * @property int|null $console_server_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\ConsoleServer|null $consoleServer

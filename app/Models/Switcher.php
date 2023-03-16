@@ -67,6 +67,10 @@ use \OSS_SNMP\MIBS\Iface as SNMPIface;
  * @property string|null $serialNumber
  * @property string|null $lastPolled
  * @property int|null $mauSupported
+ * @property int|null $asn
+ * @property string|null $loopback_ip
+ * @property string|null $loopback_name
+ * @property string|null $mgmt_mac_address
  * @property int|null $snmp_engine_time
  * @property int|null $snmp_system_uptime
  * @property int|null $snmp_engine_boots
