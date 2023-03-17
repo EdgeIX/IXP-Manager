@@ -307,10 +307,12 @@ $this->layout( 'layouts/ixpv4' ) ?>
 
                 <?= Former::checkbox( 'msa' )
                     ->label( 'Agreement' )
-                    ->append('<a href="'.env('SIGNUP_MSA').'">Master Services Agreement</a>')
+                    ->append('<a href="'.env('SIGNUP_MSA').'" style="margin-left: 20px;">Master Services Agreement</a>')
                     ->inlineHelp( 'I have read, understand and agree to all conditions and obligations under the agreement linked above')
+                    ->style('margin-left: 0px;')
                     ->required(); 
                 ?>
+                
                 <div class="form-group row required">
                     <label for="captcha" class="control-label col-lg-2 col-sm-4">CAPTCHA<sup>*</sup></label>
                     <div class="col-lg-10 col-sm-8">
