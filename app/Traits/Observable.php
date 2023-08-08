@@ -26,7 +26,7 @@ namespace IXP\Traits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
-use Illumintate\Support\Facades\Route;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Model;
 
 use IXP\Models\{
