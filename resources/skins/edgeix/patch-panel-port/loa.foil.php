@@ -1,5 +1,8 @@
 <?php
-    $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
+
+use IXP\Models\Router;
+
+$ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
 ?>
 <html>
 <head>
@@ -28,7 +31,6 @@
 
 <h2>
     Letter of Authority (LoA) - Our Reference:</b> <?= $ppp->circuitReference() ?>
-
 </h2>
 
 <hr>
@@ -53,15 +55,98 @@
         <tr>
             <td></td>
             <td><b>Port:</b></td>
-            <td><?= $ppp->name() ?></td>
+            <td><?= $t->ee( $ppp->name() ) ?></td>
         </tr>
         <tr>
             <td></td>
             <td><b>Type:</b></td>
             <td><?= $t->ee( $ppp->patchPanel->cableType() ) ?> / <?= $t->ee( $ppp->patchPanel->connectorType() ) ?></td>
         </tr>
+        <tr>
+            <td></td>
+            <td><b>Media:</b></td>
+            <td>
+                <?= $t->ee( $ppp->switchPort->mauType ) ?>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td><b>Provider:</b></td>
+            <td>
+                <?php if ($ppp->patchPanel->cabinet->type): ?>
+                    <?= $t->ee( $ppp->patchPanel->cabinet->type ) ?> (Cage Provider)
+                <?php endif; ?>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td><b>Peering Details:</b></td>
+            <td>
+                <strong>AS<?= $ppp->customer->autsys ?><br/></strong>
+                <?php
+                $vi = null;
+                 foreach ($ppp->customer->virtualInterfaces as $cvi) {
+                    if ($ppp->switchPort->id == $cvi->switchPort()->id) {
+                        $vi = $cvi;
+                        break;
+                    }
+                }
+                $ips = [];
+                if ($vi && $vlis = $vi->vlanInterfaces) {
+                    $netmask = [];
+                    foreach( $vlis as $vli ) {
+                        if ($vli->vlan->private) {
+                            continue;
+                        }
+                        foreach ($vli->vlan->networksInfo as $ni) {
+                            $netmask[$ni->protocol] = $ni->masklen;
+                        }
+
+                        if( $vli->ipv4enabled && $vli->ipv4address ) {
+                            $ips[] = ['type' => 'IPv4', 'addr' => $vli->ipv4address->address, 'mask' => $netmask[4] ?? '?'];
+                        }
+                        if( $vli->ipv6enabled && $vli->ipv6address ) {
+                            $ips[] = ['type' => 'IPv6', 'addr' => $vli->ipv6address->address, 'mask' => $netmask[6] ?? '?'];
+                        }
+                    }
+                }
+                ?>
+                <?php foreach( $ips as $ip ): ?>
+                    <?= $t->ee( "{$ip['type']}: {$ip['addr']}/{$ip['mask']}" ) ?><br/>
+                <?php endforeach; ?>
+                <br/>
+
+                <?php
+                $routers = [];
+                if ($vi && $vlis = $vi->vlanInterfaces) {
+                    foreach( $vlis as $vli ) {
+                        if ($vli->vlan->private) {
+                            continue;
+                        }
+                        foreach ($vli->vlan->routers as $router) {
+                            if (!$router->type == Router::TYPE_ROUTE_SERVER) {
+                                continue;
+                            }
+                            $routers[$router->asn][$router->router_id] ??= [];
+
+                            $routers[$router->asn][$router->router_id][] = $router->peering_ip;
+                        }
+                    }
+                }
+                $routeServerNum = 0;
+                ?>
+                <?php foreach( $routers as $asn => $asnRouters ): ?>
+                <strong>AS<?= $t->ee( $asn ) ?></strong><br/>
+                    <?php foreach( $asnRouters as $asnRouter ): ?>
+                        Route Server <?= ++$routeServerNum ?>: <?= implode(' / ', $asnRouter) ?><br/>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+
+            </td>
+        </tr>
     </table>
     <br>
+
 </p>
 
 <p>
