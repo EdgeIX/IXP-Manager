@@ -66,7 +66,7 @@ $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
             <td></td>
             <td><b>Media:</b></td>
             <td>
-                <?= $t->ee( $ppp->switchPort->mauType ) ?>
+                <?= $t->ee( $ppp->switchPort?->mauType ?? '' ) ?>
             </td>
         </tr>
         <tr>
