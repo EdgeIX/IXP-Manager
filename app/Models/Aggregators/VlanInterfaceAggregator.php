@@ -49,6 +49,7 @@ use IXP\Models\{Customer, PhysicalInterface, Router, Vlan, VlanInterface};
  * @property string|null $ipv6bgpmd5secret
  * @property int|null $maxbgpprefix
  * @property int|null $rsclient
+ * @property int $rsmorespecifics
  * @property int|null $ipv4canping
  * @property int|null $ipv6canping
  * @property int|null $ipv4monitorrcbgp
@@ -56,13 +57,12 @@ use IXP\Models\{Customer, PhysicalInterface, Router, Vlan, VlanInterface};
  * @property int|null $as112client
  * @property int|null $busyhost
  * @property string|null $notes
- * @property int $rsmorespecifics
+ * @property int $vlantag
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property int|null $vlantag
  * @property-read \IXP\Models\IPv4Address|null $ipv4address
  * @property-read \IXP\Models\IPv6Address|null $ipv6address
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\Layer2Address[] $layer2addresses
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\Layer2Address> $layer2addresses
  * @property-read int|null $layer2addresses_count
  * @property-read \IXP\Models\VirtualInterface|null $virtualInterface
  * @property-read Vlan|null $vlan

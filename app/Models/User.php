@@ -55,6 +55,7 @@ use IXP\Traits\Observable;
  *
  * @property int $id
  * @property int|null $custid
+ * @property string|null $name
  * @property string|null $username
  * @property string|null $password
  * @property string|null $email
@@ -64,23 +65,22 @@ use IXP\Traits\Observable;
  * @property int|null $disabled
  * @property int|null $lastupdatedby
  * @property string|null $creator
- * @property string|null $name
  * @property int|null $peeringdb_id
  * @property array|null $extra_attributes
  * @property array|null $prefs
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\ApiKey[] $apiKeys
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\ApiKey> $apiKeys
  * @property-read int|null $api_keys_count
  * @property-read \IXP\Models\Customer|null $customer
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\CustomerToUser[] $customerToUser
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\CustomerToUser> $customerToUser
  * @property-read int|null $customer_to_user_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\Customer[] $customers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\Customer> $customers
  * @property-read int|null $customers_count
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
+ * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
  * @property-read \IXP\Models\User2FA|null $user2FA
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\UserRememberToken[] $userRememberTokens
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\UserRememberToken> $userRememberTokens
  * @property-read int|null $user_remember_tokens_count
  * @method static Builder|User activeOnly()
  * @method static Builder|User byPrivs(?int $priv = null)

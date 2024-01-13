@@ -52,8 +52,15 @@ use IXP\Traits\Observable;
  * @property int|null $switch_port_id
  * @property int|null $patch_panel_id
  * @property int|null $customer_id
+ * @property int|null $duplex_master_id
+ * @property string|null $description
+ * @property int $number
  * @property int $state
+ * @property string|null $colo_circuit_ref
+ * @property string|null $colo_billing_ref
+ * @property string|null $ticket_ref
  * @property string|null $notes
+ * @property string|null $private_notes
  * @property string|null $assigned_at
  * @property string|null $connected_at
  * @property string|null $cease_requested_at
@@ -61,27 +68,20 @@ use IXP\Traits\Observable;
  * @property string|null $last_state_change
  * @property int $internal_use
  * @property int $chargeable
- * @property int|null $duplex_master_id
- * @property int $number
- * @property string|null $colo_circuit_ref
- * @property string|null $ticket_ref
- * @property string|null $private_notes
  * @property int $owned_by
  * @property string|null $loa_code
- * @property string|null $description
- * @property string|null $colo_billing_ref
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\Customer|null $customer
  * @property-read PatchPanelPort|null $duplexMasterPort
- * @property-read \Illuminate\Database\Eloquent\Collection|PatchPanelPort[] $duplexSlavePorts
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PatchPanelPort> $duplexSlavePorts
  * @property-read int|null $duplex_slave_ports_count
  * @property-read \IXP\Models\PatchPanel|null $patchPanel
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\PatchPanelPortFile[] $patchPanelPortFiles
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\PatchPanelPortFile> $patchPanelPortFiles
  * @property-read int|null $patch_panel_port_files_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\PatchPanelPortFile[] $patchPanelPortFilesPublic
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\PatchPanelPortFile> $patchPanelPortFilesPublic
  * @property-read int|null $patch_panel_port_files_public_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\PatchPanelPortHistory[] $patchPanelPortHistories
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\PatchPanelPortHistory> $patchPanelPortHistories
  * @property-read int|null $patch_panel_port_histories_count
  * @property-read \IXP\Models\SwitchPort|null $switchPort
  * @method static Builder|PatchPanelPort masterPort()

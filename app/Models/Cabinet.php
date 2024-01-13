@@ -41,19 +41,19 @@ use IXP\Traits\Observable;
  * @property string|null $name
  * @property string|null $colocation
  * @property int|null $height
+ * @property int|null $u_counts_from
  * @property string|null $type
  * @property string|null $notes
- * @property int|null $u_counts_from
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read Collection|\IXP\Models\ConsoleServer[] $consoleServers
+ * @property-read Collection<int, \IXP\Models\ConsoleServer> $consoleServers
  * @property-read int|null $console_servers_count
- * @property-read Collection|\IXP\Models\CustomerEquipment[] $customerEquipment
+ * @property-read Collection<int, \IXP\Models\CustomerEquipment> $customerEquipment
  * @property-read int|null $customer_equipment_count
  * @property-read \IXP\Models\Location|null $location
- * @property-read Collection|\IXP\Models\PatchPanel[] $patchPanels
+ * @property-read Collection<int, \IXP\Models\PatchPanel> $patchPanels
  * @property-read int|null $patch_panels_count
- * @property-read Collection|\IXP\Models\Switcher[] $switchers
+ * @property-read Collection<int, \IXP\Models\Switcher> $switchers
  * @property-read int|null $switchers_count
  * @method static Builder|Cabinet newModelQuery()
  * @method static Builder|Cabinet newQuery()

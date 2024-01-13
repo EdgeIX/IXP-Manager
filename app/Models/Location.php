@@ -35,6 +35,7 @@ use IXP\Traits\Observable;
  * IXP\Models\Location
  *
  * @property int $id
+ * @property int|null $pdb_facility_id
  * @property string|null $name
  * @property string|null $shortname
  * @property string|null $tag
@@ -46,12 +47,11 @@ use IXP\Traits\Observable;
  * @property string|null $officefax
  * @property string|null $officeemail
  * @property string|null $notes
- * @property int|null $pdb_facility_id
  * @property string|null $city
  * @property string|null $country
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\Cabinet[] $cabinets
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\Cabinet> $cabinets
  * @property-read int|null $cabinets_count
  * @method static Builder|Location newModelQuery()
  * @method static Builder|Location newQuery()
