@@ -58,7 +58,9 @@ ubuntu-*-cloudimg-console.log
 .idea/symfony2.xml
 .idea/composerJson.xml
 .idea/misc.xml
-
+.idea/IXP-Manager.iml
+.idea/blade.xml
+.idea/php.xml
 
 # Let's not accidently add SQL dumps to Git
 /*.sql.bz2

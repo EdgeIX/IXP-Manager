@@ -36,23 +36,27 @@ use IXP\Models\SwitchPort;
  * IXP\Models\Aggregators\SwitcherAggregator
  *
  * @property int $id
+ * @property int|null $infrastructure
  * @property int|null $cabinetid
  * @property int|null $vendorid
  * @property string|null $name
+ * @property int|null $asn
+ * @property string|null $hostname
+ * @property string|null $mgmt_mac_address
+ * @property string|null $loopback_ip
+ * @property string|null $loopback_name
  * @property string|null $ipv4addr
  * @property string|null $ipv6addr
  * @property string|null $snmppasswd
- * @property int|null $infrastructure
  * @property string|null $model
  * @property bool|null $active
- * @property string|null $notes
- * @property string|null $hostname
  * @property string|null $os
  * @property string|null $osDate
  * @property string|null $osVersion
  * @property string|null $serialNumber
- * @property string|null $lastPolled
  * @property int|null $mauSupported
+ * @property string|null $lastPolled
+ * @property string|null $notes
  * @property int|null $snmp_engine_time
  * @property int|null $snmp_system_uptime
  * @property int|null $snmp_engine_boots
@@ -60,10 +64,10 @@ use IXP\Models\SwitchPort;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\Cabinet|null $cabinet
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\ConsoleServerConnection[] $consoleServerConnections
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\ConsoleServerConnection> $consoleServerConnections
  * @property-read int|null $console_server_connections_count
  * @property-read Infrastructure|null $infrastructureModel
- * @property-read \Illuminate\Database\Eloquent\Collection|SwitchPort[] $switchPorts
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SwitchPort> $switchPorts
  * @property-read int|null $switch_ports_count
  * @property-read \IXP\Models\Vendor|null $vendor
  * @method static Builder|SwitcherAggregator newModelQuery()
