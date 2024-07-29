@@ -62,7 +62,7 @@ use IXP\Models\{Customer, PhysicalInterface, Router, Vlan, VlanInterface};
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \IXP\Models\IPv4Address|null $ipv4address
  * @property-read \IXP\Models\IPv6Address|null $ipv6address
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\Layer2Address[] $layer2addresses
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\Layer2Address> $layer2addresses
  * @property-read int|null $layer2addresses_count
  * @property-read \IXP\Models\VirtualInterface|null $virtualInterface
  * @property-read Vlan|null $vlan
@@ -313,6 +313,7 @@ class VlanInterfaceAggregator extends VlanInterface
      *         [location_name] => Interxion DUB1
      *         [location_shortname] => IX-DUB1
      *         [location_tag] => ix1
+     *         [vlanid] => 2
      *     ]
      *
      * @param Vlan  $vlan
@@ -336,6 +337,7 @@ class VlanInterfaceAggregator extends VlanInterface
             }
 
             $int['protocol'] = $protocol;
+            $int['vlanid']   = $int['vid'];
 
             // don't need this anymore:
             unset( $int['enabled'] );

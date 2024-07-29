@@ -33,14 +33,14 @@ use IXP\Models\PatchPanelPort;
  *
  * @property-read \IXP\Models\Customer|null $customer
  * @property-read PatchPanelPort|null $duplexMasterPort
- * @property-read Collection|PatchPanelPort[] $duplexSlavePorts
+ * @property-read Collection<int, PatchPanelPort> $duplexSlavePorts
  * @property-read int|null $duplex_slave_ports_count
  * @property-read \IXP\Models\PatchPanel|null $patchPanel
- * @property-read Collection|\IXP\Models\PatchPanelPortFile[] $patchPanelPortFiles
+ * @property-read Collection<int, \IXP\Models\PatchPanelPortFile> $patchPanelPortFiles
  * @property-read int|null $patch_panel_port_files_count
- * @property-read Collection|\IXP\Models\PatchPanelPortFile[] $patchPanelPortFilesPublic
+ * @property-read Collection<int, \IXP\Models\PatchPanelPortFile> $patchPanelPortFilesPublic
  * @property-read int|null $patch_panel_port_files_public_count
- * @property-read Collection|\IXP\Models\PatchPanelPortHistory[] $patchPanelPortHistories
+ * @property-read Collection<int, \IXP\Models\PatchPanelPortHistory> $patchPanelPortHistories
  * @property-read int|null $patch_panel_port_histories_count
  * @property-read \IXP\Models\SwitchPort|null $switchPort
  * @method static Builder|PatchPanelPort masterPort()
@@ -70,7 +70,7 @@ class PatchPanelPortAggregator extends PatchPanelPort
      *
      * @return Collection
      */
-    public static function list( int $ppid = null, bool $advanced = false, int $location = null, int $cabinet = null, int $cabletype = null, bool $availableForUse = false ): Collection
+    public static function list( int $ppid = null, bool $advanced = false, int $location = null, int $cabinet = null, int $cabletype = null, bool $availableForUse = false, bool $prewiredOnly = false ): Collection
     {
         return self::selectRaw( '
             ppp.*,
@@ -108,6 +108,9 @@ class PatchPanelPortAggregator extends PatchPanelPort
             } )
             ->when( $cabletype , function( Builder $q, $cabletype ) {
                 return $q->where('pp.cable_type', $cabletype );
+            } )
+            ->when( $prewiredOnly, function( Builder $q, $prewired ) {
+                return $q->where( 'ppp.state', '=', PatchPanelPort::STATE_PREWIRED );
             } )
             ->when( $availableForUse , function( Builder $q ) {
                 return $q->whereIn('ppp.state', PatchPanelPort::$AVAILABLE_STATES );

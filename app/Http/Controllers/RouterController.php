@@ -102,7 +102,7 @@ class RouterController extends Controller
     {
         return view( 'router/edit' )->with([
             'rt'                => false,
-            'vlans'             => Vlan::publicOnly()->orderBy( 'number' )->get()
+            'vlans'             => Vlan::publicOnly()->orderBy( 'number' )->get(),
         ]);
     }
 
@@ -122,7 +122,10 @@ class RouterController extends Controller
             return Redirect::to( route( 'router@create' ) )->withInput( $r->all() );
         }
 
-        Router::create( $r->all() );
+        $router = Router::create( $r->all() );
+
+        $this->checkASN32( $router );
+
         AlertContainer::push( 'Router created.', Alert::SUCCESS );
         return Redirect::to( route( "router@list" ) );
     }
@@ -159,6 +162,7 @@ class RouterController extends Controller
             'rpki'                      => request()->old( 'rpki',              $router->rpki               ),
             'rfc1997_passthru'          => request()->old( 'rfc1997_passthru',  $router->rfc1997_passthru   ),
             'skip_md5'                  => request()->old( 'skip_md5',          $router->skip_md5           ),
+            'pair_id'                   => request()->old( 'pair_id',           $router->pair_id            ),
             'template'                  => request()->old( 'template',          $router->template           ),
         ]);
 
@@ -181,6 +185,9 @@ class RouterController extends Controller
     public function update( StoreRouter $r, Router $router ): RedirectResponse
     {
         $router->update( $r->all() );
+
+        $this->checkASN32( $router );
+
         AlertContainer::push( 'Router updated.', Alert::SUCCESS );
         return Redirect::to( route( "router@list" ) );
     }
@@ -214,4 +221,80 @@ class RouterController extends Controller
         AlertContainer::push( 'Router deleted.', Alert::SUCCESS );
         return Redirect::to( route( "router@list" ) );
     }
+
+    /**
+     * Pause a router
+     *
+     * @param Router $router
+     *
+     * @return redirectresponse
+     *
+     * @throws
+     */
+    public function pause( Router $router): RedirectResponse
+    {
+        $router->pause_updates = true;
+        $router->save();
+
+        AlertContainer::push( 'Automatic updates for router ' . $router->handle . ' paused.', Alert::SUCCESS );
+        return Redirect::to( route( "router@list" ) );
+    }
+
+    /**
+     * Resume a router
+     *
+     * @param Router $router
+     *
+     * @return redirectresponse
+     *
+     * @throws
+     */
+    public function resume( Router $router): RedirectResponse
+    {
+        $router->pause_updates = false;
+        $router->save();
+
+        AlertContainer::push( 'Automatic updates for router ' . $router->handle . ' resumed.', Alert::SUCCESS );
+        return Redirect::to( route( "router@list" ) );
+    }
+
+    /**
+     * Reset update timestamps
+     *
+     * @param Router $router
+     *
+     * @return redirectresponse
+     *
+     * @throws
+     */
+    public function resetUpdateTimestamps( Router $router): RedirectResponse
+    {
+        $router->last_update_started = null;
+        $router->last_updated        = null;
+        $router->save();
+
+        AlertContainer::push( 'Update timestamps for router ' . $router->handle . ' set to null.', Alert::SUCCESS );
+        return Redirect::to( route( "router@list" ) );
+    }
+
+    /**
+     * Warning about asn32's with route servers.
+     *
+     *
+     *
+     * @param Router $router
+     * @return void
+     */
+    private function checkASN32( Router $router )
+    {
+        if( $router->type == Router::TYPE_ROUTE_SERVER && $router->asn > 65535 ) {
+            AlertContainer::push( 'You are strongly advised to use / request a dedicated 16-bit ASN from your RIR '
+                . 'for route server use and in our experience, all RIRs understand this and accommodate it. The route server '
+                . 'configurations will support an asn32 but to our knowledge, this has never been used in production. '
+                . 'Also, withouot an asn16, you will be unable to offer your members standard community based filtering. ',
+         Alert::WARNING
+            );
+        }
+    }
+
 }

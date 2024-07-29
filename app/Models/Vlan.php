@@ -44,22 +44,23 @@ use IXP\Traits\Observable;
  * @property int $infrastructureid
  * @property int $peering_matrix
  * @property int $peering_manager
+ * @property bool $export_to_ixf
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\AtlasRun[] $atlasRun
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\AtlasRun> $atlasRun
  * @property-read int|null $atlas_run_count
  * @property-read \IXP\Models\Infrastructure $infrastructure
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\IPv4Address[] $ipv4Addresses
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\IPv4Address> $ipv4Addresses
  * @property-read int|null $ipv4_addresses_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\IPv6Address[] $ipv6Addresses
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\IPv6Address> $ipv6Addresses
  * @property-read int|null $ipv6_addresses_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\NetworkInfo[] $networksInfo
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\NetworkInfo> $networksInfo
  * @property-read int|null $networks_info_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\RouteServerFilter[] $routeServerFilters
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\RouteServerFilter> $routeServerFilters
  * @property-read int|null $route_server_filters_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\Router[] $routers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\Router> $routers
  * @property-read int|null $routers_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\IXP\Models\VlanInterface[] $vlanInterfaces
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \IXP\Models\VlanInterface> $vlanInterfaces
  * @property-read int|null $vlan_interfaces_count
  * @method static Builder|Vlan newModelQuery()
  * @method static Builder|Vlan newQuery()
@@ -69,6 +70,7 @@ use IXP\Traits\Observable;
  * @method static Builder|Vlan query()
  * @method static Builder|Vlan whereConfigName($value)
  * @method static Builder|Vlan whereCreatedAt($value)
+ * @method static Builder|Vlan whereExportToIxf($value)
  * @method static Builder|Vlan whereId($value)
  * @method static Builder|Vlan whereInfrastructureid($value)
  * @method static Builder|Vlan whereName($value)
@@ -103,6 +105,7 @@ class Vlan extends Model
         'infrastructureid',
         'peering_matrix',
         'peering_manager',
+        'export_to_ixf',
         'config_name',
     ];
 
@@ -113,6 +116,7 @@ class Vlan extends Model
      */
     protected $casts = [
         'private'         => 'boolean',
+        'export_to_ixf'   => 'boolean',
     ];
 
     /**
