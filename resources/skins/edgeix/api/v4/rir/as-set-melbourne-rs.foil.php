@@ -10,10 +10,9 @@ notify:         notify@edgeix.net
 remarks:        EdgeIX peer ASNs are listed in AS-SET-EDGEIX-CONNECTED
 mnt-by:         MAINT-TCMJ-AU
 <?php foreach( $t->customers as $c ): ?>
-<?php if( $c->isRouteServerClient( ) && $c->hasVlan(300) ): ?>
-members:        <?= $c->resolveAsMacro( 4, 'AS' ) ?>
+<?php if( $c->routeServerClient( ) && $c->hasVLAN(300) ): ?>
+members:        <?= $c->asMacro( 4, 'AS' ) ?>
 
 <?php endif; ?>
 <?php endforeach; ?>
 source:         APNIC
-

@@ -43,6 +43,13 @@ EdgeIX Operates upto 2 route servers per state based Internet Exchange. Below ar
   <td>2001:df0:680:2::2</td>
 </tr>
 <tr>
+  <td>Auckland</td>
+  <td>103.180.190.1</td>
+  <td>2001:df0:680:11::1</td>
+  <td>103.180.190.2</td>
+  <td>2001:df0:680:11::2</td>
+</tr>
+<tr>
   <td>Brisbane</td>
   <td>103.136.103.1</td>
   <td>2001:df0:680:4::1</td>
@@ -76,6 +83,13 @@ EdgeIX Operates upto 2 route servers per state based Internet Exchange. Below ar
   <td>2001:df0:680:3::1</td>
   <td>103.136.102.2</td>
   <td>2001:df0:680:3::2</td>
+</tr>
+<tr>
+  <td>Singapore</td>
+  <td>103.77.68.1</td>
+  <td>2001:df0:680:10::1</td>
+  <td>103.77.68.2</td>
+  <td>2001:df0:680:10::2</td>
 </tr>
 <tr>
   <td>Sydney</td>
