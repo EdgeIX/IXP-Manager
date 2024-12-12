@@ -36,12 +36,12 @@ use IXP\Traits\Observable;
  * IXP\Models\Vlan
  *
  * @property int $id
+ * @property int $infrastructureid
  * @property string|null $name
  * @property string|null $config_name
  * @property int|null $number
- * @property string|null $notes
  * @property bool $private
- * @property int $infrastructureid
+ * @property string|null $notes
  * @property int $peering_matrix
  * @property int $peering_manager
  * @property bool $export_to_ixf

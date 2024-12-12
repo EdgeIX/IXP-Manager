@@ -5,7 +5,7 @@
 
 /**
  * A helper file for Laravel, to provide autocomplete information to your IDE
- * Generated for Laravel 9.52.16.
+ * Generated for Laravel 9.52.18.
  *
  * This file should not be included in your code, only analyzed by your IDE!
  *
@@ -3415,8 +3415,8 @@ namespace Illuminate\Support\Facades {
          *
          * @template TCacheValue
          * @param array|string $key
-         * @param \Illuminate\Cache\TCacheValue|\Illuminate\Cache\(\Closure():  TCacheValue)  $default
-         * @return \Illuminate\Cache\(TCacheValue is null ? mixed : TCacheValue)
+         * @param \Illuminate\Cache\TCacheValue|(\Closure(): TCacheValue) $default
+         * @return (TCacheValue is null ? mixed : TCacheValue)
          * @static 
          */        public static function get($key, $default = null)
         {
@@ -3457,8 +3457,8 @@ namespace Illuminate\Support\Facades {
          *
          * @template TCacheValue
          * @param array|string $key
-         * @param \Illuminate\Cache\TCacheValue|\Illuminate\Cache\(\Closure():  TCacheValue)  $default
-         * @return \Illuminate\Cache\(TCacheValue is null ? mixed : TCacheValue)
+         * @param \Illuminate\Cache\TCacheValue|(\Closure(): TCacheValue) $default
+         * @return (TCacheValue is null ? mixed : TCacheValue)
          * @static 
          */        public static function pull($key, $default = null)
         {
@@ -3841,26 +3841,6 @@ namespace Illuminate\Support\Facades {
                         return $instance->macroCall($method, $parameters);
         }
                     /**
-         * Remove all items from the cache.
-         *
-         * @return bool 
-         * @static 
-         */        public static function flush()
-        {
-                        /** @var \Illuminate\Cache\ArrayStore $instance */
-                        return $instance->flush();
-        }
-                    /**
-         * Get the cache key prefix.
-         *
-         * @return string 
-         * @static 
-         */        public static function getPrefix()
-        {
-                        /** @var \Illuminate\Cache\ArrayStore $instance */
-                        return $instance->getPrefix();
-        }
-                    /**
          * Get a lock instance.
          *
          * @param string $name
@@ -3870,7 +3850,7 @@ namespace Illuminate\Support\Facades {
          * @static 
          */        public static function lock($name, $seconds = 0, $owner = null)
         {
-                        /** @var \Illuminate\Cache\ArrayStore $instance */
+                        /** @var \Illuminate\Cache\NullStore $instance */
                         return $instance->lock($name, $seconds, $owner);
         }
                     /**
@@ -3882,8 +3862,28 @@ namespace Illuminate\Support\Facades {
          * @static 
          */        public static function restoreLock($name, $owner)
         {
-                        /** @var \Illuminate\Cache\ArrayStore $instance */
+                        /** @var \Illuminate\Cache\NullStore $instance */
                         return $instance->restoreLock($name, $owner);
+        }
+                    /**
+         * Remove all items from the cache.
+         *
+         * @return bool 
+         * @static 
+         */        public static function flush()
+        {
+                        /** @var \Illuminate\Cache\NullStore $instance */
+                        return $instance->flush();
+        }
+                    /**
+         * Get the cache key prefix.
+         *
+         * @return string 
+         * @static 
+         */        public static function getPrefix()
+        {
+                        /** @var \Illuminate\Cache\NullStore $instance */
+                        return $instance->getPrefix();
         }
             }
             /**
@@ -6302,9 +6302,9 @@ namespace Illuminate\Support\Facades {
          *
          * @template TWhenParameter
          * @template TWhenReturnType
-         * @param \Illuminate\Filesystem\(\Closure($this):  TWhenParameter)|TWhenParameter|null  $value
-         * @param \Illuminate\Filesystem\(callable($this,  TWhenParameter): TWhenReturnType)|null  $callback
-         * @param \Illuminate\Filesystem\(callable($this,  TWhenParameter): TWhenReturnType)|null  $default
+         * @param (\Closure($this): TWhenParameter)|\Illuminate\Filesystem\TWhenParameter|null $value
+         * @param (callable($this, TWhenParameter): TWhenReturnType)|null $callback
+         * @param (callable($this, TWhenParameter): TWhenReturnType)|null $default
          * @return $this|\Illuminate\Filesystem\TWhenReturnType 
          * @static 
          */        public static function when($value = null, $callback = null, $default = null)
@@ -6317,9 +6317,9 @@ namespace Illuminate\Support\Facades {
          *
          * @template TUnlessParameter
          * @template TUnlessReturnType
-         * @param \Illuminate\Filesystem\(\Closure($this):  TUnlessParameter)|TUnlessParameter|null  $value
-         * @param \Illuminate\Filesystem\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $callback
-         * @param \Illuminate\Filesystem\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $default
+         * @param (\Closure($this): TUnlessParameter)|\Illuminate\Filesystem\TUnlessParameter|null $value
+         * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $callback
+         * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $default
          * @return $this|\Illuminate\Filesystem\TUnlessReturnType 
          * @static 
          */        public static function unless($value = null, $callback = null, $default = null)
@@ -14084,9 +14084,9 @@ namespace Illuminate\Support\Facades {
          *
          * @template TWhenParameter
          * @template TWhenReturnType
-         * @param \Illuminate\Filesystem\(\Closure($this):  TWhenParameter)|TWhenParameter|null  $value
-         * @param \Illuminate\Filesystem\(callable($this,  TWhenParameter): TWhenReturnType)|null  $callback
-         * @param \Illuminate\Filesystem\(callable($this,  TWhenParameter): TWhenReturnType)|null  $default
+         * @param (\Closure($this): TWhenParameter)|\Illuminate\Filesystem\TWhenParameter|null $value
+         * @param (callable($this, TWhenParameter): TWhenReturnType)|null $callback
+         * @param (callable($this, TWhenParameter): TWhenReturnType)|null $default
          * @return $this|\Illuminate\Filesystem\TWhenReturnType 
          * @static 
          */        public static function when($value = null, $callback = null, $default = null)
@@ -14099,9 +14099,9 @@ namespace Illuminate\Support\Facades {
          *
          * @template TUnlessParameter
          * @template TUnlessReturnType
-         * @param \Illuminate\Filesystem\(\Closure($this):  TUnlessParameter)|TUnlessParameter|null  $value
-         * @param \Illuminate\Filesystem\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $callback
-         * @param \Illuminate\Filesystem\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $default
+         * @param (\Closure($this): TUnlessParameter)|\Illuminate\Filesystem\TUnlessParameter|null $value
+         * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $callback
+         * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $default
          * @return $this|\Illuminate\Filesystem\TUnlessReturnType 
          * @static 
          */        public static function unless($value = null, $callback = null, $default = null)
@@ -19828,6 +19828,18 @@ namespace Barryvdh\Debugbar\Facades {
      * @see \Barryvdh\Debugbar\LaravelDebugbar
      */        class Debugbar {
                     /**
+         * Returns the HTTP driver
+         * 
+         * If no http driver where defined, a PhpHttpDriver is automatically created
+         *
+         * @return \DebugBar\HttpDriverInterface 
+         * @static 
+         */        public static function getHttpDriver()
+        {
+                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
+                        return $instance->getHttpDriver();
+        }
+                    /**
          * Enable the Debugbar and boot, if not already booted.
          *
          * @static 
@@ -19978,6 +19990,27 @@ namespace Barryvdh\Debugbar\Facades {
         {
                         /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
                         return $instance->injectDebugbar($response);
+        }
+                    /**
+         * Checks if there is stacked data in the session
+         *
+         * @return boolean 
+         * @static 
+         */        public static function hasStackedData()
+        {
+                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
+                        return $instance->hasStackedData();
+        }
+                    /**
+         * Returns the data stacked in the session
+         *
+         * @param boolean $delete Whether to delete the data in the session
+         * @return array 
+         * @static 
+         */        public static function getStackedData($delete = true)
+        {
+                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
+                        return $instance->getStackedData($delete);
         }
                     /**
          * Disable the Debugbar
@@ -20145,18 +20178,6 @@ namespace Barryvdh\Debugbar\Facades {
                         return $instance->setHttpDriver($driver);
         }
                     /**
-         * Returns the HTTP driver
-         * 
-         * If no http driver where defined, a PhpHttpDriver is automatically created
-         *
-         * @return \DebugBar\HttpDriverInterface 
-         * @static 
-         */        public static function getHttpDriver()
-        {            //Method inherited from \DebugBar\DebugBar         
-                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
-                        return $instance->getHttpDriver();
-        }
-                    /**
          * Returns collected data
          * 
          * Will collect the data if none have been collected yet
@@ -20201,27 +20222,6 @@ namespace Barryvdh\Debugbar\Facades {
         {            //Method inherited from \DebugBar\DebugBar         
                         /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
                         return $instance->stackData();
-        }
-                    /**
-         * Checks if there is stacked data in the session
-         *
-         * @return boolean 
-         * @static 
-         */        public static function hasStackedData()
-        {            //Method inherited from \DebugBar\DebugBar         
-                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
-                        return $instance->hasStackedData();
-        }
-                    /**
-         * Returns the data stacked in the session
-         *
-         * @param boolean $delete Whether to delete the data in the session
-         * @return array 
-         * @static 
-         */        public static function getStackedData($delete = true)
-        {            //Method inherited from \DebugBar\DebugBar         
-                        /** @var \Barryvdh\Debugbar\LaravelDebugbar $instance */
-                        return $instance->getStackedData($delete);
         }
                     /**
          * Sets the key to use in the $_SESSION array
@@ -20570,10 +20570,10 @@ namespace Spatie\LaravelIgnition\Facades {
          * 
          *
          * @static 
-         */        public static function withStackFrameArguments($withStackFrameArguments = true)
+         */        public static function withStackFrameArguments($withStackFrameArguments = true, $forcePHPIniSetting = false)
         {
                         /** @var \Spatie\FlareClient\Flare $instance */
-                        return $instance->withStackFrameArguments($withStackFrameArguments);
+                        return $instance->withStackFrameArguments($withStackFrameArguments, $forcePHPIniSetting);
         }
                     /**
          * 
@@ -20917,31 +20917,6 @@ namespace Illuminate\Support {
         {
                         return \Illuminate\Support\Collection::debug();
         }
-                    /**
-         * 
-         *
-         * @see \Spatie\LaravelRay\RayServiceProvider::registerMacros()
-         * @param string $description
-         * @static 
-         */        public static function ray($description = '')
-        {
-                        return \Illuminate\Support\Collection::ray($description);
-        }
-            }
-            /**
-     * 
-     *
-     */        class Stringable {
-                    /**
-         * 
-         *
-         * @see \Spatie\LaravelRay\RayServiceProvider::registerMacros()
-         * @param string $description
-         * @static 
-         */        public static function ray($description = '')
-        {
-                        return \Illuminate\Support\Stringable::ray($description);
-        }
             }
     }
 
@@ -20949,34 +20924,7 @@ namespace Illuminate\Testing {
             /**
      * 
      *
-     * @mixin \Illuminate\Http\Response
-     */        class TestResponse {
-                    /**
-         * 
-         *
-         * @see \Spatie\LaravelRay\RayServiceProvider::registerMacros()
-         * @static 
-         */        public static function ray()
-        {
-                        return \Illuminate\Testing\TestResponse::ray();
-        }
-            }
-    }
-
-namespace Illuminate\Database\Query {
-            /**
-     * 
-     *
-     */        class Builder {
-                    /**
-         * 
-         *
-         * @see \Spatie\LaravelRay\RayServiceProvider::registerMacros()
-         * @static 
-         */        public static function ray()
-        {
-                        return \Illuminate\Database\Query\Builder::ray();
-        }
+     */        class LoggedExceptionCollection {
             }
     }
 
@@ -21901,9 +21849,9 @@ namespace  {
              *
              * @template TWhenParameter
              * @template TWhenReturnType
-             * @param \Illuminate\Database\Eloquent\(\Closure($this):  TWhenParameter)|TWhenParameter|null  $value
-             * @param \Illuminate\Database\Eloquent\(callable($this,  TWhenParameter): TWhenReturnType)|null  $callback
-             * @param \Illuminate\Database\Eloquent\(callable($this,  TWhenParameter): TWhenReturnType)|null  $default
+             * @param (\Closure($this): TWhenParameter)|\Illuminate\Database\Eloquent\TWhenParameter|null $value
+             * @param (callable($this, TWhenParameter): TWhenReturnType)|null $callback
+             * @param (callable($this, TWhenParameter): TWhenReturnType)|null $default
              * @return $this|\Illuminate\Database\Eloquent\TWhenReturnType 
              * @static 
              */            public static function when($value = null, $callback = null, $default = null)
@@ -21916,9 +21864,9 @@ namespace  {
              *
              * @template TUnlessParameter
              * @template TUnlessReturnType
-             * @param \Illuminate\Database\Eloquent\(\Closure($this):  TUnlessParameter)|TUnlessParameter|null  $value
-             * @param \Illuminate\Database\Eloquent\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $callback
-             * @param \Illuminate\Database\Eloquent\(callable($this,  TUnlessParameter): TUnlessReturnType)|null  $default
+             * @param (\Closure($this): TUnlessParameter)|\Illuminate\Database\Eloquent\TUnlessParameter|null $value
+             * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $callback
+             * @param (callable($this, TUnlessParameter): TUnlessReturnType)|null $default
              * @return $this|\Illuminate\Database\Eloquent\TUnlessReturnType 
              * @static 
              */            public static function unless($value = null, $callback = null, $default = null)
@@ -24297,15 +24245,6 @@ namespace  {
             {
                                 /** @var \Illuminate\Database\Query\Builder $instance */
                                 return $instance->macroCall($method, $parameters);
-            }
-                            /**
-             * 
-             *
-             * @see \Spatie\LaravelRay\RayServiceProvider::registerMacros()
-             * @static 
-             */            public static function ray()
-            {
-                                return \Illuminate\Database\Query\Builder::ray();
             }
                     }
             class Event extends \Illuminate\Support\Facades\Event {}
