@@ -29,6 +29,7 @@ storage/.local
 storage/grapher/
 storage/files/*
 storage/tmp/*
+storage/xero.json
 
 tools/perl-lib/IXPManager/MYMETA.yml
 tools/perl-lib/IXPManager/Makefile
