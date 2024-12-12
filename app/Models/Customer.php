@@ -363,16 +363,18 @@ class Customer extends Model
         return $this->hasMany(VirtualInterface::class, 'custid');
     }
 
-    public function hasVLAN(int $vlanId): bool {
-        foreach( $this->virtualInterfaces() as $vi ) {
-            foreach( $vi->getVlanInterfaces() as $vli ) {
-                if( $vli->getVlan()->getNumber() == $vlanId ) {
-                    return true;
-                }
-            }
-        }
-        return false;
+         /**
+     * Does the customer have a given VLAN?
+     */
+    public function hasVLAN(int $vlanId): bool
+    {
+        return (bool)self::leftJoin( 'virtualinterface AS vi', 'vi.custid', 'cust.id' )
+        ->leftJoin( 'vlaninterface AS vli', 'vli.virtualinterfaceid', 'vi.id' )
+        ->leftJoin( 'vlan AS v', 'v.id', 'vli.vlanid' )
+        ->where( 'v.number', $vlanId )->where( 'cust.id', $this->id )
+        ->get()->count();
     }
+
 
     /**
      * Get the peers for the customer
