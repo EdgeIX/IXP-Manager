@@ -46,6 +46,7 @@ return [
             'accounting.settings.read',
             'accounting.contacts',
             'accounting.settings.read',
+            'accounting.transactions.read',
         ],
 
         /************************************************************************
