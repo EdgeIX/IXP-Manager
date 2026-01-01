@@ -73,7 +73,7 @@ class UpdateAsnDb extends UpdateDb
 
         foreach( $customers as $c ) {
             try {
-                $task = new UpdateAsnDbTask( $c );
+                $task = new UpdateAsnDbTask( $c, [ 4 ] );
                 $this->printResults( $c, $task->update(), 'asn' );
             } catch( Exception $e ) {
                 $this->handleException( $c, $e, 'ASN' );
