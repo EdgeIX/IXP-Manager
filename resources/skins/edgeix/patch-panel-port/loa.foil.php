@@ -1,7 +1,10 @@
+<?php
+    $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
+?>
 <html>
 <head>
     <title>
-        LoA - <?= $t->ppp->getCircuitReference() ?> - <?= date('Y-m-d' ) ?>
+        LoA - <?= $ppp->circuitReference() ?> - <?= now()->format('Y-m-d' ) ?>
     </title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
@@ -31,7 +34,7 @@
 <hr>
 
 <p>
-    EdgeIX hereby authorises <?= $t->ppp->getCustomer()->getName() ?>
+    EdgeIX hereby authorises <?= $ppp->customer->name ?>
     and / or its agents to order a connection to the following demarcation point:
 </p>
 
@@ -39,23 +42,23 @@
     <table border="0" width="100%" style="border: 2px solid #000000; padding: 5px;">
         <tr>
             <td width="10%"></td>
-            <td><b>Location:</b></td>
-            <td><?= $t->ee( $t->ppp->getPatchPanel()->getCabinet()->getLocation()->getName() ) ?></td>
+            <td><b>Facility:</b></td>
+            <td><?= $t->ee( $ppp->patchPanel->cabinet->location->name ) ?></td>
         </tr>
         <tr>
             <td></td>
             <td><b>Demarc:</b></td>
-            <td><?= $t->ee( $t->ppp->getPatchPanel()->getColoReference() ) ?></td>
+            <td><?= $t->ee( $ppp->patchPanel->colo_reference ) ?></td>
         </tr>
         <tr>
             <td></td>
             <td><b>Port:</b></td>
-            <td><?= $t->ppp->getName() ?> <?php if( $t->ppp->hasSlavePort() ){ ?><em>(duplex port)</em><?php } ?> </td>
+            <td><?= $ppp->name() ?></td>
         </tr>
         <tr>
             <td></td>
             <td><b>Type:</b></td>
-            <td><?= $t->ee( $t->ppp->getPatchPanel()->resolveCableType() ) ?> / <?= $t->ee( $t->ppp->getPatchPanel()->resolveConnectorType() ) ?></td>
+            <td><?= $t->ee( $ppp->patchPanel->cableType() ) ?> / <?= $t->ee( $ppp->patchPanel->connectorType() ) ?></td>
         </tr>
     </table>
     <br>
@@ -67,8 +70,8 @@
     <em>We generate our LoA's via our provisioning system. Each LoA can be individually
     authenticated by clicking on the following unique link:</em><br><br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    &nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="<?= url( '/verify-loa' ).'/'.$t->ppp->getId().'/'.$t->ppp->getLoaCode()?>"
-        ><?= url( '/verify-loa' ).'/'.$t->ppp->getId().'/'.$t->ppp->getLoaCode() ?></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="<?= url( '/verify-loa' ).'/'.$t->ppp->id.'/'.$t->ppp->loa_code?>"
+        ><?= url( '/verify-loa' ).'/'.$t->ppp->id.'/'.$t->ppp->loa_code ?></a>
 </p>
 
 
