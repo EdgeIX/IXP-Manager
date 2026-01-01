@@ -16,5 +16,6 @@ members:        AS-SET-EDGEIX-BNE-RS
 members:        AS-SET-EDGEIX-HBA-RS
 members:        AS-SET-EDGEIX-DRW-RS
 members:        AS-SET-EDGEIX-ADL-RS
+members:	AS-SET-EDGEIX-AKL-RS
 source:         APNIC
 

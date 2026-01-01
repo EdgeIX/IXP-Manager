@@ -146,6 +146,10 @@
   <td>24305:61890</td>
   <td>Perth Content Opt-in</td>
 </tr>
+<tr>
+  <td>24305:59890</td>
+  <td>Auckland Content Opt-in</td>
+</tr>
 
 </table>
 
