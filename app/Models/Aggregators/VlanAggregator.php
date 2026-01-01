@@ -36,6 +36,7 @@ use IXP\Models\{
  *
  * @property int $id
  * @property string|null $name
+ * @property string|null $config_name
  * @property int|null $number
  * @property string|null $notes
  * @property bool $private

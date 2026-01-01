@@ -224,7 +224,7 @@ class Router extends Model
     public static $SOFTWARES = [
         self::SOFTWARE_BIRD                 => 'Bird v1',
         self::SOFTWARE_BIRD2                => 'Bird v2',
-        self::SOFTWARE_BIRD3                => 'Bird v3',        
+        self::SOFTWARE_BIRD3                => 'Bird v3',
         self::SOFTWARE_QUAGGA               => 'Quagga',
         self::SOFTWARE_FRROUTING            => 'FRRouting',
         self::SOFTWARE_OPENBGPD             => 'OpenBGPd',
@@ -237,6 +237,7 @@ class Router extends Model
      */
     public const API_TYPE_NONE                     = 0;
     public const API_TYPE_BIRDSEYE                 = 1;
+    public const API_TYPE_BIRDWATCHER              = 2;
     public const API_TYPE_OTHER                    = 99;
 
     /**
@@ -245,6 +246,7 @@ class Router extends Model
     public static $API_TYPES = [
         self::API_TYPE_NONE                 => 'None',
         self::API_TYPE_BIRDSEYE             => 'Birdseye',
+        self::API_TYPE_BIRDWATCHER          => 'Birdwatcher',
         self::API_TYPE_OTHER                => 'Other'
     ];
 
