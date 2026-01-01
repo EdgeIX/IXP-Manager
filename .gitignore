@@ -38,6 +38,7 @@ composer.phar
 /storage/grapher/
 /storage/files/*
 /storage/tmp/*
+storage/xero.json
 
 /tests/Browser/ExampleTest.php
 
