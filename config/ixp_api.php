@@ -139,7 +139,7 @@ return [
         ],
 
         'prefix' => [
-            'host' => env( 'IXP_API_WHOIS_PREFIX_HOST', 'whois.radb.net' ),
+            'host' => env( 'IXP_API_WHOIS_PREFIX_HOST', 'whois.edgeix.net.au' ),
             'port' => env( 'IXP_API_WHOIS_PREFIX_PORT', 43 ),
         ],
     ],
