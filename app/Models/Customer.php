@@ -372,6 +372,17 @@ class Customer extends Model
         return $this->hasMany(VirtualInterface::class, 'custid');
     }
 
+    public function hasVLAN(int $vlanId): bool {
+        foreach( $this->virtualInterfaces() as $vi ) {
+            foreach( $vi->getVlanInterfaces() as $vli ) {
+                if( $vli->getVlan()->getNumber() == $vlanId ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * Get the virtual interfaces for the customer
      *
@@ -817,7 +828,7 @@ class Customer extends Model
      * @param bool $trafficing      If `true`, only include trafficing customers (i.e. no associates)
      * @param bool $externalOnly    If `true`, only include external customers (i.e. no internal types)
      * @param bool $connected       If `true`, only include connected customers
-     * 
+     *
      * @return Builder
      */
     public static function scopeCurrentActive( Builder $query, bool $trafficing = false, bool $externalOnly = false, bool $connected = true ): Builder
