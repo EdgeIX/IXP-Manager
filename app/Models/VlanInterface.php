@@ -59,6 +59,7 @@ use IXP\Traits\Observable;
  * @property int|null $ipv6monitorrcbgp
  * @property int|null $as112client
  * @property int|null $busyhost
+ * @property int|null $vlantag
  * @property string|null $notes
  * @property int $rsmorespecifics
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -98,6 +99,7 @@ use IXP\Traits\Observable;
  * @method static Builder|VlanInterface whereUpdatedAt($value)
  * @method static Builder|VlanInterface whereVirtualinterfaceid($value)
  * @method static Builder|VlanInterface whereVlanid($value)
+ * @method static Builder|VlanInterface whereVlantag($value)
  * @mixin Eloquent
  */
 class VlanInterface extends Model
@@ -126,6 +128,7 @@ class VlanInterface extends Model
         'rsclient',
         'as112client',
         'busyhost',
+        'vlantag',
     ];
 
     /**
