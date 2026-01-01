@@ -70,8 +70,8 @@
     <em>We generate our LoA's via our provisioning system. Each LoA can be individually
     authenticated by clicking on the following unique link:</em><br><br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    &nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="<?= url( '/verify-loa' ).'/'.$t->ppp->id.'/'.$t->ppp->loa_code?>"
-        ><?= url( '/verify-loa' ).'/'.$t->ppp->id.'/'.$t->ppp->loa_code ?></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="<?= route ( 'patch-panel-port-loa@verify' , [ 'ppp' => $ppp->id , 'code' => $ppp->loa_code ] ) ?>">
+       <?= route ( 'patch-panel-port-loa@verify' , [ 'ppp' => $ppp->id , 'code' => $ppp->loa_code ] ) ?>
 </p>
 
 
