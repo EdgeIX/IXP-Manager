@@ -8,6 +8,8 @@
 /.buildpath
 /.settings/
 /.phpunit.cache/
+.env*.local
+
 /vendor/
 /public/.htaccess
 /public/logos/*
@@ -136,3 +138,7 @@ http-client.private.env.json
 
 
 
+
+# edgeix ignored
+.idea/
+tools/runtime/sflow/*.json
