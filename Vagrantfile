@@ -7,6 +7,14 @@ Vagrant.configure(2) do |config|
   config.vm.network "forwarded_port", guest: 80, host: 8088
   config.vm.network "forwarded_port", guest: 3306, host: 33061
 
+  config.vm.synced_folder ".", "/vagrant/", id: "vagrant-root0", type: "nfs", nfs_version: 4, nfs_udp: false
+#
+#   config.vm.synced_folder "./storage", "/vagrant/storage", id: "vagrant-root1", type: "nfs",
+#       mount_options: ["dmode=775,fmode=664"]
+#
+#   config.vm.synced_folder "./bootstrap/cache", "/vagrant/bootstrap/cache", id: "vagrant-root4", type: "nfs",
+#       mount_options: ["dmode=775,fmode=664"]
+#
 
 #   config.vm.provider "virtualbox" do |vb|
 #     vb.memory = "1536"
@@ -27,13 +35,23 @@ Vagrant.configure(2) do |config|
 #
 #   end
 
-  config.vm.provider "parallels" do |prl|
-    prl.memory = 2048
-    prl.name = "ixpm-vagrant-24.04"
-    prl.cpus = 2
+#   config.vm.provider "parallels" do |prl|
+#     prl.memory = 2048
+#     prl.name = "ixpm-vagrant-24.04"
+#     prl.cpus = 2
+#
+#     # config.vm.synced_folder ".", "/vagrant/", mount_options: ["share"]
+#   end
 
-    # config.vm.synced_folder ".", "/vagrant/", mount_options: ["share"]
+  config.vm.provider :libvirt do |lv|
+#   config.vm.network "public_network", ip: "10.10.20.91", dev: "enp15s0", bridge: 'virbr0'
+    lv.title='ixp-manager'
+    lv.description='Development Environment for IXP Manager'
+    lv.memory = "1536"
+    lv.cpus=4
+    lv.storage :file, :size => '20G'
   end
+
 
   config.vm.provision :shell, path: "tools/vagrant/bootstrap.sh"
 end
