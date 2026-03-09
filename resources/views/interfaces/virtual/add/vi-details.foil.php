@@ -1,4 +1,3 @@
-<!-- FOIL_CACHE_TEST_12345 -->
 <?php
     $vi = $t->vi; /** @var $vi \IXP\Models\VirtualInterface */
 ?>
@@ -145,16 +144,24 @@
                             </div>
                         </div>
                     <?php endif; ?>
-                    <!-- DEBUG: resellerVis count=<?= count( $t->resellerVis ?? [] ) ?> -->
                     <?php if( $vi && !empty( $t->resellerVis ) ): ?>
-                        <?= Former::select( 'reseller_vi_id' )
-                            ->label( 'Reseller Port' )
-                            ->options( $t->resellerVis )
-                            ->placeholder( '-- Not a sub-rate service --' )
-                            ->addClass( 'chzn-select' )
-                            ->blockHelp( 'If this port is a sub-rate service on a reseller\'s physical port, select the reseller\'s port here. '
-                                . 'Sub-rate ports are not eligible for pseudowire circuits — the reseller retains ownership of the physical port.' );
-                        ?>
+                        <div class="form-group row">
+                            <label for="reseller_vi_id" class="control-label col-lg-4 col-md-5">
+                                Reseller Port
+                            </label>
+                            <div class="col-lg-6 col-md-7">
+                                <select name="reseller_vi_id" id="reseller_vi_id" class="form-control chzn-select">
+                                    <option value="">-- Not a sub-rate service --</option>
+                                    <?php foreach( $t->resellerVis as $rviId => $rviLabel ): ?>
+                                        <option value="<?= $rviId ?>" <?= (int)$vi->reseller_vi_id === $rviId ? 'selected' : '' ?>><?= $t->ee( $rviLabel ) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="form-text text-muted">
+                                    If this port is a sub-rate service on a reseller's physical port, select the reseller's port here.
+                                    Sub-rate ports are not eligible for pseudowire circuits.
+                                </small>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
 
