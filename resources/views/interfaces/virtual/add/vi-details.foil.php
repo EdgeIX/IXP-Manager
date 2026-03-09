@@ -144,7 +144,24 @@
                             </div>
                         </div>
                     <?php endif; ?>
-                    <?php if( $vi && !empty( $t->resellerVis ) ): ?>
+                    <?php
+                        // Build reseller VIs directly in the view to bypass controller opcache issues
+                        $resellerVis = [];
+                        if( $vi && $vi->customer && $vi->customer->reseller ) {
+                            $resellerVis = \IXP\Models\VirtualInterface::where( 'custid', $vi->customer->reseller )
+                                ->with( 'physicalInterfaces.switchPort.switcher' )
+                                ->get()
+                                ->mapWithKeys( function( $rvi ) {
+                                    $pi = $rvi->physicalInterfaces->first();
+                                    $label = $pi && $pi->switchPort
+                                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
+                                        : 'VI #' . $rvi->id;
+                                    return [ $rvi->id => $label ];
+                                } )
+                                ->toArray();
+                        }
+                    ?>
+                    <?php if( $vi && !empty( $resellerVis ) ): ?>
                         <div class="form-group row">
                             <label for="reseller_vi_id" class="control-label col-lg-4 col-md-5">
                                 Reseller Port
@@ -152,7 +169,7 @@
                             <div class="col-lg-6 col-md-7">
                                 <select name="reseller_vi_id" id="reseller_vi_id" class="form-control">
                                     <option value="">-- Not a sub-rate service --</option>
-                                    <?php foreach( $t->resellerVis as $rviId => $rviLabel ): ?>
+                                    <?php foreach( $resellerVis as $rviId => $rviLabel ): ?>
                                         <option value="<?= $rviId ?>" <?= (int)$vi->reseller_vi_id === $rviId ? 'selected' : '' ?>><?= $t->ee( $rviLabel ) ?></option>
                                     <?php endforeach; ?>
                                 </select>
