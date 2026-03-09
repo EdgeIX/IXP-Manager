@@ -144,14 +144,13 @@
                             </div>
                         </div>
                     <?php endif; ?>
-                    <div class="alert alert-danger">RESELLER_TEST: vi=<?= $vi ? $vi->id : 'null' ?> resellerVis=<?= count($t->resellerVis ?? []) ?></div>
                     <?php if( $vi && !empty( $t->resellerVis ) ): ?>
                         <div class="form-group row">
                             <label for="reseller_vi_id" class="control-label col-lg-4 col-md-5">
                                 Reseller Port
                             </label>
                             <div class="col-lg-6 col-md-7">
-                                <select name="reseller_vi_id" id="reseller_vi_id" class="form-control chzn-select">
+                                <select name="reseller_vi_id" id="reseller_vi_id" class="form-control">
                                     <option value="">-- Not a sub-rate service --</option>
                                     <?php foreach( $t->resellerVis as $rviId => $rviLabel ): ?>
                                         <option value="<?= $rviId ?>" <?= (int)$vi->reseller_vi_id === $rviId ? 'selected' : '' ?>><?= $t->ee( $rviLabel ) ?></option>
