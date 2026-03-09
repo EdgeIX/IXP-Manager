@@ -144,6 +144,7 @@
                             </div>
                         </div>
                     <?php endif; ?>
+                    <div class="alert alert-danger">RESELLER_TEST: vi=<?= $vi ? $vi->id : 'null' ?> resellerVis=<?= count($t->resellerVis ?? []) ?></div>
                     <?php if( $vi && !empty( $t->resellerVis ) ): ?>
                         <div class="form-group row">
                             <label for="reseller_vi_id" class="control-label col-lg-4 col-md-5">
