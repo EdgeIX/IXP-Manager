@@ -19,7 +19,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table( 'virtualinterface', function ( Blueprint $table ) {
-            $table->unsignedInteger( 'reseller_vi_id' )->nullable()->after( 'fastlacp' );
+            $table->integer( 'reseller_vi_id' )->nullable()->after( 'fastlacp' );
 
             $table->foreign( 'reseller_vi_id', 'fk_vi_reseller_vi' )
                 ->references( 'id' )
