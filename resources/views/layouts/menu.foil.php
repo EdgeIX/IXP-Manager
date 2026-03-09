@@ -347,6 +347,58 @@
                 </ul>
             <?php endif; ?>
 
+            <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) ): ?>
+                <h6>
+                    <span>EDGEIX MODULES</span>
+                </h6>
+            <?php endif; ?>
+
+            <?php if( Route::has( 'pw-admin@dashboard' ) ): ?>
+                <li class="<?= !request()->is( 'pseudowire/admin*' ) ?: 'active' ?>">
+                    <a href="<?= route( 'pw-admin@dashboard' ) ?>" class="nav-link">
+                        Pseudowires
+                    </a>
+                </li>
+
+                <?php if( request()->is( 'pseudowire/admin*' ) ): ?>
+                    <ul>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/pending' ) ?: 'active' ?>">
+                            <a href="<?= route( 'pw-admin@pending' ) ?>" class="nav-link">
+                                Approval Queue
+                            </a>
+                        </li>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/circuits' ) ?: 'active' ?>">
+                            <a href="<?= route( 'pw-admin@list' ) ?>" class="nav-link">
+                                All Circuits
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if( Route::has( 'xero.auth.success' ) ): ?>
+                <li class="<?= !request()->is( 'admin/xero*' ) ?: 'active' ?>">
+                    <a href="<?= route( 'xero.auth.success' ) ?>" class="nav-link">
+                        Xero Billing
+                    </a>
+                </li>
+
+                <?php if( request()->is( 'admin/xero*' ) ): ?>
+                    <ul>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'admin/xero/repeating-invoices' ) ?: 'active' ?>">
+                            <a href="<?= route( 'xero.repeating.invoices' ) ?>" class="nav-link">
+                                Repeating Invoices
+                            </a>
+                        </li>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'admin/xero/line-item*' ) ?: 'active' ?>">
+                            <a href="<?= route( 'ixpxero.line-item.index' ) ?>" class="nav-link">
+                                Line Items
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif; ?>
+            <?php endif; ?>
+
             <h6>
                 <span>IXP STATISTICS</span>
             </h6>
