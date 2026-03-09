@@ -193,7 +193,8 @@ class VirtualInterfaceController extends Common
             'vlans'             => [],
             'vi'                => false,
             'cb'                => false,
-            'selectedCust'      => $cust ?: false
+            'selectedCust'      => $cust ?: false,
+            'resellerVis'       => [],
         ]);
     }
 
@@ -247,14 +248,33 @@ class VirtualInterfaceController extends Common
             'channelgroup'          => $r->old( 'channel-group',     (string)$vi->channelgroup  ),
             'mtu'                   => $r->old( 'mtu',               (string)$vi->mtu           ),
             'name'                  => $name,
+            'reseller_vi_id'        => $r->old( 'reseller_vi_id',    (string)$vi->reseller_vi_id ),
         ]);
+
+        // If this customer is resold, build a list of the reseller's VIs for the sub-rate dropdown
+        $resellerVis = [];
+        $cust = $vi->customer;
+        if( $cust && $cust->reseller ) {
+            $resellerVis = VirtualInterface::where( 'custid', $cust->reseller )
+                ->with( 'physicalInterfaces.switchPort.switcher' )
+                ->get()
+                ->mapWithKeys( function( $rvi ) {
+                    $pi = $rvi->physicalInterfaces->first();
+                    $label = $pi && $pi->switchPort
+                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
+                        : 'VI #' . $rvi->id;
+                    return [ $rvi->id => $label ];
+                } )
+                ->toArray();
+        }
 
         return view( 'interfaces/virtual/add' )->with([
             'custs'             => CustomerAggregator::reformatNameWithDetail( Customer::trafficking()->orderBy('name')->get() ),
             'vlans'             => Vlan::orderBy( 'number' )->get(),
             'vi'                => $vi,
             'cb'                => $vi->getCoreBundle(),
-            'selectedCust'      => false
+            'selectedCust'      => false,
+            'resellerVis'       => $resellerVis,
         ]);
     }
 

@@ -68,6 +68,7 @@ class StoreVirtualInterface extends FormRequest
             'description'           => 'string|max:255|nullable',
             'channelgroup'          => 'integer|nullable',
             'mtu'                   => 'integer|min:1|max:64000|nullable',
+            'reseller_vi_id'        => 'integer|nullable|exists:virtualinterface,id',
         ];
     }
 }

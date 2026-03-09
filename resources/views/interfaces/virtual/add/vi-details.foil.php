@@ -144,6 +144,16 @@
                             </div>
                         </div>
                     <?php endif; ?>
+                    <?php if( $vi && !empty( $t->resellerVis ) ): ?>
+                        <?= Former::select( 'reseller_vi_id' )
+                            ->label( 'Reseller Port' )
+                            ->options( $t->resellerVis )
+                            ->placeholder( '-- Not a sub-rate service --' )
+                            ->addClass( 'chzn-select' )
+                            ->blockHelp( 'If this port is a sub-rate service on a reseller\'s physical port, select the reseller\'s port here. '
+                                . 'Sub-rate ports are not eligible for pseudowire circuits — the reseller retains ownership of the physical port.' );
+                        ?>
+                    <?php endif; ?>
                 </div>
 
                 <div id='advanced-area' class="col-sm-6 mt-4 mt-sm-0 collapse">
