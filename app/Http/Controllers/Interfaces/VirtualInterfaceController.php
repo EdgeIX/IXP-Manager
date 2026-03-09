@@ -268,8 +268,6 @@ class VirtualInterfaceController extends Common
                 ->toArray();
         }
 
-        dd( 'DEBUG resellerVis', $resellerVis, 'reseller=' . $cust->reseller, 'custid=' . $cust->id );
-
         return view( 'interfaces/virtual/add' )->with([
             'custs'             => CustomerAggregator::reformatNameWithDetail( Customer::trafficking()->orderBy('name')->get() ),
             'vlans'             => Vlan::orderBy( 'number' )->get(),
