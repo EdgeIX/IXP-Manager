@@ -10,7 +10,7 @@
     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 </div>
 <div class="modal-body">
-    <?php if( is_iterable( $t->content?->routes ) ) { foreach( $t->content->routes as $r ): ?>
+    <?php foreach( $t->content->routes as $r ): ?>
       <table class="table table-striped text-monospace" style="font-size: 14px;">
           <tbody>
               <tr>

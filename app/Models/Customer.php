@@ -249,9 +249,9 @@ class Customer extends Model
      *
      * @var array
      */
-    protected $dates = [
-        'datejoin',
-        'dateleave'
+    protected $casts = [
+        'datejoin' => 'datetime',
+        'dateleave' => 'datetime'
     ];
 
     /**
