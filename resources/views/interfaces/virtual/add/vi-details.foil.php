@@ -1,3 +1,4 @@
+<!-- FOIL_CACHE_TEST_12345 -->
 <?php
     $vi = $t->vi; /** @var $vi \IXP\Models\VirtualInterface */
 ?>
