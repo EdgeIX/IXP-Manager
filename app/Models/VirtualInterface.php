@@ -30,7 +30,8 @@ use Illuminate\Database\Eloquent\{
     Collection,
     Model,
     Relations\BelongsTo,
-    Relations\HasMany
+    Relations\HasMany,
+    Relations\HasOne
 };
 
 use IXP\Traits\Observable;
@@ -98,6 +99,7 @@ class VirtualInterface extends Model
         'channelgroup',
         'lag_framing',
         'fastlacp',
+        'reseller_vi_id',
     ];
 
     /**
@@ -119,6 +121,31 @@ class VirtualInterface extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'custid' );
+    }
+
+    /**
+     * Get the reseller's VirtualInterface that this port is a sub-rate service on.
+     * NULL means the customer owns this port directly.
+     */
+    public function resellerVirtualInterface(): BelongsTo
+    {
+        return $this->belongsTo( self::class, 'reseller_vi_id' );
+    }
+
+    /**
+     * Get the resold customer VirtualInterfaces that are sub-rate on this port.
+     */
+    public function resoldVirtualInterfaces(): HasMany
+    {
+        return $this->hasMany( self::class, 'reseller_vi_id' );
+    }
+
+    /**
+     * Is this a sub-rate service on a reseller's port?
+     */
+    public function isResellerSubRate(): bool
+    {
+        return $this->reseller_vi_id !== null;
     }
 
     /**
