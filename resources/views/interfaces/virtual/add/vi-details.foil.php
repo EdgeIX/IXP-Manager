@@ -144,6 +144,7 @@
                             </div>
                         </div>
                     <?php endif; ?>
+                    <!-- DEBUG: resellerVis count=<?= count( $t->resellerVis ?? [] ) ?> -->
                     <?php if( $vi && !empty( $t->resellerVis ) ): ?>
                         <?= Former::select( 'reseller_vi_id' )
                             ->label( 'Reseller Port' )
