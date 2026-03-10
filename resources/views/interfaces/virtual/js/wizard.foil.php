@@ -116,5 +116,28 @@
             $( '#switch-hidden' ).remove();
             $( '#switchportid-hidden' ).remove();
         }
+
+        // On page load, if a customer is already selected (pre-selected via URL),
+        // trigger the reseller port check immediately.
+        let initialCustId = dd_custid.val() || $( 'input[name="custid"]' ).val();
+        if( initialCustId ) {
+            let url = "<?= url( '/interfaces/virtual/reseller-ports' ) ?>/" + initialCustId;
+
+            $.ajax( url, { method: "GET" } )
+                .done( function( data ) {
+                    if( data.length === 0 ) return;
+
+                    let options = '<option value="">-- Dedicated Port (not sub-rate) --</option>';
+                    $.each( data, function( key, port ) {
+                        options += '<option value="' + port.vi_id + '"'
+                            + ' data-switch-id="' + port.switch_id + '"'
+                            + ' data-switchport-id="' + port.switchport_id + '"'
+                            + '>' + port.label + '</option>';
+                    });
+
+                    dd_resellerVi.html( options );
+                    resellerPortArea.show();
+                });
+        }
     });
 </script>
