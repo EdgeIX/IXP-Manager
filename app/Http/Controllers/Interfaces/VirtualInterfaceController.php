@@ -352,10 +352,9 @@ class VirtualInterfaceController extends Common
     {
         $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
 
-        // When skipping peering config, force 802.1q framing (needed for dot1q sub-interfaces)
-        if( $r->skip_peering ) {
-            $r->merge( [ 'trunk' => 1 ] );
-        }
+        // When skipping peering config, trunk is optional:
+        //   trunk=1 → tagged port for multiple pseudowires (dot1q sub-interfaces)
+        //   trunk=0 → untagged dedicated port for a single pseudowire (admin-only edge case)
 
         $v  = $r->skip_peering ? null : Vlan::find( $r->vlanid );
         $vi = VirtualInterface::create( $r->all() );

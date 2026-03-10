@@ -79,7 +79,7 @@
                         <?= Former::checkbox( 'skip_peering' )
                             ->label('&nbsp;')
                             ->text( 'Skip peering configuration' )
-                            ->blockHelp( 'Check this to create a port without peering config (e.g. for pseudowire-only or reseller-only ports). VLAN, IPv4/IPv6, and route server settings will be skipped. 802.1q framing is auto-enabled.' )
+                            ->blockHelp( 'Check this to create a port without peering config (e.g. for pseudowire-only or reseller-only ports). VLAN, IPv4/IPv6, and route server settings will be skipped. Use 802.1q framing for tagged pseudowire ports (multiple services via dot1q sub-interfaces) or leave it unchecked for untagged dedicated ports (single service only, admin-managed).' )
                             ->value( 1 )
                             ->inline()
                         ?>

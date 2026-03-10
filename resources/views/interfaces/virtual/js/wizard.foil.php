@@ -19,11 +19,9 @@
                 $( '#peering-vlan-settings' ).hide();
                 $( '#ipv6-area' ).hide();
                 $( '#ipv4-area' ).hide();
-                // Auto-enable 802.1q framing (required for dot1q sub-interfaces)
-                $( '#trunk' ).prop( 'checked', true ).prop( 'disabled', true );
-                if( $( '#trunk-hidden' ).length === 0 ) {
-                    $( '#trunk' ).after( '<input type="hidden" id="trunk-hidden" name="trunk" value="1">' );
-                }
+                // Leave 802.1q trunk checkbox enabled — admin decides:
+                //   Checked = tagged port for multiple pseudowires (dot1q sub-interfaces)
+                //   Unchecked = untagged dedicated port for a single pseudowire
                 // Uncheck IPv4/IPv6 so they don't submit
                 $( '#ipv4enabled' ).prop( 'checked', false );
                 $( '#ipv6enabled' ).prop( 'checked', false );
@@ -31,8 +29,6 @@
                 $( '#peering-vlan-fields' ).show();
                 $( '#peering-ip-fields' ).show();
                 $( '#peering-vlan-settings' ).show();
-                $( '#trunk' ).prop( 'disabled', false );
-                $( '#trunk-hidden' ).remove();
             }
         });
 
