@@ -354,9 +354,34 @@ class VirtualInterfaceController extends Common
         $v  = Vlan::find( $r->vlanid );
         $vi = VirtualInterface::create( $r->all() );
 
-        // Sub-rate services share the reseller's physical port — no PI needed.
-        // Dedicated ports get their own PI as normal.
-        if( !$r->reseller_vi_id ) {
+        if( $r->reseller_vi_id ) {
+            // Sub-rate service: create a sub-interface SwitchPort derived from
+            // the reseller's parent port name + VLAN tag (e.g. Ethernet4/5/1.200)
+            $resellerVi = VirtualInterface::with( 'physicalInterfaces.switchPort' )
+                ->find( $r->reseller_vi_id );
+            $parentPi = $resellerVi->physicalInterfaces->first();
+            $parentSp = $parentPi->switchPort;
+
+            $subIfName = $parentSp->ifName  ? $parentSp->ifName . '.' . $r->vlantag
+                                             : $parentSp->name . '.' . $r->vlantag;
+
+            $subSwitchPort = SwitchPort::create([
+                'switchid' => $parentSp->switchid,
+                'type'     => SwitchPort::TYPE_PEERING,
+                'name'     => $parentSp->name . '.' . $r->vlantag,
+                'ifName'   => $subIfName,
+                'active'   => true,
+            ]);
+
+            PhysicalInterface::create([
+                'switchportid'       => $subSwitchPort->id,
+                'virtualinterfaceid' => $vi->id,
+                'status'             => PhysicalInterface::STATUS_CONNECTED,
+                'speed'              => $parentPi->speed,
+                'duplex'             => $parentPi->duplex,
+            ]);
+        } else {
+            // Dedicated port: create PI on the selected switch port as normal
             PhysicalInterface::create( array_merge( $r->all(), [
                 'virtualinterfaceid' => $vi->id,
             ] ) );
