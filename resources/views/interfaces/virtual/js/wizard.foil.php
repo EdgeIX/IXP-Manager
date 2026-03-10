@@ -10,27 +10,34 @@
 
         /**
          * "Skip peering configuration" checkbox — hides VLAN, IPv4/IPv6,
-         * and General VLAN Settings when checked. Auto-enables 802.1q trunk.
+         * and General VLAN Settings when checked.
          */
-        $( '#skip_peering' ).on( 'change', function() {
-            if( $( this ).is( ':checked' ) ) {
+        function applySkipPeering( isChecked ) {
+            if( isChecked ) {
                 $( '#peering-vlan-fields' ).hide();
                 $( '#peering-ip-fields' ).hide();
                 $( '#peering-vlan-settings' ).hide();
                 $( '#ipv6-area' ).hide();
                 $( '#ipv4-area' ).hide();
-                // Leave 802.1q trunk checkbox enabled — admin decides:
-                //   Checked = tagged port for multiple pseudowires (dot1q sub-interfaces)
-                //   Unchecked = untagged dedicated port for a single pseudowire
-                // Uncheck IPv4/IPv6 so they don't submit
-                $( '#ipv4enabled' ).prop( 'checked', false );
-                $( '#ipv6enabled' ).prop( 'checked', false );
             } else {
                 $( '#peering-vlan-fields' ).show();
                 $( '#peering-ip-fields' ).show();
                 $( '#peering-vlan-settings' ).show();
             }
+        }
+
+        $( '#skip_peering' ).on( 'change', function() {
+            if( $( this ).is( ':checked' ) ) {
+                $( '#ipv4enabled' ).prop( 'checked', false );
+                $( '#ipv6enabled' ).prop( 'checked', false );
+            }
+            applySkipPeering( $( this ).is( ':checked' ) );
         });
+
+        // Re-apply on page load (e.g. after validation error reload)
+        if( $( '#skip_peering' ).is( ':checked' ) ) {
+            applySkipPeering( true );
+        }
 
         /**
          * When customer changes, check if they are a resold customer.

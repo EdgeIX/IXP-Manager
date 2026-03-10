@@ -75,7 +75,7 @@ class StoreVirtualInterfaceWizard extends FormRequest
             'skip_peering'          => 'boolean',
             'vlanid'                => ( $this->skip_peering ? 'nullable' : 'required' ) . '|integer|exists:vlan,id',
             'trunk'                 => 'boolean',
-            'vlantag'               => $this->reseller_vi_id ? 'required|integer|min:1' : 'integer',
+            'vlantag'               => $this->reseller_vi_id ? 'required|integer|min:1' : ( $this->skip_peering ? 'nullable|integer' : 'integer' ),
 
             'switch'                => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switch,id',
             'switchportid'          => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switchport,id',
