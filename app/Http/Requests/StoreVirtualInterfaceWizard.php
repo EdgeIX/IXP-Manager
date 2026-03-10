@@ -72,7 +72,8 @@ class StoreVirtualInterfaceWizard extends FormRequest
         return [
             'custid'                => 'required|integer|exists:cust,id',
             'reseller_vi_id'        => 'integer|nullable|exists:virtualinterface,id',
-            'vlanid'                => 'required|integer|exists:vlan,id',
+            'skip_peering'          => 'boolean',
+            'vlanid'                => ( $this->skip_peering ? 'nullable' : 'required' ) . '|integer|exists:vlan,id',
             'trunk'                 => 'boolean',
             'vlantag'               => $this->reseller_vi_id ? 'required|integer|min:1' : 'integer',
 

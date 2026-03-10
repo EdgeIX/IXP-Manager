@@ -9,6 +9,34 @@
         const resellerPortArea = $( '#reseller-port-area' );
 
         /**
+         * "Skip peering configuration" checkbox — hides VLAN, IPv4/IPv6,
+         * and General VLAN Settings when checked. Auto-enables 802.1q trunk.
+         */
+        $( '#skip_peering' ).on( 'change', function() {
+            if( $( this ).is( ':checked' ) ) {
+                $( '#peering-vlan-fields' ).hide();
+                $( '#peering-ip-fields' ).hide();
+                $( '#peering-vlan-settings' ).hide();
+                $( '#ipv6-area' ).hide();
+                $( '#ipv4-area' ).hide();
+                // Auto-enable 802.1q framing (required for dot1q sub-interfaces)
+                $( '#trunk' ).prop( 'checked', true ).prop( 'disabled', true );
+                if( $( '#trunk-hidden' ).length === 0 ) {
+                    $( '#trunk' ).after( '<input type="hidden" id="trunk-hidden" name="trunk" value="1">' );
+                }
+                // Uncheck IPv4/IPv6 so they don't submit
+                $( '#ipv4enabled' ).prop( 'checked', false );
+                $( '#ipv6enabled' ).prop( 'checked', false );
+            } else {
+                $( '#peering-vlan-fields' ).show();
+                $( '#peering-ip-fields' ).show();
+                $( '#peering-vlan-settings' ).show();
+                $( '#trunk' ).prop( 'disabled', false );
+                $( '#trunk-hidden' ).remove();
+            }
+        });
+
+        /**
          * When customer changes, check if they are a resold customer.
          * If so, fetch the reseller's ports and show the dropdown.
          * If not, hide the dropdown and unlock switch/port.

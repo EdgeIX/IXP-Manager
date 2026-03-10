@@ -76,6 +76,15 @@
                             </div>
                         </div>
 
+                        <?= Former::checkbox( 'skip_peering' )
+                            ->label('&nbsp;')
+                            ->text( 'Skip peering configuration' )
+                            ->blockHelp( 'Check this to create a port without peering config (e.g. for pseudowire-only or reseller-only ports). VLAN, IPv4/IPv6, and route server settings will be skipped. 802.1q framing is auto-enabled.' )
+                            ->value( 1 )
+                            ->inline()
+                        ?>
+
+                        <div id="peering-vlan-fields">
                         <?= Former::select( 'vlanid' )
                             ->label( 'Vlan' )
                             ->fromQuery( $t->vlans, 'name' )
@@ -88,6 +97,7 @@
                             ->label( 'Vlan Tag' )
                             ->blockHelp( 'The VLAN to translate to, if required. 0 signifies untagged' );
                         ?>
+                        </div>
 
                         <?= Former::checkbox( 'trunk' )
                             ->label('&nbsp;')
@@ -97,6 +107,7 @@
                             ->inline()
                         ?>
 
+                        <div id="peering-ip-fields">
                         <?= Former::checkbox( 'ipv6enabled' )
                             ->label('&nbsp;')
                             ->text( 'IPv6 Enabled' )
@@ -112,6 +123,7 @@
                             ->value( 1 )
                             ->inline()
                         ?>
+                        </div>
 
                     </div>
 
@@ -175,7 +187,7 @@
                         ?>
                     </div>
 
-                    <div class="col-md-12 col-lg-4 mt-4 mt-md-4">
+                    <div id="peering-vlan-settings" class="col-md-12 col-lg-4 mt-4 mt-md-4">
                         <h3>
                             General VLAN Settings
                         </h3>

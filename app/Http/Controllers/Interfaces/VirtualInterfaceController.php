@@ -351,7 +351,13 @@ class VirtualInterfaceController extends Common
     public function storeWizard( StoreVirtualInterfaceWizard $r ): RedirectResponse
     {
         $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
-        $v  = Vlan::find( $r->vlanid );
+
+        // When skipping peering config, force 802.1q framing (needed for dot1q sub-interfaces)
+        if( $r->skip_peering ) {
+            $r->merge( [ 'trunk' => 1 ] );
+        }
+
+        $v  = $r->skip_peering ? null : Vlan::find( $r->vlanid );
         $vi = VirtualInterface::create( $r->all() );
 
         if( $r->reseller_vi_id ) {
@@ -396,23 +402,31 @@ class VirtualInterfaceController extends Common
             SwitchPort::find( $r->switchportid )->update( [ 'type' => SwitchPort::TYPE_PEERING ] );
         }
 
-        $vli = VlanInterface::make( array_merge( $r->all(),
-            [
-                'virtualinterfaceid' => $vi->id,
-                'busyhost'           => false
-            ]
-        ) );
+        // Only create VlanInterface if peering config is not skipped
+        if( !$r->skip_peering ) {
+            $vli = VlanInterface::make( array_merge( $r->all(),
+                [
+                    'virtualinterfaceid' => $vi->id,
+                    'busyhost'           => false
+                ]
+            ) );
 
-        if( !$this->setIp( $r, $v, $vli, false ) || !$this->setIp( $r, $v, $vli, true ) ) {
-            return redirect(route( 'virtual-interface@wizard' ) )->withInput( $r->all() );
+            if( !$this->setIp( $r, $v, $vli, false ) || !$this->setIp( $r, $v, $vli, true ) ) {
+                return redirect(route( 'virtual-interface@wizard' ) )->withInput( $r->all() );
+            }
+
+            $vli->save();
+
+            // add a warning if we're filtering on irrdb but have not configured one for the customer
+            $this->warnIfIrrdbFilteringButNoIrrdbSourceSet( $vli );
         }
 
-        $vli->save();
+        $msg = "Virtual interface created.";
+        if( $r->skip_peering ) {
+            $msg .= " Peering configuration skipped — add a VLAN interface later if needed.";
+        }
 
-        // add a warning if we're filtering on irrdb but have not configured one for the customer
-        $this->warnIfIrrdbFilteringButNoIrrdbSourceSet( $vli );
-
-        AlertContainer::push( "Virtual interface created.", Alert::SUCCESS );
+        AlertContainer::push( $msg, Alert::SUCCESS );
         return redirect( route( 'virtual-interface@edit', [ 'vi' => $vi->id ] ) );
     }
 
