@@ -79,8 +79,8 @@ class StoreVirtualInterfaceWizard extends FormRequest
             'switch'                => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switch,id',
             'switchportid'          => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switchport,id',
             'status'                => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'integer|in:' . implode( ',', array_keys( PhysicalInterface::$STATES ) ),
-            'speed'                 => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'integer|in:' . implode( ',', array_keys( PhysicalInterface::$SPEED ) ),
-            'duplex'                => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'string|in:' . implode( ',', array_keys( PhysicalInterface::$DUPLEX ) ),
+            'speed'                 => 'required|integer|in:' . implode( ',', array_keys( PhysicalInterface::$SPEED ) ),
+            'duplex'                => 'required|string|in:' . implode( ',', array_keys( PhysicalInterface::$DUPLEX ) ),
 
             'maxbgpprefix'          => 'integer|nullable',
             'mcastenabled'          => 'boolean',

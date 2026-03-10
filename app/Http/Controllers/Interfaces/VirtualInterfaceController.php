@@ -356,19 +356,26 @@ class VirtualInterfaceController extends Common
 
         if( $r->reseller_vi_id ) {
             // Sub-rate service: create a sub-interface SwitchPort derived from
-            // the reseller's parent port name + VLAN tag (e.g. Ethernet4/5/1.200)
+            // the reseller's parent port/bundle name + VLAN tag
+            // e.g. Ethernet4/5/1.200 (physical) or Port-Channel1.200 (LAG)
             $resellerVi = VirtualInterface::with( 'physicalInterfaces.switchPort' )
                 ->find( $r->reseller_vi_id );
             $parentPi = $resellerVi->physicalInterfaces->first();
             $parentSp = $parentPi->switchPort;
 
-            $subIfName = $parentSp->ifName  ? $parentSp->ifName . '.' . $r->vlantag
-                                             : $parentSp->name . '.' . $r->vlantag;
+            // For LAGs, derive sub-interface from bundle name; for physical ports, from the port name
+            if( $resellerVi->lag_framing && $resellerVi->bundleName() ) {
+                $parentName = $resellerVi->bundleName();
+            } else {
+                $parentName = $parentSp->ifName ?: $parentSp->name;
+            }
+
+            $subIfName = $parentName . '.' . $r->vlantag;
 
             $subSwitchPort = SwitchPort::create([
                 'switchid' => $parentSp->switchid,
                 'type'     => SwitchPort::TYPE_PEERING,
-                'name'     => $parentSp->name . '.' . $r->vlantag,
+                'name'     => $subIfName,
                 'ifName'   => $subIfName,
                 'active'   => true,
             ]);
@@ -377,8 +384,8 @@ class VirtualInterfaceController extends Common
                 'switchportid'       => $subSwitchPort->id,
                 'virtualinterfaceid' => $vi->id,
                 'status'             => PhysicalInterface::STATUS_CONNECTED,
-                'speed'              => $parentPi->speed,
-                'duplex'             => $parentPi->duplex,
+                'speed'              => $r->speed,
+                'duplex'             => $r->duplex,
             ]);
         } else {
             // Dedicated port: create PI on the selected switch port as normal
@@ -428,13 +435,24 @@ class VirtualInterfaceController extends Common
             ->get()
             ->map( function( $rvi ) {
                 $pi = $rvi->physicalInterfaces->first();
+                $switchName = $pi && $pi->switchPort ? ( $pi->switchPort->switcher->name ?? '?' ) : '?';
+
+                // For LAGs, show the bundle name (e.g. "Port-Channel1") instead of a member link
+                if( $rvi->lag_framing && $rvi->bundleName() ) {
+                    $portLabel = $rvi->bundleName() . ' on ' . $switchName;
+                } elseif( $pi && $pi->switchPort ) {
+                    $portLabel = $pi->switchPort->name . ' on ' . $switchName;
+                } else {
+                    $portLabel = 'VI #' . $rvi->id;
+                }
+
                 return [
-                    'vi_id'        => $rvi->id,
-                    'label'        => $pi && $pi->switchPort
-                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
-                        : 'VI #' . $rvi->id,
-                    'switch_id'    => $pi && $pi->switchPort ? $pi->switchPort->switcher->id ?? null : null,
+                    'vi_id'         => $rvi->id,
+                    'label'         => $portLabel,
+                    'switch_id'     => $pi && $pi->switchPort ? $pi->switchPort->switcher->id ?? null : null,
                     'switchport_id' => $pi ? $pi->switchportid : null,
+                    'is_lag'        => (bool) ( $rvi->lag_framing && $rvi->bundleName() ),
+                    'bundle_name'   => $rvi->bundleName() ?: null,
                 ];
             } )
             ->values();

@@ -17,6 +17,13 @@
             let custId = $( this ).val();
             resellerPortArea.hide();
             dd_resellerVi.html( '<option value="">-- Dedicated Port (not sub-rate) --</option>' );
+            // Restore all PI fields in case they were hidden by sub-rate selection
+            $( '#switch' ).closest( '.form-group' ).show();
+            $( '#switchportid' ).closest( '.form-group' ).show();
+            $( '#status' ).closest( '.form-group' ).show();
+            $( '#fanout-box' ).show();
+            $( '#trunk' ).prop( 'disabled', false );
+            $( '#trunk-hidden' ).remove();
             unlockSwitchPort();
 
             if( !custId ) return;
@@ -52,16 +59,22 @@
             let switchportId = selected.data( 'switchport-id' );
 
             if( !switchId || !switchportId ) {
-                // Dedicated port — show PI section, unlock everything, unforce trunk
-                $( '#pi-section' ).show();
+                // Dedicated port — show all PI fields, unlock everything, unforce trunk
+                $( '#switch' ).closest( '.form-group' ).show();
+                $( '#switchportid' ).closest( '.form-group' ).show();
+                $( '#status' ).closest( '.form-group' ).show();
+                $( '#fanout-box' ).show();
                 unlockSwitchPort();
                 $( '#trunk' ).prop( 'disabled', false );
                 $( '#trunk-hidden' ).remove();
                 return;
             }
 
-            // Sub-rate on reseller port — hide PI section, force 802.1q
-            $( '#pi-section' ).hide();
+            // Sub-rate on reseller port — hide switch/port/status, keep speed/duplex visible, force 802.1q
+            $( '#switch' ).closest( '.form-group' ).hide();
+            $( '#switchportid' ).closest( '.form-group' ).hide();
+            $( '#status' ).closest( '.form-group' ).hide();
+            $( '#fanout-box' ).hide();
             $( '#trunk' ).prop( 'checked', true ).prop( 'disabled', true );
             if( $( '#trunk-hidden' ).length === 0 ) {
                 $( '#trunk' ).after( '<input type="hidden" id="trunk-hidden" name="trunk" value="1">' );
