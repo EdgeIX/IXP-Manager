@@ -32,6 +32,7 @@ use Illuminate\View\View;
 use IXP\Exceptions\GeneralException;
 use JsonException;
 use Illuminate\Http\{
+    JsonResponse,
     Request,
     RedirectResponse
 };
@@ -194,7 +195,6 @@ class VirtualInterfaceController extends Common
             'vi'                => false,
             'cb'                => false,
             'selectedCust'      => $cust ?: false,
-            'resellerVis'       => [],
         ]);
     }
 
@@ -248,25 +248,7 @@ class VirtualInterfaceController extends Common
             'channelgroup'          => $r->old( 'channel-group',     (string)$vi->channelgroup  ),
             'mtu'                   => $r->old( 'mtu',               (string)$vi->mtu           ),
             'name'                  => $name,
-            'reseller_vi_id'        => $r->old( 'reseller_vi_id',    (string)$vi->reseller_vi_id ),
         ]);
-
-        // If this customer is resold, build a list of the reseller's VIs for the sub-rate dropdown
-        $resellerVis = [];
-        $cust = $vi->customer;
-        if( $cust && $cust->reseller ) {
-            $resellerVis = VirtualInterface::where( 'custid', $cust->reseller )
-                ->with( 'physicalInterfaces.switchPort.switcher' )
-                ->get()
-                ->mapWithKeys( function( $rvi ) {
-                    $pi = $rvi->physicalInterfaces->first();
-                    $label = $pi && $pi->switchPort
-                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
-                        : 'VI #' . $rvi->id;
-                    return [ $rvi->id => $label ];
-                } )
-                ->toArray();
-        }
 
         return view( 'interfaces/virtual/add' )->with([
             'custs'             => CustomerAggregator::reformatNameWithDetail( Customer::trafficking()->orderBy('name')->get() ),
@@ -274,7 +256,6 @@ class VirtualInterfaceController extends Common
             'vi'                => $vi,
             'cb'                => $vi->getCoreBundle(),
             'selectedCust'      => false,
-            'resellerVis'       => $resellerVis,
         ]);
     }
 
@@ -395,6 +376,39 @@ class VirtualInterfaceController extends Common
 
         AlertContainer::push( "Virtual interface created.", Alert::SUCCESS );
         return redirect( route( 'virtual-interface@edit', [ 'vi' => $vi->id ] ) );
+    }
+
+    /**
+     * Return JSON list of reseller's ports for a given customer.
+     *
+     * Used by the wizard to populate the "Reseller Port" dropdown when
+     * the selected customer is a resold customer.
+     *
+     * Returns empty array if the customer is not resold.
+     */
+    public function resellerPorts( Customer $cust ): JsonResponse
+    {
+        if( !$cust->reseller ) {
+            return response()->json( [] );
+        }
+
+        $ports = VirtualInterface::where( 'custid', $cust->reseller )
+            ->with( 'physicalInterfaces.switchPort.switcher' )
+            ->get()
+            ->map( function( $rvi ) {
+                $pi = $rvi->physicalInterfaces->first();
+                return [
+                    'vi_id'        => $rvi->id,
+                    'label'        => $pi && $pi->switchPort
+                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
+                        : 'VI #' . $rvi->id,
+                    'switch_id'    => $pi && $pi->switchPort ? $pi->switchPort->switcher->id ?? null : null,
+                    'switchport_id' => $pi ? $pi->switchportid : null,
+                ];
+            } )
+            ->values();
+
+        return response()->json( $ports );
     }
 
     /**

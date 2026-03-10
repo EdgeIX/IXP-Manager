@@ -175,6 +175,7 @@ Route::group( [  'namespace' => 'Interfaces', 'prefix' => 'interfaces' ], functi
         Route::put(     'update/{vi}',              'VirtualInterfaceController@update'                 )->name(   'virtual-interface@update'                  );
         Route::post(    'wizard-store',             'VirtualInterfaceController@storeWizard'            )->name(    'virtual-interface@wizard-store'           );
         Route::delete(  'delete/{vi}',              'VirtualInterfaceController@delete'                 )->name(    'virtual-interface@delete'                 );
+        Route::get(     'reseller-ports/{cust}',    'VirtualInterfaceController@resellerPorts'          )->name(    'virtual-interface@reseller-ports'         );
     });
 
     Route::group( [  'prefix' => 'physical' ], function() {

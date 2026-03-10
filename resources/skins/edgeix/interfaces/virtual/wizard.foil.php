@@ -60,6 +60,22 @@
                             ?>
                         <?php endif; ?>
 
+                        <div id="reseller-port-area" style="display: none;">
+                            <div class="form-group row">
+                                <label for="reseller_vi_id" class="control-label col-sm-3">
+                                    Reseller Port
+                                </label>
+                                <div class="col-sm-7">
+                                    <select name="reseller_vi_id" id="reseller_vi_id" class="form-control">
+                                        <option value="">-- Dedicated Port (not sub-rate) --</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        Select the reseller's port for a sub-rate service, or choose "Dedicated Port" if this customer has their own physical port.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
                         <?= Former::select( 'vlanid' )
                             ->label( 'Vlan' )
                             ->fromQuery( $t->vlans, 'name' )

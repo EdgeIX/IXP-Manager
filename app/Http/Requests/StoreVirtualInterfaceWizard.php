@@ -68,6 +68,7 @@ class StoreVirtualInterfaceWizard extends FormRequest
     {
         return [
             'custid'                => 'required|integer|exists:cust,id',
+            'reseller_vi_id'        => 'integer|nullable|exists:virtualinterface,id',
             'vlanid'                => 'required|integer|exists:vlan,id',
             'trunk'                 => 'boolean',
             'vlantag'               => 'integer',
