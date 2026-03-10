@@ -115,7 +115,7 @@
 
                     </div>
 
-                    <div class="col-md-12 col-lg-4 mt-4 mt-md-4">
+                    <div id="pi-section" class="col-md-12 col-lg-4 mt-4 mt-md-4">
                         <h3>
                             Physical Interface Settings
                         </h3>

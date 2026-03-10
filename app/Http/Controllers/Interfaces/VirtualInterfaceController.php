@@ -354,11 +354,15 @@ class VirtualInterfaceController extends Common
         $v  = Vlan::find( $r->vlanid );
         $vi = VirtualInterface::create( $r->all() );
 
-        PhysicalInterface::create( array_merge( $r->all(), [
-            'virtualinterfaceid' => $vi->id,
-        ] ) );
+        // Sub-rate services share the reseller's physical port — no PI needed.
+        // Dedicated ports get their own PI as normal.
+        if( !$r->reseller_vi_id ) {
+            PhysicalInterface::create( array_merge( $r->all(), [
+                'virtualinterfaceid' => $vi->id,
+            ] ) );
 
-        SwitchPort::find( $r->switchportid )->update( [ 'type' => SwitchPort::TYPE_PEERING ] );
+            SwitchPort::find( $r->switchportid )->update( [ 'type' => SwitchPort::TYPE_PEERING ] );
+        }
 
         $vli = VlanInterface::make( array_merge( $r->all(),
             [

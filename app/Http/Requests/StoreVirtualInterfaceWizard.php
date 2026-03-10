@@ -76,11 +76,11 @@ class StoreVirtualInterfaceWizard extends FormRequest
             'trunk'                 => 'boolean',
             'vlantag'               => $this->reseller_vi_id ? 'required|integer|min:1' : 'integer',
 
-            'switch'                => 'required|integer|exists:switch,id',
-            'switchportid'          => 'required|integer|exists:switchport,id',
-            'status'                => 'required|integer|in:' . implode( ',', array_keys( PhysicalInterface::$STATES ) ),
-            'speed'                 => 'required|integer|in:' . implode( ',', array_keys( PhysicalInterface::$SPEED ) ),
-            'duplex'                => 'required|string|in:' . implode( ',', array_keys( PhysicalInterface::$DUPLEX ) ),
+            'switch'                => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switch,id',
+            'switchportid'          => ( $this->reseller_vi_id ? 'nullable' : 'required' ) . '|integer|exists:switchport,id',
+            'status'                => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'integer|in:' . implode( ',', array_keys( PhysicalInterface::$STATES ) ),
+            'speed'                 => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'integer|in:' . implode( ',', array_keys( PhysicalInterface::$SPEED ) ),
+            'duplex'                => ( $this->reseller_vi_id ? 'nullable|' : 'required|' ) . 'string|in:' . implode( ',', array_keys( PhysicalInterface::$DUPLEX ) ),
 
             'maxbgpprefix'          => 'integer|nullable',
             'mcastenabled'          => 'boolean',

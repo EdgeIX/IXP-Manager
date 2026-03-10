@@ -52,20 +52,20 @@
             let switchportId = selected.data( 'switchport-id' );
 
             if( !switchId || !switchportId ) {
-                // Dedicated port — unlock everything, unforce trunk
+                // Dedicated port — show PI section, unlock everything, unforce trunk
+                $( '#pi-section' ).show();
                 unlockSwitchPort();
                 $( '#trunk' ).prop( 'disabled', false );
                 $( '#trunk-hidden' ).remove();
                 return;
             }
 
-            // Sub-rate on reseller port — force 802.1q and lock switch/port
+            // Sub-rate on reseller port — hide PI section, force 802.1q
+            $( '#pi-section' ).hide();
             $( '#trunk' ).prop( 'checked', true ).prop( 'disabled', true );
-            // Hidden input so the disabled checkbox value still submits
             if( $( '#trunk-hidden' ).length === 0 ) {
                 $( '#trunk' ).after( '<input type="hidden" id="trunk-hidden" name="trunk" value="1">' );
             }
-            lockSwitchPort( switchId, switchportId );
         });
 
         /**
