@@ -477,8 +477,20 @@ class VirtualInterfaceController extends Common
             return redirect( route( 'virtual-interface@edit' , [ 'vi' => $vi->id ] ) );
         }
 
+        // For sub-rate VIs, collect the auto-created sub-interface SwitchPorts
+        // so we can clean them up after the PIs are deleted
+        $subRateSwitchPortIds = [];
+        if( $vi->isResellerSubRate() ) {
+            $subRateSwitchPortIds = $vi->physicalInterfaces->pluck( 'switchportid' )->filter()->toArray();
+        }
+
         foreach( $vi->physicalInterfaces as $pi) {
             $this->deletePi( $r, $pi, false );
+        }
+
+        // Clean up auto-created sub-interface SwitchPort records
+        if( !empty( $subRateSwitchPortIds ) ) {
+            SwitchPort::whereIn( 'id', $subRateSwitchPortIds )->delete();
         }
 
         foreach( $vi->vlanInterfaces as $vli ) {
