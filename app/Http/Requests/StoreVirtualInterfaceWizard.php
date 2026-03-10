@@ -25,9 +25,12 @@ namespace IXP\Http\Requests;
 
 use Auth;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 use IXP\Models\PhysicalInterface;
+use IXP\Models\VlanInterface;
+use IXP\Models\VirtualInterface;
 
 use IXP\Models\User;
 use IXP\Rules\IdnValidate;
@@ -71,7 +74,7 @@ class StoreVirtualInterfaceWizard extends FormRequest
             'reseller_vi_id'        => 'integer|nullable|exists:virtualinterface,id',
             'vlanid'                => 'required|integer|exists:vlan,id',
             'trunk'                 => 'boolean',
-            'vlantag'               => 'integer',
+            'vlantag'               => $this->reseller_vi_id ? 'required|integer|min:1' : 'integer',
 
             'switch'                => 'required|integer|exists:switch,id',
             'switchportid'          => 'required|integer|exists:switchport,id',
@@ -100,5 +103,37 @@ class StoreVirtualInterfaceWizard extends FormRequest
             'ipv6canping'           => 'boolean',
             'ipv6monitorrcbgp'      => 'boolean',
         ];
+    }
+
+    /**
+     * Additional validation: if reseller_vi_id is set, check the VLAN tag
+     * is not already in use by another sub-interface on the same reseller port.
+     */
+    public function withValidator( Validator $validator ): void
+    {
+        $validator->after( function( Validator $validator ) {
+            if( !$this->reseller_vi_id || !$this->vlantag ) {
+                return;
+            }
+
+            // Find all VIs that share this reseller port
+            $conflict = VlanInterface::whereHas( 'virtualInterface', function( $q ) {
+                    $q->where( 'reseller_vi_id', $this->reseller_vi_id );
+                })
+                ->where( 'vlantag', $this->vlantag )
+                ->exists();
+
+            // Also check the reseller's own VI for the same VLAN tag
+            if( !$conflict ) {
+                $conflict = VlanInterface::where( 'virtualinterfaceid', $this->reseller_vi_id )
+                    ->where( 'vlantag', $this->vlantag )
+                    ->exists();
+            }
+
+            if( $conflict ) {
+                $validator->errors()->add( 'vlantag',
+                    'VLAN tag ' . $this->vlantag . ' is already in use on this reseller port.' );
+            }
+        });
     }
 }

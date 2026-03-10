@@ -285,6 +285,7 @@ class VirtualInterfaceController extends Common
 
 
         DB::beginTransaction();
+        $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
         $vi->fill( $r->all() );
         $this->setBundleDetails( $vi );
         $vi->save();
@@ -349,6 +350,7 @@ class VirtualInterfaceController extends Common
      */
     public function storeWizard( StoreVirtualInterfaceWizard $r ): RedirectResponse
     {
+        $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
         $v  = Vlan::find( $r->vlanid );
         $vi = VirtualInterface::create( $r->all() );
 

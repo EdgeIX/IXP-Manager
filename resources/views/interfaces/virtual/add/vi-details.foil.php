@@ -145,7 +145,7 @@
                         </div>
                     <?php endif; ?>
                     <?php
-                        // Build reseller VIs directly in the view to bypass controller opcache issues
+                        // Build reseller VIs for the sub-rate dropdown
                         $resellerVis = [];
                         if( $vi && $vi->customer && $vi->customer->reseller ) {
                             $resellerVis = \IXP\Models\VirtualInterface::where( 'custid', $vi->customer->reseller )
@@ -168,7 +168,7 @@
                             </label>
                             <div class="col-lg-6 col-md-7">
                                 <select name="reseller_vi_id" id="reseller_vi_id" class="form-control">
-                                    <option value="">-- Not a sub-rate service --</option>
+                                    <option value="">-- Dedicated Port (not sub-rate) --</option>
                                     <?php foreach( $resellerVis as $rviId => $rviLabel ): ?>
                                         <option value="<?= $rviId ?>" <?= (int)$vi->reseller_vi_id === $rviId ? 'selected' : '' ?>><?= $t->ee( $rviLabel ) ?></option>
                                     <?php endforeach; ?>
