@@ -221,8 +221,9 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     private function buildQuery( string $metric, string|array $selector ): string
     {
         if( is_array( $selector ) ) {
-            // Multiple interfaces — use regex match and sum
-            $escaped = array_map( fn( $s ) => preg_quote( $s, '/' ), $selector );
+            // Multiple interfaces — use regex alternation with sum()
+            // Only escape RE2 metacharacters (not colons/slashes which are literal in PromQL strings)
+            $escaped = array_map( fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\$1', $s ), $selector );
             $regex   = implode( '|', $escaped );
             return "sum({$metric}{device_interface=~\"{$regex}\"})";
         }

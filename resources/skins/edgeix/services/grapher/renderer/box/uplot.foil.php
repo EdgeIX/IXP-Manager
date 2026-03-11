@@ -14,7 +14,7 @@
     $data     = $graph->data();
     $category = $graph->category();
     $period   = $graph->period();
-    $graphId  = 'uplot-' . md5( $graph->identifier() . $category . $period );
+    $graphId  = 'uplot-' . md5( $graph->identifier() . $category . $period . uniqid() );
 
     // Build uPlot data format: [ timestamps[], series1[], series2[], ... ]
     $timestamps = [];
@@ -24,22 +24,14 @@
     foreach( $data as $point ) {
         $timestamps[] = $point[0];
         $rxValues[]   = $point[1];
-        $txValues[]   = $point[2];
+        $txValues[]   = -$point[2]; // negate TX for mirror chart
     }
 
     // Calculate statistics
     $stats = $graph->statistics();
 
     // Category labels and units
-    $categoryLabels = [
-        'bits'   => [ 'label' => 'Bits/s',    'unit' => 'bps',  'scale' => 'bits' ],
-        'pkts'   => [ 'label' => 'Packets/s',  'unit' => 'pps',  'scale' => 'metric' ],
-        'errs'   => [ 'label' => 'Errors/s',   'unit' => 'eps',  'scale' => 'metric' ],
-        'discs'  => [ 'label' => 'Discards/s', 'unit' => 'dps',  'scale' => 'metric' ],
-        'bcasts' => [ 'label' => 'Broadcasts/s', 'unit' => 'bps', 'scale' => 'metric' ],
-    ];
-
-    $catInfo = $categoryLabels[ $category ] ?? $categoryLabels['bits'];
+    $isBits = $category === 'bits';
 ?>
 
 <?php if( empty( $data ) ): ?>
@@ -79,73 +71,60 @@
 
 <script>
 (function() {
-    var graphId = <?= json_encode( $graphId ) ?>;
-    var category = <?= json_encode( $catInfo['scale'] ) ?>;
+    var graphId  = <?= json_encode( $graphId ) ?>;
+    var isBits   = <?= json_encode( $isBits ) ?>;
 
     var timestamps = <?= json_encode( $timestamps ) ?>;
-    var rxValues = <?= json_encode( $rxValues ) ?>;
-    var txValues = <?= json_encode( array_map( function( $v ) { return -$v; }, $txValues ) ) ?>;
+    var rxValues   = <?= json_encode( $rxValues ) ?>;
+    var txValues   = <?= json_encode( $txValues ) ?>;
 
-    function formatValue(val, isBits) {
+    function fmtSI(val, suffix) {
+        if (val == null || isNaN(val)) return '';
+        var neg = val < 0 ? '-' : '';
         var abs = Math.abs(val);
-        if (isBits) {
-            if (abs >= 1e12) return (val / 1e12).toFixed(2) + ' Tbps';
-            if (abs >= 1e9)  return (val / 1e9).toFixed(2) + ' Gbps';
-            if (abs >= 1e6)  return (val / 1e6).toFixed(2) + ' Mbps';
-            if (abs >= 1e3)  return (val / 1e3).toFixed(2) + ' Kbps';
-            return val.toFixed(0) + ' bps';
-        } else {
-            if (abs >= 1e9)  return (val / 1e9).toFixed(2) + 'G';
-            if (abs >= 1e6)  return (val / 1e6).toFixed(2) + 'M';
-            if (abs >= 1e3)  return (val / 1e3).toFixed(2) + 'K';
-            return val.toFixed(0);
-        }
+        if (abs >= 1e12) return neg + (abs / 1e12).toFixed(1) + ' T' + suffix;
+        if (abs >= 1e9)  return neg + (abs / 1e9).toFixed(1)  + ' G' + suffix;
+        if (abs >= 1e6)  return neg + (abs / 1e6).toFixed(1)  + ' M' + suffix;
+        if (abs >= 1e3)  return neg + (abs / 1e3).toFixed(1)  + ' K' + suffix;
+        if (abs > 0)     return neg + abs.toFixed(0) + ' ' + suffix;
+        return '0';
     }
 
-    function axisFormatter(self, ticks, space, incr) {
-        return ticks.map(function(v) {
-            return formatValue(v, category === 'bits');
-        });
+    function fmtAxis(val) {
+        return isBits ? fmtSI(val, 'bps') : fmtSI(val, 'pps');
+    }
+
+    function fmtTooltip(val) {
+        return isBits ? fmtSI(val, 'bps') : fmtSI(val, 'pps');
     }
 
     function tooltipPlugin() {
-        var tooltip = document.createElement('div');
-        tooltip.style.cssText = 'position:absolute;pointer-events:none;padding:6px 10px;border-radius:4px;font-size:12px;background:rgba(30,30,30,0.9);color:#fff;z-index:100;display:none;white-space:nowrap;';
+        var tt = document.createElement('div');
+        tt.style.cssText = 'position:absolute;pointer-events:none;padding:6px 10px;border-radius:4px;font-size:12px;background:rgba(30,30,30,0.9);color:#fff;z-index:100;display:none;white-space:nowrap;';
 
         return {
             hooks: {
-                init: function(u) {
-                    u.over.appendChild(tooltip);
-                },
+                init: function(u) { u.over.appendChild(tt); },
                 setCursor: function(u) {
                     var idx = u.cursor.idx;
-                    if (idx == null) {
-                        tooltip.style.display = 'none';
-                        return;
-                    }
+                    if (idx == null) { tt.style.display = 'none'; return; }
 
-                    var ts = u.data[0][idx];
-                    var rx = u.data[1][idx];
-                    var tx = u.data[2][idx];
+                    var ts   = u.data[0][idx];
+                    var rx   = u.data[1][idx];
+                    var tx   = u.data[2][idx];
                     var date = new Date(ts * 1000);
-                    var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    var str  = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 
-                    var isBits = category === 'bits';
-                    tooltip.innerHTML =
-                        '<strong>' + dateStr + '</strong><br>' +
-                        '<span style="color:#22c55e">RX:</span> ' + formatValue(rx, isBits) + '<br>' +
-                        '<span style="color:#3b82f6">TX:</span> ' + formatValue(Math.abs(tx), isBits);
+                    tt.innerHTML =
+                        '<strong>' + str + '</strong><br>' +
+                        '<span style="color:#22c55e">\u25B2 RX:</span> ' + fmtTooltip(rx) + '<br>' +
+                        '<span style="color:#3b82f6">\u25BC TX:</span> ' + fmtTooltip(Math.abs(tx));
 
                     var left = u.cursor.left + 10;
-                    var top = u.cursor.top - 10;
-
-                    if (left + 200 > u.over.clientWidth) {
-                        left = u.cursor.left - 200;
-                    }
-
-                    tooltip.style.left = left + 'px';
-                    tooltip.style.top = top + 'px';
-                    tooltip.style.display = 'block';
+                    if (left + 180 > u.over.clientWidth) left = u.cursor.left - 180;
+                    tt.style.left = left + 'px';
+                    tt.style.top  = Math.max(0, u.cursor.top - 40) + 'px';
+                    tt.style.display = 'block';
                 }
             }
         };
@@ -153,7 +132,7 @@
 
     function renderGraph() {
         var el = document.getElementById(graphId);
-        if (!el) return;
+        if (!el || typeof uPlot === 'undefined') return;
 
         var width = el.parentElement.clientWidth || 800;
 
@@ -161,32 +140,32 @@
             width: width,
             height: 250,
             plugins: [tooltipPlugin()],
-            cursor: {
-                drag: { x: true, y: false }
-            },
+            cursor: { drag: { x: true, y: false } },
+            legend: { show: false },
             scales: {
                 x: { time: true },
                 y: {
-                    auto: true,
                     range: function(u, dmin, dmax) {
-                        // Symmetric around 0 for TX/RX mirror
-                        var absMax = Math.max(Math.abs(dmin), Math.abs(dmax));
-                        // Add 10% padding
-                        absMax = absMax * 1.1;
+                        var absMax = Math.max(Math.abs(dmin || 0), Math.abs(dmax || 0));
+                        absMax = absMax * 1.15 || 1;
                         return [-absMax, absMax];
                     }
                 }
             },
             axes: [
                 {
-                    stroke: '#666',
-                    grid: { stroke: 'rgba(0,0,0,0.06)' }
+                    stroke: '#888',
+                    grid: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
+                    ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 }
                 },
                 {
-                    stroke: '#666',
-                    grid: { stroke: 'rgba(0,0,0,0.06)' },
-                    values: axisFormatter,
-                    size: 70
+                    stroke: '#888',
+                    grid: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
+                    ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
+                    size: 90,
+                    values: function(u, splits) {
+                        return splits.map(function(v) { return fmtAxis(v); });
+                    }
                 }
             ],
             series: [
@@ -194,16 +173,14 @@
                 {
                     label: 'RX (In)',
                     stroke: '#22c55e',
-                    fill: 'rgba(34, 197, 94, 0.15)',
-                    width: 1.5,
-                    paths: uPlot.paths.stepped({ align: 1 })
+                    fill: 'rgba(34, 197, 94, 0.12)',
+                    width: 1.5
                 },
                 {
                     label: 'TX (Out)',
                     stroke: '#3b82f6',
-                    fill: 'rgba(59, 130, 246, 0.15)',
-                    width: 1.5,
-                    paths: uPlot.paths.stepped({ align: 1 })
+                    fill: 'rgba(59, 130, 246, 0.12)',
+                    width: 1.5
                 }
             ]
         };
@@ -212,26 +189,40 @@
         new uPlot(opts, [timestamps, rxValues, txValues], el);
     }
 
-    // Load uPlot if not already loaded
+    // Load uPlot CSS + JS if not already loaded, then render
     if (typeof uPlot === 'undefined') {
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/vendor/uplot/uPlot.min.css';
-        document.head.appendChild(link);
+        if (!document.querySelector('link[href*="uPlot"]')) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/vendor/uplot/uPlot.min.css';
+            document.head.appendChild(link);
+        }
 
-        var script = document.createElement('script');
-        script.src = '/vendor/uplot/uPlot.min.js';
-        script.onload = renderGraph;
-        document.head.appendChild(script);
+        // Use a shared callback queue so all graphs render once uPlot loads
+        window._uplotQueue = window._uplotQueue || [];
+        window._uplotQueue.push(renderGraph);
+
+        if (!window._uplotLoading) {
+            window._uplotLoading = true;
+            var script = document.createElement('script');
+            script.src = '/vendor/uplot/uPlot.min.js';
+            script.onload = function() {
+                window._uplotQueue.forEach(function(fn) { fn(); });
+                window._uplotQueue = [];
+            };
+            document.head.appendChild(script);
+        }
     } else {
         renderGraph();
     }
 
-    // Responsive resize
+    // Debounced resize
+    var resizeTimer;
     window.addEventListener('resize', function() {
-        if (typeof uPlot !== 'undefined') {
-            renderGraph();
-        }
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (typeof uPlot !== 'undefined') renderGraph();
+        }, 200);
     });
 })();
 </script>
