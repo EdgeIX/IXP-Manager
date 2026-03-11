@@ -16,12 +16,12 @@
     $domId    = 'dom-' . md5( ( $t->domLabel ?? '' ) . ( $t->domPeriod ?? '' ) . uniqid() );
 
     // Channel colour palette (RX stroke, RX fill, TX stroke, TX fill)
-    // Optical-themed: distinct warm/cool pairing per channel
+    // DOM: red for RX (light in), green for TX (light out) — distinct from traffic graphs (green RX / blue TX)
     $channelColours = [
-        [ '#e67e22', 'rgba(230, 126, 34, 0.15)',  '#8e44ad', 'rgba(142, 68, 173, 0.15)' ],   // orange / purple
-        [ '#d4a017', 'rgba(212, 160, 23, 0.15)',  '#c0392b', 'rgba(192, 57, 43, 0.15)' ],    // gold / crimson
-        [ '#e88d2a', 'rgba(232, 141, 42, 0.15)',  '#2980b9', 'rgba(41, 128, 185, 0.15)' ],   // tangerine / steel blue
-        [ '#f1c40f', 'rgba(241, 196, 15, 0.15)',  '#16a085', 'rgba(22, 160, 133, 0.15)' ],   // yellow / teal
+        [ '#e74c3c', 'rgba(231, 76, 60, 0.15)',   '#27ae60', 'rgba(39, 174, 96, 0.15)' ],    // red / green
+        [ '#c0392b', 'rgba(192, 57, 43, 0.15)',   '#2ecc71', 'rgba(46, 204, 113, 0.15)' ],   // dark red / emerald
+        [ '#e55039', 'rgba(229, 80, 57, 0.15)',   '#1abc9c', 'rgba(26, 188, 156, 0.15)' ],   // vermillion / turquoise
+        [ '#ff6b6b', 'rgba(255, 107, 107, 0.15)', '#6ab04c', 'rgba(106, 176, 76, 0.15)' ],   // coral / leaf green
     ];
 ?>
 
