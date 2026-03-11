@@ -225,46 +225,50 @@
 
 <?php if( $hasMetrics && ( $ordered->count() > 0 || $received->count() > 0 ) ): ?>
 <script>
-$(function() {
-    var $expandable = $( '.pw-ov-expandable' );
-    console.log( '[PW] Expandable rows found:', $expandable.length );
+document.addEventListener( 'DOMContentLoaded', function() {
     var loadedGraphs = {};
+    var rows = document.querySelectorAll( '.pw-ov-expandable' );
 
-    $expandable.on( 'click', function() {
-        var $row     = $( this );
-        var id       = $row.data( 'pw-id' );
-        var $detail  = $( '#pw-ov-detail-' + id );
-        var $icon    = $row.find( '.pw-ov-toggle' );
-        var $content = $( '#pw-ov-content-' + id );
+    rows.forEach( function( row ) {
+        row.addEventListener( 'click', function() {
+            var id       = row.getAttribute( 'data-pw-id' );
+            var detail   = document.getElementById( 'pw-ov-detail-' + id );
+            var icon     = row.querySelector( '.pw-ov-toggle' );
+            var content  = document.getElementById( 'pw-ov-content-' + id );
 
-        if ( $detail.is( ':visible' ) ) {
-            $content.slideUp( 200, function() { $detail.hide(); } );
-            $icon.css( 'transform', 'rotate(0deg)' );
-            return;
-        }
+            if ( detail.style.display === 'table-row' ) {
+                detail.style.display = 'none';
+                if ( icon ) icon.style.transform = 'rotate(0deg)';
+                return;
+            }
 
-        // Close others
-        $( '.pw-ov-detail:visible' ).each( function() {
-            var $r = $( this );
-            $r.children( 'td' ).children( 'div' ).slideUp( 200, function() { $r.hide(); } );
+            // Close others
+            document.querySelectorAll( '.pw-ov-detail' ).forEach( function( d ) {
+                d.style.display = 'none';
+            } );
+            document.querySelectorAll( '.pw-ov-toggle' ).forEach( function( i ) {
+                i.style.transform = 'rotate(0deg)';
+            } );
+
+            detail.style.display = 'table-row';
+            if ( icon ) icon.style.transform = 'rotate(90deg)';
+
+            if ( !loadedGraphs[ id ] ) {
+                loadedGraphs[ id ] = true;
+                pwOvLoadGraph(
+                    id,
+                    row.getAttribute( 'data-traffic-url' ),
+                    row.getAttribute( 'data-side' ),
+                    content
+                );
+            }
         } );
-        $( '.pw-ov-toggle' ).css( 'transform', 'rotate(0deg)' );
+    } );
 
-        // Show <tr> as table-row, slide inner content
-        $detail.show().css( 'display', 'table-row' );
-        $content.hide().slideDown( 200 );
-        $icon.css( 'transform', 'rotate(90deg)' );
-
-        if ( !loadedGraphs[ id ] ) {
-            loadedGraphs[ id ] = true;
-            pwOvLoadGraph( id, $row.data( 'traffic-url' ), $row.data( 'side' ), $( '#pw-ov-content-' + id ) );
-        }
-    });
-
-    function pwOvLoadGraph( circuitId, trafficUrl, side, $container ) {
+    function pwOvLoadGraph( circuitId, trafficUrl, side, container ) {
         var cid = 'pw-ov-graph-' + circuitId;
 
-        $container.html(
+        container.innerHTML =
             '<div id="' + cid + '" class="px-3 py-2">' +
                 '<div class="d-flex align-items-center justify-content-between mb-2">' +
                     '<h6 class="mb-0 text-muted">Your End <small id="' + cid + '-label" class="text-monospace"></small></h6>' +
@@ -283,8 +287,7 @@ $(function() {
                 '</div>' +
                 '<div id="' + cid + '-empty" class="text-muted small py-2" style="display:none;">No traffic data available.</div>' +
                 '<div id="' + cid + '-error" class="alert alert-warning small" style="display:none;"></div>' +
-            '</div>'
-        );
+            '</div>';
 
         pwOvInitChart( cid, trafficUrl, side );
     }
@@ -421,12 +424,16 @@ $(function() {
                 } );
         }
 
-        // Period buttons
-        $( '#' + cid + '-period .btn' ).on( 'click', function( e ) {
-            e.stopPropagation();
-            $( '#' + cid + '-period .btn' ).removeClass( 'active' );
-            $( this ).addClass( 'active' );
-            fetchAndRender( $( this ).data( 'period' ) );
+        // Period buttons (vanilla JS)
+        document.querySelectorAll( '#' + cid + '-period .btn' ).forEach( function( btn ) {
+            btn.addEventListener( 'click', function( e ) {
+                e.stopPropagation();
+                document.querySelectorAll( '#' + cid + '-period .btn' ).forEach( function( b ) {
+                    b.classList.remove( 'active' );
+                } );
+                btn.classList.add( 'active' );
+                fetchAndRender( btn.getAttribute( 'data-period' ) );
+            } );
         } );
 
         // Load uPlot then fetch
@@ -455,6 +462,6 @@ $(function() {
             init();
         }
     }
-});
+} );
 </script>
 <?php endif; ?>
