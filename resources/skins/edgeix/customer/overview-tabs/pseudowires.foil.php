@@ -225,10 +225,12 @@
 
 <?php if( $hasMetrics && ( $ordered->count() > 0 || $received->count() > 0 ) ): ?>
 <script>
-(function() {
+$(function() {
+    var $expandable = $( '.pw-ov-expandable' );
+    console.log( '[PW] Expandable rows found:', $expandable.length );
     var loadedGraphs = {};
 
-    $( '.pw-ov-expandable' ).on( 'click', function() {
+    $expandable.on( 'click', function() {
         var $row     = $( this );
         var id       = $row.data( 'pw-id' );
         var $detail  = $( '#pw-ov-detail-' + id );
@@ -453,6 +455,6 @@
             init();
         }
     }
-})();
+});
 </script>
 <?php endif; ?>
