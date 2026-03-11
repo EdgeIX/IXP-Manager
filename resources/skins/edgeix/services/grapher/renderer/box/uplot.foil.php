@@ -32,6 +32,22 @@
 
     // Category labels and units
     $isBits = $category === 'bits';
+
+    // Colour scheme: aggregate/LAG graphs use a distinct palette
+    $isAggregate = ( $graph instanceof \IXP\Services\Grapher\Graph\VirtualInterface )
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\Customer );
+
+    if( $isAggregate ) {
+        $rxStroke = '#8b5cf6';  // purple
+        $rxFill   = 'rgba(139, 92, 246, 0.25)';
+        $txStroke = '#f59e0b';  // amber
+        $txFill   = 'rgba(245, 158, 11, 0.25)';
+    } else {
+        $rxStroke = '#22c55e';  // green
+        $rxFill   = 'rgba(34, 197, 94, 0.25)';
+        $txStroke = '#3b82f6';  // blue
+        $txFill   = 'rgba(59, 130, 246, 0.25)';
+    }
 ?>
 
 <?php if( empty( $data ) ): ?>
@@ -54,13 +70,13 @@
         </thead>
         <tbody>
             <tr>
-                <td><span style="color: #22c55e; font-weight: bold;">RX (In)</span></td>
+                <td><span style="color: <?= $rxStroke ?>; font-weight: bold;">RX (In)</span></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->maxIn(), $category ) ?></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->averageIn(), $category ) ?></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->curIn(), $category ) ?></td>
             </tr>
             <tr>
-                <td><span style="color: #3b82f6; font-weight: bold;">TX (Out)</span></td>
+                <td><span style="color: <?= $txStroke ?>; font-weight: bold;">TX (Out)</span></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->maxOut(), $category ) ?></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->averageOut(), $category ) ?></td>
                 <td class="text-right"><?= $this->grapher()->scale( $stats->curOut(), $category ) ?></td>
@@ -73,6 +89,11 @@
 (function() {
     var graphId  = <?= json_encode( $graphId ) ?>;
     var isBits   = <?= json_encode( $isBits ) ?>;
+
+    var rxStroke = <?= json_encode( $rxStroke ) ?>;
+    var rxFill   = <?= json_encode( $rxFill ) ?>;
+    var txStroke = <?= json_encode( $txStroke ) ?>;
+    var txFill   = <?= json_encode( $txFill ) ?>;
 
     var timestamps = <?= json_encode( $timestamps ) ?>;
     var rxValues   = <?= json_encode( $rxValues ) ?>;
@@ -117,8 +138,8 @@
 
                     tt.innerHTML =
                         '<strong>' + str + '</strong><br>' +
-                        '<span style="color:#22c55e">\u25B2 RX:</span> ' + fmtTooltip(rx) + '<br>' +
-                        '<span style="color:#3b82f6">\u25BC TX:</span> ' + fmtTooltip(tx);
+                        '<span style="color:' + rxStroke + '">\u25B2 RX:</span> ' + fmtTooltip(rx) + '<br>' +
+                        '<span style="color:' + txStroke + '">\u25BC TX:</span> ' + fmtTooltip(tx);
 
                     var left = u.cursor.left + 10;
                     if (left + 180 > u.over.clientWidth) left = u.cursor.left - 180;
@@ -171,14 +192,14 @@
                 {},
                 {
                     label: 'RX (In)',
-                    stroke: '#22c55e',
-                    fill: 'rgba(34, 197, 94, 0.25)',
+                    stroke: rxStroke,
+                    fill: rxFill,
                     width: 1.5
                 },
                 {
                     label: 'TX (Out)',
-                    stroke: '#3b82f6',
-                    fill: 'rgba(59, 130, 246, 0.25)',
+                    stroke: txStroke,
+                    fill: txFill,
                     width: 1.5
                 }
             ]
