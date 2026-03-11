@@ -27,10 +27,11 @@ return [
     | Providers - support providers.
     */
     'providers' => [
-        'dummy'         => IXP\Services\Grapher\Backend\Dummy::class,
-        'mrtg'          => IXP\Services\Grapher\Backend\Mrtg::class,
-        'sflow'         => IXP\Services\Grapher\Backend\Sflow::class,
-        'smokeping'     => IXP\Services\Grapher\Backend\Smokeping::class,
+        'dummy'           => IXP\Services\Grapher\Backend\Dummy::class,
+        'mrtg'            => IXP\Services\Grapher\Backend\Mrtg::class,
+        'sflow'           => IXP\Services\Grapher\Backend\Sflow::class,
+        'smokeping'       => IXP\Services\Grapher\Backend\Smokeping::class,
+        'victoriametrics' => IXP\Services\Grapher\Backend\VictoriaMetrics::class,
     ],
 
     /*
@@ -91,6 +92,11 @@ return [
 
             // where to find the MRTG rrd files
             'root'  => env( 'GRAPHER_BACKEND_SFLOW_ROOT', 'http://www.example.com/' ),
+        ],
+
+        'victoriametrics' => [
+            // Victoria Metrics / Prometheus-compatible API base URL
+            'url' => env( 'GRAPHER_BACKEND_VM_URL', 'http://localhost:8428' ),
         ],
 
         'smokeping' => [

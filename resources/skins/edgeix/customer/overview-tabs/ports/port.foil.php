@@ -383,7 +383,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <?= $t->grapher->virtint( $t->vi )->renderer()->boxLegacy() ?>
+                        <?= $t->grapher->virtint( $t->vi )->renderer()->boxUplot() ?>
                     </div>
                 </div>
             <?php endif; ?>
@@ -407,7 +407,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <?= $t->grapher->physint( $pi )->renderer()->boxLegacy() ?>
+                    <?= $t->grapher->physint( $pi )->renderer()->boxUplot() ?>
                 </div>
             </div>
         <?php endforeach; ?>

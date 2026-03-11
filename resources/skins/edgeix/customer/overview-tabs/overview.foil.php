@@ -21,7 +21,7 @@ $c = $t->c; /** @var \IXP\Models\Customer $c */
                     </div>
                 </div>
                 <div class="card-body" style="max-width: 700px;">
-                    <?= $t->aggregateGraph->renderer()->boxLegacy() ?>
+                    <?= $t->aggregateGraph->renderer()->boxUplot() ?>
                 </div>
             </div>
         <?php endif; ?>

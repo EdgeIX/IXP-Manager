@@ -46,11 +46,18 @@ class Renderer
     public const BOX_STYLE_LEGACY = 'legacy';
 
     /**
+     * uPlot interactive chart style
+     * @var string
+     */
+    public const BOX_STYLE_UPLOT = 'uplot';
+
+    /**
      * All styles
      * @array
      */
     public const BOX_STYLES = [
         self::BOX_STYLE_LEGACY,
+        self::BOX_STYLE_UPLOT,
     ];
 
 
@@ -108,5 +115,17 @@ class Renderer
     public function boxLegacy(): string
     {
         return $this->box( self::BOX_STYLE_LEGACY );
+    }
+
+    /**
+     * Alias for box renderer with uPlot interactive chart style
+     *
+     * @return string
+     *
+     * @throws RendererException
+     */
+    public function boxUplot(): string
+    {
+        return $this->box( self::BOX_STYLE_UPLOT );
     }
 }
