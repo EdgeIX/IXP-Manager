@@ -466,6 +466,18 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         $timing   = self::PERIOD_MAP[ $period ]   ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
         $rateInt  = $timing['rate'] ?? '30s';
 
+        // Wide aggregate queries (IXP, Infrastructure, Location) always use
+        // per-switch decomposition to avoid exceeding VM's maxSamplesPerQuery
+        // limit. Each per-switch query is small enough to succeed even at
+        // year-long time ranges.
+        $isWideAggregate = $graph instanceof IXPGraph
+                        || $graph instanceof InfraGraph
+                        || $graph instanceof LocationGraph;
+
+        if( $isWideAggregate ) {
+            return $this->dataPerSwitchAggregate( $graph, $metrics, $timing );
+        }
+
         $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx']['counter'], $metrics['rx']['multiplier'], $rateInt );
         $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx']['counter'], $metrics['tx']['multiplier'], $rateInt );
 
@@ -499,6 +511,84 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         }
 
         // Ensure oldest first
+        usort( $data, fn( $a, $b ) => $a[0] <=> $b[0] );
+
+        return $data;
+    }
+
+    /**
+     * Fetch data for wide aggregate graphs (IXP, Infrastructure, Location)
+     * by querying per-switch and summing in PHP.
+     *
+     * This avoids exceeding VictoriaMetrics' maxSamplesPerQuery limit on
+     * year-long queries across many series. Each per-switch query is small
+     * enough (one device's Ethernet ports over 365 days).
+     *
+     * @param Graph $graph
+     * @param array $metrics   From METRIC_MAP
+     * @param array $timing    From PERIOD_MAP
+     *
+     * @return array  Same format as data()
+     */
+    private function dataPerSwitchAggregate( Graph $graph, array $metrics, array $timing ): array
+    {
+        $rateInt = $timing['rate'] ?? '2h';
+        $suffix  = fn( int $m ) => $m > 1 ? "*{$m}" : '';
+
+        // Get the switch names for this graph type
+        if( $graph instanceof IXPGraph ) {
+            $names = Switcher::whereNotNull( 'name' )
+                ->where( 'active', true )
+                ->pluck( 'name' )->filter()->values()->all();
+        } elseif( $graph instanceof InfraGraph ) {
+            $names = $graph->infrastructure()->switchers()->whereNotNull( 'name' )
+                ->pluck( 'name' )->filter()->values()->all();
+        } elseif( $graph instanceof LocationGraph ) {
+            $cabinetIds = $graph->location()->cabinets()->pluck( 'id' )->all();
+            $names = Switcher::whereIn( 'cabinetid', $cabinetIds )
+                ->whereNotNull( 'name' )->pluck( 'name' )->filter()->values()->all();
+        } else {
+            return [];
+        }
+
+        if( empty( $names ) ) {
+            return [];
+        }
+
+        // Query each switch individually and sum the results in PHP
+        $rxTotals = [];  // timestamp => total
+        $txTotals = [];
+
+        foreach( $names as $switchName ) {
+            $rxCounter = $metrics['rx']['counter'];
+            $txCounter = $metrics['tx']['counter'];
+            $rxMult    = $metrics['rx']['multiplier'];
+            $txMult    = $metrics['tx']['multiplier'];
+
+            $rxQuery = "sum(rate({$rxCounter}{device=\"{$switchName}\",interface_name=~\"Ethernet.*\"}[{$rateInt}])){$suffix($rxMult)}";
+            $txQuery = "sum(rate({$txCounter}{device=\"{$switchName}\",interface_name=~\"Ethernet.*\"}[{$rateInt}])){$suffix($txMult)}";
+
+            $rxData = $this->queryRange( $rxQuery, $timing['range'], $timing['step'] );
+            $txData = $this->queryRange( $txQuery, $timing['range'], $timing['step'] );
+
+            foreach( $rxData as $point ) {
+                $ts = (int) $point[0];
+                $rxTotals[ $ts ] = ( $rxTotals[ $ts ] ?? 0.0 ) + (float) $point[1];
+            }
+
+            foreach( $txData as $point ) {
+                $ts = (int) $point[0];
+                $txTotals[ $ts ] = ( $txTotals[ $ts ] ?? 0.0 ) + (float) $point[1];
+            }
+        }
+
+        // Merge into the standard format
+        $data = [];
+        foreach( $rxTotals as $ts => $rxVal ) {
+            $txVal  = $txTotals[ $ts ] ?? 0.0;
+            $data[] = [ $ts, $rxVal, $txVal, $rxVal, $txVal ];
+        }
+
         usort( $data, fn( $a, $b ) => $a[0] <=> $b[0] );
 
         return $data;
