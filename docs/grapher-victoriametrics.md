@@ -364,6 +364,71 @@ Not yet supported (still served by MRTG/other backends if configured):
 - **VLAN** -- per-VLAN sub-interface graphs (requires `openconfig_subinterfaces` metrics)
 - **P2P** -- peer-to-peer traffic (requires sflow)
 
+## Pseudowire Traffic Graphs
+
+The `edgeix/ixpm-pseudowire` module includes standalone traffic graphs for pseudowire circuits. These are **independent of the core Grapher framework** because pseudowire circuits use sub-interface metrics that require raw `rate()` queries on OpenConfig counters, not the pre-computed recording rules used by the main grapher.
+
+### How It Works
+
+Each pseudowire circuit has two endpoints (A-End, Z-End). Each endpoint maps to a sub-interface identified by `switch_name:port_name.subif_vlan` (e.g. `pe2syd1:Port-Channel6.1020`). The `PwTrafficService` builds PromQL queries like:
+
+```promql
+rate(openconfig_subinterfaces_in_octets{device_interface="pe2syd1:Port-Channel6.1020"}[30s])*8
+```
+
+The admin circuit detail page fetches data via AJAX (`GET /pseudowire/admin/circuits/{id}/traffic?period=day`) and renders uPlot charts for both ends.
+
+### Configuration
+
+All metrics settings live in `config/pseudowire.php` under the `metrics` key. This makes the module portable — other IXPs can adapt to their Prometheus/VM deployment by overriding these values.
+
+| `.env` Variable | Default | Description |
+|-----------------|---------|-------------|
+| `PW_METRICS_URL` | *(none — feature disabled)* | VictoriaMetrics / Prometheus base URL |
+| `PW_METRICS_RX` | `openconfig_subinterfaces_in_octets` | RX counter metric name |
+| `PW_METRICS_TX` | `openconfig_subinterfaces_out_octets` | TX counter metric name |
+| `PW_METRICS_LABEL` | `device_interface` | Label name for sub-interface matching |
+| `PW_METRICS_LABEL_FORMAT` | `{switch_name}:{port_name}.{subif_vlan}` | Label value pattern with placeholders |
+| `PW_METRICS_RATE_INTERVAL` | `30s` | `rate()` window for PromQL |
+| `PW_METRICS_MULTIPLIER` | `8` | Octets-to-bits multiplier |
+
+**Feature gate**: If `PW_METRICS_URL` is not set, the traffic graph card does not render.
+
+### Label Resolution
+
+The `PwTrafficService::buildLabel()` method derives the `device_interface` label from IXP Manager model relationships:
+
+```
+PwCircuit → VirtualInterface → PhysicalInterface → SwitchPort → Switcher
+                              ↓
+                LAG? → Port-Channel{channelgroup}
+                Single? → switchPort->name
+                              ↓
+          "{switch_name}:{port_name}.{subif_vlan}"
+```
+
+This uses the same LAG detection logic as the core VictoriaMetrics backend (`VictoriaMetrics.php:192-196`).
+
+### Period Mapping
+
+| Period | Range | Step | Approx Points |
+|--------|-------|------|---------------|
+| Hour   | 1h    | 15s  | ~240          |
+| Day    | 24h   | 60s  | ~1,440        |
+| Week   | 7d    | 300s | ~2,016        |
+| Month  | 30d   | 1800s| ~1,440        |
+| Year   | 365d  | 86400s| ~365         |
+
+### Key Differences from Core Grapher
+
+| Aspect | Core Grapher | Pseudowire Module |
+|--------|-------------|-------------------|
+| Metrics | Recording rules (`port_bitrate_rx:10s`) | Raw counters with `rate()` |
+| Query building | `buildQueryForGraph()` in Backend class | `PwTrafficService::buildQuery()` |
+| Data loading | Server-side (PHP, baked into Foil template) | Client-side (AJAX fetch, JS rendering) |
+| Config | `config/grapher.php` | `config/pseudowire.php` → `metrics` |
+| Label format | `switch:port` | `switch:port.subif_vlan` |
+
 ## Troubleshooting
 
 ### No data displayed
@@ -406,9 +471,16 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 - Category-aware headings and colour schemes
 - Statistics tables (max, average, current)
 
+### Pseudowire Circuit Traffic Graphs (via `edgeix/ixpm-pseudowire`)
+- Per-circuit sub-interface traffic graphs on admin circuit detail page
+- Standalone implementation — does **not** use the core Grapher Backend; queries VM directly via `PwTrafficService`
+- Uses raw `rate()` on OpenConfig sub-interface counters (not recording rules)
+- Fully configurable via `config/pseudowire.php` `metrics` key (metric names, label format, VM URL, rate interval)
+- See [Pseudowire Traffic Graphs](#pseudowire-traffic-graphs) section below
+
 ### Planned
 - Trunk / Core Bundle graphs (requires raw OpenConfig `rate(openconfig_interfaces_*_octets[30s])*8`)
-- Sub-interface / VLAN graphs (requires `openconfig_subinterfaces_in_octets{device_interface="port.subinterface"}`)
+- VLAN graphs (sflow-based, separate data pipeline)
 - DOM optics monitoring panel
 - Sflow P2P replacement
 - Exportable graph images (server-side PNG via headless rendering)
