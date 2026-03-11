@@ -229,22 +229,28 @@
     var loadedGraphs = {};
 
     $( '.pw-ov-expandable' ).on( 'click', function() {
-        var $row    = $( this );
-        var id      = $row.data( 'pw-id' );
-        var $detail = $( '#pw-ov-detail-' + id );
-        var $icon   = $row.find( '.pw-ov-toggle' );
+        var $row     = $( this );
+        var id       = $row.data( 'pw-id' );
+        var $detail  = $( '#pw-ov-detail-' + id );
+        var $icon    = $row.find( '.pw-ov-toggle' );
+        var $content = $( '#pw-ov-content-' + id );
 
         if ( $detail.is( ':visible' ) ) {
-            $detail.slideUp( 200 );
+            $content.slideUp( 200, function() { $detail.hide(); } );
             $icon.css( 'transform', 'rotate(0deg)' );
             return;
         }
 
         // Close others
-        $( '.pw-ov-detail:visible' ).slideUp( 200 );
+        $( '.pw-ov-detail:visible' ).each( function() {
+            var $r = $( this );
+            $r.children( 'td' ).children( 'div' ).slideUp( 200, function() { $r.hide(); } );
+        } );
         $( '.pw-ov-toggle' ).css( 'transform', 'rotate(0deg)' );
 
-        $detail.slideDown( 200 );
+        // Show <tr> as table-row, slide inner content
+        $detail.show().css( 'display', 'table-row' );
+        $content.hide().slideDown( 200 );
         $icon.css( 'transform', 'rotate(90deg)' );
 
         if ( !loadedGraphs[ id ] ) {
