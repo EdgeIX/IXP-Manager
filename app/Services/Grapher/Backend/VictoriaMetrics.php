@@ -99,6 +99,49 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     }
 
     /**
+     * Raw OpenConfig counter names and multipliers for fallback queries.
+     *
+     * Used for graph types whose ports may not be covered by recording rules
+     * (e.g. core links that aren't in the ixpmanager_port enrichment metric).
+     * These queries use rate() on raw counters — safe for small port sets.
+     */
+    private const RAW_COUNTERS = [
+        Graph::CATEGORY_BITS => [
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_octets',          'multiplier' => 8 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_octets',         'multiplier' => 8 ],
+        ],
+        Graph::CATEGORY_PACKETS => [
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_unicast_pkts',    'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_unicast_pkts',   'multiplier' => 1 ],
+        ],
+        Graph::CATEGORY_ERRORS => [
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_errors',          'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_errors',         'multiplier' => 1 ],
+        ],
+        Graph::CATEGORY_DISCARDS => [
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_discards',        'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_discards',       'multiplier' => 1 ],
+        ],
+        Graph::CATEGORY_BROADCASTS => [
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_broadcast_pkts',  'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_broadcast_pkts', 'multiplier' => 1 ],
+        ],
+    ];
+
+    /**
+     * Build a rate() query on a raw counter for a specific device_interface.
+     *
+     * Used as fallback for ports not covered by recording rules (core links).
+     */
+    private function buildRawRateQuery( string $category, string $direction, string $label, string $interval = '30s' ): string
+    {
+        $raw    = self::RAW_COUNTERS[ $category ][ $direction ] ?? self::RAW_COUNTERS[ Graph::CATEGORY_BITS ][ $direction ];
+        $suffix = $raw['multiplier'] > 1 ? "*{$raw['multiplier']}" : '';
+
+        return "rate({$raw['counter']}{device_interface=\"{$label}\"}[{$interval}]){$suffix}";
+    }
+
+    /**
      * {@inheritDoc}
      */
     #[\Override]
@@ -178,14 +221,16 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      * Recording rules are pre-computed gauges (already rate()*multiplier),
      * so queries are simple gauge lookups — no rate() at query time.
      *
-     * @param Graph  $graph   The graph object
-     * @param string $metric  Recording rule metric name (e.g. 'port_bitrate_rx:10s')
+     * @param Graph  $graph      The graph object
+     * @param string $metric     Recording rule metric name (e.g. 'port_bitrate_rx:10s')
+     * @param string $category   Graph category (needed for raw counter fallback on core links)
+     * @param string $direction  'rx' or 'tx' (needed for raw counter fallback on core links)
      *
      * @return string|null  PromQL query string, or null if no data sources exist
      *
      * @throws CannotHandleRequestException
      */
-    private function buildQueryForGraph( Graph $graph, string $metric ): ?string
+    private function buildQueryForGraph( Graph $graph, string $metric, string $category = Graph::CATEGORY_BITS, string $direction = 'rx' ): ?string
     {
         // ── Per-port graphs: match on device_interface ──
 
@@ -288,6 +333,9 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         }
 
         // ── Core Bundle graphs: sum across member ports for selected side ──
+        // Core link ports are typically not in recording rules (no customer
+        // in ixpmanager_port), so we fall back to raw counter queries with
+        // rate(). This is safe — core bundles have only a few ports.
 
         if( $graph instanceof CoreBundleGraph ) {
             $cb   = $graph->coreBundle();
@@ -310,10 +358,20 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             }
 
             if( count( $labels ) === 1 ) {
-                return "{$metric}{device_interface=\"{$labels[0]}\"}";
+                return $this->buildRawRateQuery( $category, $direction, $labels[0] );
             }
 
-            return $this->buildSumQuery( $metric, 'device_interface', $labels );
+            // Multiple core link members — sum raw rate() queries
+            $raw    = self::RAW_COUNTERS[ $category ][ $direction ] ?? self::RAW_COUNTERS[ Graph::CATEGORY_BITS ][ $direction ];
+            $suffix = $raw['multiplier'] > 1 ? "*{$raw['multiplier']}" : '';
+
+            $escaped = array_map(
+                fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\\\\\$1', $s ),
+                $labels
+            );
+            $regex = implode( '|', $escaped );
+
+            return "sum(rate({$raw['counter']}{device_interface=~\"{$regex}\"}[30s])){$suffix}";
         }
 
         throw new CannotHandleRequestException( "VictoriaMetrics backend cannot handle graph type: " . $graph->classType() );
@@ -341,9 +399,11 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             return "sum({$metric}{{$filter}})";
         }
 
-        // Escape RE2 metacharacters for regex alternation
+        // Escape RE2 metacharacters for regex alternation.
+        // MetricsQL string literals use Go-style escaping, so a regex
+        // backslash must be written as \\ inside the "..." string.
         $escaped = array_map(
-            fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\$1', $s ),
+            fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\\\\\$1', $s ),
             $values
         );
         $regex  = implode( '|', $escaped );
@@ -460,8 +520,8 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         $rxMetric = $this->metricName( $category, 'rx' );
         $txMetric = $this->metricName( $category, 'tx' );
 
-        $queryRx = $this->buildQueryForGraph( $graph, $rxMetric );
-        $queryTx = $this->buildQueryForGraph( $graph, $txMetric );
+        $queryRx = $this->buildQueryForGraph( $graph, $rxMetric, $category, 'rx' );
+        $queryTx = $this->buildQueryForGraph( $graph, $txMetric, $category, 'tx' );
 
         // No data sources (e.g. location with no switches) — return empty
         if( $queryRx === null || $queryTx === null ) {
@@ -470,6 +530,20 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
 
         $rxData = $this->queryRange( $queryRx, $timing['range'], $timing['step'] );
         $txData = $this->queryRange( $queryTx, $timing['range'], $timing['step'] );
+
+        // If recording rule returned no data for a single-port graph, retry
+        // with raw counters. This handles core link ports and other interfaces
+        // that aren't covered by enriched recording rules.
+        if( empty( $rxData ) && empty( $txData ) && $graph instanceof PhysIntGraph ) {
+            $pi    = $graph->physicalInterface();
+            $label = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
+
+            $rawRx = $this->buildRawRateQuery( $category, 'rx', $label );
+            $rawTx = $this->buildRawRateQuery( $category, 'tx', $label );
+
+            $rxData = $this->queryRange( $rawRx, $timing['range'], $timing['step'] );
+            $txData = $this->queryRange( $rawTx, $timing['range'], $timing['step'] );
+        }
 
         // Index TX data by timestamp for merging
         $txByTimestamp = [];
