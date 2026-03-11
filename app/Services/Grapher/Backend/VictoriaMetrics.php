@@ -9,6 +9,10 @@ namespace IXP\Services\Grapher\Backend;
  *
  * Queries Victoria Metrics (PromQL-compatible) for traffic data collected
  * via gNMIC streaming telemetry from Arista EOS switches.
+ *
+ * All queries use raw OpenConfig interface counters with rate() to derive
+ * per-second rates. This eliminates dependency on recording rules and
+ * provides a consistent query pattern across all graph types.
  */
 
 use IXP\Contracts\Grapher\Backend as GrapherBackendContract;
@@ -39,39 +43,47 @@ use Illuminate\Support\Facades\Log;
 /**
  * Grapher Backend -> VictoriaMetrics
  *
- * Queries VictoriaMetrics/Prometheus for port traffic data.
+ * Queries VictoriaMetrics/Prometheus for port traffic data using raw
+ * OpenConfig interface counters from gNMIC streaming telemetry.
+ *
  * Supports physical interfaces, virtual interfaces (LAGs), customer aggregates,
- * and infrastructure-level aggregates (IXP, infrastructure, switch, location).
+ * infrastructure-level aggregates, and core bundle inter-switch links.
  */
 class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
 {
     /**
-     * Mapping of graph categories to VM recording rule metric prefixes.
+     * Mapping of graph categories to raw OpenConfig counter metrics.
      *
-     * Each category has an 'rx' and 'tx' metric name.
+     * Each category has an 'rx' and 'tx' counter name, plus a multiplier
+     * (8 for octets→bits conversion, 1 for packet counters).
      */
     private const METRIC_MAP = [
         Graph::CATEGORY_BITS => [
-            'rx' => 'port_bitrate_rx:10s',
-            'tx' => 'port_bitrate_tx:10s',
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_octets',          'multiplier' => 8 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_octets',         'multiplier' => 8 ],
         ],
         Graph::CATEGORY_PACKETS => [
-            'rx' => 'port_unicast_pps_rx:10s',
-            'tx' => 'port_unicast_pps_tx:10s',
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_unicast_pkts',    'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_unicast_pkts',   'multiplier' => 1 ],
         ],
         Graph::CATEGORY_ERRORS => [
-            'rx' => 'port_errors_pps_rx:10s',
-            'tx' => 'port_errors_pps_tx:10s',
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_errors',          'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_errors',         'multiplier' => 1 ],
         ],
         Graph::CATEGORY_DISCARDS => [
-            'rx' => 'port_discards_pps_rx:10s',
-            'tx' => 'port_discards_pps_tx:10s',
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_discards',        'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_discards',       'multiplier' => 1 ],
         ],
         Graph::CATEGORY_BROADCASTS => [
-            'rx' => 'port_broadcast_pps_rx:10s',
-            'tx' => 'port_broadcast_pps_tx:10s',
+            'rx' => [ 'counter' => 'openconfig_interfaces_in_broadcast_pkts',  'multiplier' => 1 ],
+            'tx' => [ 'counter' => 'openconfig_interfaces_out_broadcast_pkts', 'multiplier' => 1 ],
         ],
     ];
+
+    /**
+     * Rate interval for raw counter queries.
+     */
+    private const RATE_INTERVAL = '30s';
 
     /**
      * Mapping of graph periods to PromQL time range and step size.
@@ -158,27 +170,31 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     }
 
     /**
-     * Build a PromQL query for the given graph and metric.
+     * Build a PromQL query for the given graph and counter metric.
      *
-     * For per-port graphs (physical, virtual, customer), matches on device_interface.
-     * For aggregate graphs (IXP, infrastructure, switch, location), sums across
-     * all Ethernet interfaces on the relevant switches using the device label.
+     * All queries use rate() on raw OpenConfig counters to derive per-second
+     * rates. For aggregate graphs, rate() is wrapped in sum().
      *
      * @param Graph  $graph
-     * @param string $metric  The metric name (e.g. port_bitrate_rx:10s)
+     * @param string $counter     Raw OpenConfig counter (e.g. openconfig_interfaces_in_octets)
+     * @param int    $multiplier  Post-rate multiplier (8 for octets→bits, 1 for pps)
      *
      * @return string|null  PromQL query string, or null if no data sources exist
      *
      * @throws CannotHandleRequestException
      */
-    private function buildQueryForGraph( Graph $graph, string $metric ): ?string
+    private function buildQueryForGraph( Graph $graph, string $counter, int $multiplier ): ?string
     {
+        $interval = self::RATE_INTERVAL;
+        $suffix   = $multiplier > 1 ? "*{$multiplier}" : '';
+
         // ── Per-port graphs: match on device_interface ──
 
         if( $graph instanceof PhysIntGraph ) {
-            $pi = $graph->physicalInterface();
+            $pi    = $graph->physicalInterface();
             $label = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
-            return "{$metric}{device_interface=\"{$label}\"}";
+
+            return "rate({$counter}{device_interface=\"{$label}\"}[{$interval}]){$suffix}";
         }
 
         if( $graph instanceof VirtIntGraph ) {
@@ -197,7 +213,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 $label = "{$switchName}:{$pi->switchPort->name}";
             }
 
-            return "{$metric}{device_interface=\"{$label}\"}";
+            return "rate({$counter}{device_interface=\"{$label}\"}[{$interval}]){$suffix}";
         }
 
         if( $graph instanceof CustomerGraph ) {
@@ -219,14 +235,13 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 return null;
             }
 
-            return $this->buildSumQuery( $metric, 'device_interface', $labels );
+            return $this->buildSumRateQuery( $counter, $interval, $multiplier, 'device_interface', $labels );
         }
 
-        // ── Aggregate graphs: sum all Ethernet interfaces on matching switches ──
+        // ── Aggregate graphs: sum rate() across matching interfaces ──
 
         if( $graph instanceof IXPGraph ) {
-            // IXP-wide: sum all Ethernet interfaces across all switches
-            return "sum({$metric}{interface_name=~\"Ethernet.*\"})";
+            return "sum(rate({$counter}{interface_name=~\"Ethernet.*\"}[{$interval}])){$suffix}";
         }
 
         if( $graph instanceof InfraGraph ) {
@@ -237,12 +252,12 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 return null;
             }
 
-            return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
+            return $this->buildSumRateQuery( $counter, $interval, $multiplier, 'device', $names, 'interface_name=~"Ethernet.*"' );
         }
 
         if( $graph instanceof SwitcherGraph ) {
             $switchName = $graph->switch()->name;
-            return "sum({$metric}{device=\"{$switchName}\",interface_name=~\"Ethernet.*\"})";
+            return "sum(rate({$counter}{device=\"{$switchName}\",interface_name=~\"Ethernet.*\"}[{$interval}])){$suffix}";
         }
 
         if( $graph instanceof LocationGraph ) {
@@ -259,10 +274,10 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 return null;
             }
 
-            return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
+            return $this->buildSumRateQuery( $counter, $interval, $multiplier, 'device', $names, 'interface_name=~"Ethernet.*"' );
         }
 
-        // ── Core Bundle graphs: sum member port metrics for the selected side ──
+        // ── Core Bundle graphs: sum rate() across member ports for selected side ──
 
         if( $graph instanceof CoreBundleGraph ) {
             $cb   = $graph->coreBundle();
@@ -285,33 +300,37 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             }
 
             if( count( $labels ) === 1 ) {
-                return "{$metric}{device_interface=\"{$labels[0]}\"}";
+                return "rate({$counter}{device_interface=\"{$labels[0]}\"}[{$interval}]){$suffix}";
             }
 
-            return $this->buildSumQuery( $metric, 'device_interface', $labels );
+            return $this->buildSumRateQuery( $counter, $interval, $multiplier, 'device_interface', $labels );
         }
 
         throw new CannotHandleRequestException( "VictoriaMetrics backend cannot handle graph type: " . $graph->classType() );
     }
 
     /**
-     * Build a sum() PromQL query with regex alternation on a label.
+     * Build a sum(rate()) PromQL query with regex alternation on a label.
      *
-     * @param string      $metric       The metric name
+     * @param string      $counter      Raw OpenConfig counter name
+     * @param string      $interval     Rate interval (e.g. '30s')
+     * @param int         $multiplier   Post-rate multiplier
      * @param string      $label        The label to match on (e.g. 'device_interface', 'device')
      * @param array       $values       Values for regex alternation
-     * @param string|null $extraFilter   Additional label filter (e.g. 'interface_name=~"Ethernet.*"')
+     * @param string|null $extraFilter  Additional label filter (e.g. 'interface_name=~"Ethernet.*"')
      *
      * @return string
      */
-    private function buildSumQuery( string $metric, string $label, array $values, ?string $extraFilter = null ): string
+    private function buildSumRateQuery( string $counter, string $interval, int $multiplier, string $label, array $values, ?string $extraFilter = null ): string
     {
+        $suffix = $multiplier > 1 ? "*{$multiplier}" : '';
+
         if( count( $values ) === 1 ) {
             $filter = "{$label}=\"{$values[0]}\"";
             if( $extraFilter ) {
                 $filter .= ",{$extraFilter}";
             }
-            return "sum({$metric}{{$filter}})";
+            return "sum(rate({$counter}{{$filter}}[{$interval}])){$suffix}";
         }
 
         // Escape RE2 metacharacters for regex alternation
@@ -326,7 +345,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $filter .= ",{$extraFilter}";
         }
 
-        return "sum({$metric}{{$filter}})";
+        return "sum(rate({$counter}{{$filter}}[{$interval}])){$suffix}";
     }
 
     /**
@@ -430,8 +449,8 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         $metrics = self::METRIC_MAP[ $category ] ?? self::METRIC_MAP[ Graph::CATEGORY_BITS ];
         $timing  = self::PERIOD_MAP[ $period ]   ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
 
-        $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx'] );
-        $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx'] );
+        $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx']['counter'], $metrics['rx']['multiplier'] );
+        $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx']['counter'], $metrics['tx']['multiplier'] );
 
         // No data sources (e.g. location with no switches) — return empty
         if( $queryRx === null || $queryTx === null ) {
@@ -456,7 +475,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $txVal = $txByTimestamp[ $ts ] ?? 0.0;
 
             // [timestamp, avg_in, avg_out, max_in, max_out]
-            // VM recording rules give us rates, not separate avg/max.
+            // rate() on raw counters gives us instantaneous rates at each step.
             // We use the same value for avg and max (streaming telemetry
             // at 10s resolution is already granular enough).
             $data[] = [ $ts, $rxVal, $txVal, $rxVal, $txVal ];
