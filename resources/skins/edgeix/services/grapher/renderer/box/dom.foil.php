@@ -16,11 +16,12 @@
     $domId    = 'dom-' . md5( ( $t->domLabel ?? '' ) . ( $t->domPeriod ?? '' ) . uniqid() );
 
     // Channel colour palette (RX stroke, RX fill, TX stroke, TX fill)
+    // Optical-themed: warm tones (amber/orange for RX light in, red/crimson for TX light out)
     $channelColours = [
-        [ '#22c55e', 'rgba(34, 197, 94, 0.15)',  '#3b82f6', 'rgba(59, 130, 246, 0.15)' ],   // green / blue
-        [ '#8b5cf6', 'rgba(139, 92, 246, 0.15)', '#f59e0b', 'rgba(245, 158, 11, 0.15)' ],   // purple / amber
-        [ '#06b6d4', 'rgba(6, 182, 212, 0.15)',   '#ef4444', 'rgba(239, 68, 68, 0.15)' ],    // cyan / red
-        [ '#14b8a6', 'rgba(20, 184, 166, 0.15)', '#d946ef', 'rgba(217, 70, 239, 0.15)' ],   // teal / fuchsia
+        [ '#e67e22', 'rgba(230, 126, 34, 0.15)',  '#c0392b', 'rgba(192, 57, 43, 0.15)' ],    // amber / crimson
+        [ '#d4a017', 'rgba(212, 160, 23, 0.15)',  '#8e44ad', 'rgba(142, 68, 173, 0.15)' ],   // gold / purple
+        [ '#e88d2a', 'rgba(232, 141, 42, 0.15)',  '#a93226', 'rgba(169, 50, 38, 0.15)' ],    // tangerine / dark red
+        [ '#f1c40f', 'rgba(241, 196, 15, 0.15)',  '#9b59b6', 'rgba(155, 89, 182, 0.15)' ],   // yellow / amethyst
     ];
 ?>
 
