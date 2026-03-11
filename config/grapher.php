@@ -131,6 +131,18 @@ return [
                     'tx' => env( 'GRAPHER_VM_METRIC_BCAST_TX', 'port_broadcasts_pps_tx:10s' ),
                 ],
             ],
+
+            // Sub-interface recording rule metrics (for VLAN sub-interfaces on shared ports).
+            // These are separate from the port-level metrics above because sub-interfaces
+            // use openconfig_subinterfaces counters and may have different enrichment.
+            // Only 'bits' is typically available as a recording rule; other categories
+            // fall back to raw counters automatically.
+            'subinterface_metrics' => [
+                'bits' => [
+                    'rx' => env( 'GRAPHER_VM_SUBINT_BITS_RX', 'svc_bitrate_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_SUBINT_BITS_TX', 'svc_bitrate_tx:10s' ),
+                ],
+            ],
         ],
 
         'smokeping' => [

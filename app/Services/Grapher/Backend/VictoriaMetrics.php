@@ -99,6 +99,18 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     }
 
     /**
+     * Get the sub-interface recording rule metric name for a category + direction.
+     *
+     * Sub-interface metrics cover VLAN sub-interfaces on shared trunk ports
+     * (e.g. Port-Channel2.502). Only 'bits' is typically available; for other
+     * categories returns null and the caller should fall back to raw counters.
+     */
+    private function svcMetricName( string $category, string $direction ): ?string
+    {
+        return config( "grapher.backends.victoriametrics.subinterface_metrics.{$category}.{$direction}" );
+    }
+
+    /**
      * Raw OpenConfig counter names and multipliers for fallback queries.
      *
      * Used for graph types whose ports may not be covered by recording rules
@@ -125,6 +137,17 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         Graph::CATEGORY_BROADCASTS => [
             'rx' => [ 'counter' => 'openconfig_interfaces_in_broadcast_pkts',  'multiplier' => 1 ],
             'tx' => [ 'counter' => 'openconfig_interfaces_out_broadcast_pkts', 'multiplier' => 1 ],
+        ],
+    ];
+
+    /**
+     * Raw OpenConfig sub-interface counter names (for VLAN sub-interfaces).
+     * Only bits is available for sub-interfaces.
+     */
+    private const RAW_SUBINT_COUNTERS = [
+        Graph::CATEGORY_BITS => [
+            'rx' => [ 'counter' => 'openconfig_subinterfaces_in_octets',  'multiplier' => 8 ],
+            'tx' => [ 'counter' => 'openconfig_subinterfaces_out_octets', 'multiplier' => 8 ],
         ],
     ];
 
@@ -252,34 +275,104 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $switchName = $pi->switchPort->switcher->name;
 
             if( $vi->physicalInterfaces->count() > 1 && $vi->channelgroup ) {
-                $label = "{$switchName}:Port-Channel{$vi->channelgroup}";
+                $portName = "Port-Channel{$vi->channelgroup}";
             } else {
-                $label = "{$switchName}:{$pi->switchPort->name}";
+                $portName = $pi->switchPort->name;
             }
 
-            return "{$metric}{device_interface=\"{$label}\"}";
+            // Check if this VI is a sub-interface (has a VLAN tag).
+            // Sub-interfaces use svc_bitrate_* recording rules with .vlan suffix.
+            $vli = $vi->vlanInterfaces->first();
+            $vlanTag = $vli && $vli->vlan ? $vli->vlan->number : null;
+
+            if( $vlanTag ) {
+                $subLabel  = "{$switchName}:{$portName}.{$vlanTag}";
+                $svcMetric = $this->svcMetricName( $category, $direction );
+
+                if( $svcMetric ) {
+                    return "{$svcMetric}{device_interface=\"{$subLabel}\"}";
+                }
+
+                // No sub-interface recording rule for this category — use raw counter
+                $raw = self::RAW_SUBINT_COUNTERS[ $category ][ $direction ] ?? null;
+                if( $raw ) {
+                    $suffix = $raw['multiplier'] > 1 ? "*{$raw['multiplier']}" : '';
+                    return "rate({$raw['counter']}{device_interface=\"{$subLabel}\"}[30s]){$suffix}";
+                }
+            }
+
+            // Parent interface (dedicated port or no VLAN tag)
+            return "{$metric}{device_interface=\"{$switchName}:{$portName}\"}";
         }
 
         if( $graph instanceof CustomerGraph ) {
-            $labels = [];
+            $portLabels = [];
+            $subLabels  = [];
+
             foreach( $graph->customer()->virtualInterfaces as $vi ) {
                 $pi = $vi->physicalInterfaces->first();
                 if( !$pi || !$pi->switchPort || !$pi->switchPort->switcher ) {
                     continue;
                 }
+
                 $switchName = $pi->switchPort->switcher->name;
                 if( $vi->physicalInterfaces->count() > 1 && $vi->channelgroup ) {
-                    $labels[] = "{$switchName}:Port-Channel{$vi->channelgroup}";
+                    $portName = "Port-Channel{$vi->channelgroup}";
                 } else {
-                    $labels[] = "{$switchName}:{$pi->switchPort->name}";
+                    $portName = $pi->switchPort->name;
+                }
+
+                // Classify as sub-interface or parent port
+                $vli     = $vi->vlanInterfaces->first();
+                $vlanTag = $vli && $vli->vlan ? $vli->vlan->number : null;
+
+                if( $vlanTag ) {
+                    $subLabels[] = "{$switchName}:{$portName}.{$vlanTag}";
+                } else {
+                    $portLabels[] = "{$switchName}:{$portName}";
                 }
             }
 
-            if( empty( $labels ) ) {
+            if( empty( $portLabels ) && empty( $subLabels ) ) {
                 return null;
             }
 
-            return $this->buildSumQuery( $metric, 'device_interface', $labels );
+            // Build query parts for each group
+            $parts = [];
+
+            if( !empty( $portLabels ) ) {
+                $parts[] = $this->buildSumQuery( $metric, 'device_interface', $portLabels );
+            }
+
+            if( !empty( $subLabels ) ) {
+                $svcMetric = $this->svcMetricName( $category, $direction );
+                if( $svcMetric ) {
+                    $parts[] = $this->buildSumQuery( $svcMetric, 'device_interface', $subLabels );
+                } else {
+                    // No sub-interface recording rule — use raw counters
+                    $raw = self::RAW_SUBINT_COUNTERS[ $category ][ $direction ] ?? null;
+                    if( $raw ) {
+                        $suffix = $raw['multiplier'] > 1 ? "*{$raw['multiplier']}" : '';
+                        if( count( $subLabels ) === 1 ) {
+                            $parts[] = "rate({$raw['counter']}{device_interface=\"{$subLabels[0]}\"}[30s]){$suffix}";
+                        } else {
+                            $escaped = array_map(
+                                fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\\\\\$1', $s ),
+                                $subLabels
+                            );
+                            $regex = implode( '|', $escaped );
+                            $parts[] = "sum(rate({$raw['counter']}{device_interface=~\"{$regex}\"}[30s])){$suffix}";
+                        }
+                    }
+                }
+            }
+
+            if( empty( $parts ) ) {
+                return null;
+            }
+
+            // Single group — return directly. Mixed — sum with PromQL addition.
+            return count( $parts ) === 1 ? $parts[0] : '(' . implode( ') + (', $parts ) . ')';
         }
 
         // ── Aggregate graphs: sum across matching interfaces ──
