@@ -66,7 +66,7 @@
                     <div class="card mb-4">
                         <div class="card-header d-flex py-2">
                             <h5 class="mb-0 mr-auto">
-                                Aggregate Peering Traffic
+                                Aggregate Peering <?= IXP\Services\Grapher\Graph::resolveCategory( $t->category ) ?>
                                 <?php if( $t->resellerMode() && $t->c->isReseller ): ?>
                                     <small><em>(Peering ports only)</em></small>
                                 <?php endif; ?>
@@ -98,104 +98,118 @@
                     $isLAG = count( $pis ) > 1;
                 ?>
 
-                <div class="card mb-4">
-                    <div class="card-body py-3">
-                        <div class="row">
-                            <?php if( $isLAG ): ?>
-                                <div class="col-sm-12 col-lg-6 mb-3">
-                                    <div class="card border">
-                                        <div class="card-header d-flex py-2 bg-white">
-                                            <h6 class="mb-0 mr-auto">
-                                                LAG on <?= $pi->switchPort->switcher->cabinet->location->name ?>
-                                                / <?= $pi->switchPort->switcher->name ?>
-                                            </h6>
-                                            <?php if( $vi->isGraphable() ): ?>
-                                                <div class="btn-group btn-group-sm my-auto">
-                                                    <?= $t->insert( 'statistics/snippets/latency-dropup', [ 'vi' => $vi ] ) ?>
+                <?php if( $isLAG ): ?>
+                    <?php // ── LAG: aggregate full-width, member ports in 2-col grid ── ?>
+                    <div class="card mb-4">
+                        <div class="card-header d-flex py-2" style="background-color: #f8f9fa;">
+                            <h5 class="mb-0 mr-auto">
+                                LAG on <?= $pi->switchPort->switcher->cabinet->location->name ?>
+                                / <?= $pi->switchPort->switcher->name ?>
+                            </h5>
+                            <?php if( $vi->isGraphable() ): ?>
+                                <div class="btn-group btn-group-sm my-auto">
+                                    <?= $t->insert( 'statistics/snippets/latency-dropup', [ 'vi' => $vi ] ) ?>
 
-                                                    <?php if( config( 'grapher.backends.sflow.enabled' ) ): ?>
-                                                        <a class="btn btn-white btn-sm py-0" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] )
-                                                            . ( $vi->vlanInterfaces->isNotEmpty() ? '?svli=' . $vi->vlanInterfaces[ 0 ]->id : '' )
-                                                        ?>">
-                                                            <span class="fa fa-random"></span>
-                                                        </a>
-                                                    <?php endif; ?>
+                                    <?php if( config( 'grapher.backends.sflow.enabled' ) ): ?>
+                                        <a class="btn btn-white btn-sm py-0" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] )
+                                            . ( $vi->vlanInterfaces->isNotEmpty() ? '?svli=' . $vi->vlanInterfaces[ 0 ]->id : '' )
+                                        ?>">
+                                            <span class="fa fa-random"></span>
+                                        </a>
+                                    <?php endif; ?>
 
-                                                    <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown" , [ "type" => "vi", "typeid" => $vi->id  ] ) ?>/?category=<?= $t->category ?>" title="Drilldown">
-                                                        <i class="fa fa-search-plus"></i>
-                                                    </a>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="card-body py-2">
-                                            <?php if( $vi->isGraphable() ): ?>
-                                                <?= $t->grapher->virtint( $vi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
+                                    <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown" , [ "type" => "vi", "typeid" => $vi->id  ] ) ?>/?category=<?= $t->category ?>" title="Drilldown">
+                                        <i class="fa fa-search-plus"></i>
+                                    </a>
                                 </div>
                             <?php endif; ?>
+                        </div>
+                        <div class="card-body py-2">
+                            <?php if( $vi->isGraphable() ): ?>
+                                <?= $t->grapher->virtint( $vi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                            <?php endif; ?>
 
-                            <?php foreach( $pis as $idx => $pi ): ?>
-                                <div class="col-sm-12 col-lg-6 mb-3">
-                                    <div class="card border">
-                                        <div class="card-header d-flex py-2 bg-white">
-                                            <h6 class="mb-0 mr-auto">
-                                                <?php if( $isLAG ): ?>
+                            <div class="row mt-3">
+                                <?php foreach( $pis as $idx => $pi ): ?>
+                                    <div class="col-sm-12 col-lg-6 mb-3">
+                                        <div class="card border">
+                                            <div class="card-header d-flex py-2 bg-white">
+                                                <h6 class="mb-0 mr-auto">
                                                     <?= $pi->switchPort->switcher->name ?> ::
                                                     <?= $pi->switchPort->name ?> (<?= $t->scaleSpeed( $pi->configuredSpeed() ) . ( $pi->isRateLimited() ? '/' . $pi->speed() : '' ) ?>)
-                                                <?php else: ?>
-                                                    <?= $pi->switchPort->switcher->cabinet->location->name ?>
-                                                    / <?= $pi->switchPort->switcher->name ?>
-                                                    :: <?= $pi->switchPort->name ?> (<?= $pi->speed() ?>)
-                                                <?php endif; ?>
-
-                                                <?php if( $t->resellerMode() && $t->c->isReseller ): ?>
-                                                    <small class="text-muted">
-                                                        <?php if( $pi->switchPort->typePeering() ): ?>
-                                                            &mdash; Peering Port
-                                                        <?php elseif( $pi->switchPort->typeFanout() ):
-                                                            $cust = $pi->relatedInterface()->virtualInterface->customer; ?>
-                                                            &mdash; Fanout for <a href="<?= route( 'customer@overview', [ 'cust' => $cust->id ] ) ?>">
-                                                                <?= $cust->abbreviatedName ?>
-                                                            </a>
-                                                        <?php elseif( $pi->switchPort->typeReseller() ): ?>
-                                                            &mdash; Reseller Uplink
-                                                        <?php endif; ?>
-                                                    </small>
-                                                <?php endif; ?>
-                                            </h6>
-                                            <?php if( $pi->isConnectedOrQuarantine() ): ?>
-                                                <div class="btn-group btn-group-sm my-auto">
-                                                    <?php if( !$isLAG ): ?>
-                                                        <?= $t->insert( 'statistics/snippets/latency-dropup', [ 'vi' => $vi ] ) ?>
-                                                    <?php endif; ?>
-                                                    <?php if( config( 'grapher.backends.sflow.enabled' ) ): ?>
-                                                        <a class="btn btn-white btn-sm py-0" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] )
-                                                        . ( $vi->vlanInterfaces->isNotEmpty() ? '?svli=' . $vi->vlanInterfaces[ 0 ]->id : '' )
-                                                        ?>">
-                                                            <span class="fa fa-random"></span>
+                                                </h6>
+                                                <?php if( $pi->isConnectedOrQuarantine() ): ?>
+                                                    <div class="btn-group btn-group-sm my-auto">
+                                                        <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown" , [ "type" => "pi", "typeid" => $pi->id  ] ) ?>/?category=<?= $t->category ?>">
+                                                            <i class="fa fa-search-plus"></i>
                                                         </a>
-                                                    <?php endif; ?>
-                                                    <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown" , [ "type" => "pi", "typeid" => $pi->id  ] ) ?>/?category=<?= $t->category ?>">
-                                                        <i class="fa fa-search-plus"></i>
-                                                    </a>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="card-body py-2">
-                                            <?php if( $pi->isConnectedOrQuarantine() ): ?>
-                                                <?= $t->grapher->physint( $pi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
-                                            <?php else: ?>
-                                                <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $pi, 'isSuperUser' => $isSuperUser ] ) ?>
-                                            <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="card-body py-2">
+                                                <?php if( $pi->isConnectedOrQuarantine() ): ?>
+                                                    <?= $t->grapher->physint( $pi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                                                <?php else: ?>
+                                                    <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $pi, 'isSuperUser' => $isSuperUser ] ) ?>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
-                </div>
+
+                <?php else: ?>
+                    <?php // ── Single port (not LAG): full-width ── ?>
+                    <div class="card mb-4">
+                        <div class="card-header d-flex py-2" style="background-color: #f8f9fa;">
+                            <h5 class="mb-0 mr-auto">
+                                <?= $pi->switchPort->switcher->cabinet->location->name ?>
+                                / <?= $pi->switchPort->switcher->name ?>
+                                :: <?= $pi->switchPort->name ?> (<?= $pi->speed() ?>)
+
+                                <?php if( $t->resellerMode() && $t->c->isReseller ): ?>
+                                    <small class="text-muted">
+                                        <?php if( $pi->switchPort->typePeering() ): ?>
+                                            &mdash; Peering Port
+                                        <?php elseif( $pi->switchPort->typeFanout() ):
+                                            $cust = $pi->relatedInterface()->virtualInterface->customer; ?>
+                                            &mdash; Fanout for <a href="<?= route( 'customer@overview', [ 'cust' => $cust->id ] ) ?>">
+                                                <?= $cust->abbreviatedName ?>
+                                            </a>
+                                        <?php elseif( $pi->switchPort->typeReseller() ): ?>
+                                            &mdash; Reseller Uplink
+                                        <?php endif; ?>
+                                    </small>
+                                <?php endif; ?>
+                            </h5>
+                            <?php if( $pi->isConnectedOrQuarantine() ): ?>
+                                <div class="btn-group btn-group-sm my-auto">
+                                    <?= $t->insert( 'statistics/snippets/latency-dropup', [ 'vi' => $vi ] ) ?>
+
+                                    <?php if( config( 'grapher.backends.sflow.enabled' ) ): ?>
+                                        <a class="btn btn-white btn-sm py-0" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] )
+                                        . ( $vi->vlanInterfaces->isNotEmpty() ? '?svli=' . $vi->vlanInterfaces[ 0 ]->id : '' )
+                                        ?>">
+                                            <span class="fa fa-random"></span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown" , [ "type" => "pi", "typeid" => $pi->id  ] ) ?>/?category=<?= $t->category ?>">
+                                        <i class="fa fa-search-plus"></i>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-body py-2">
+                            <?php if( $pi->isConnectedOrQuarantine() ): ?>
+                                <?= $t->grapher->physint( $pi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                            <?php else: ?>
+                                <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $pi, 'isSuperUser' => $isSuperUser ] ) ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>

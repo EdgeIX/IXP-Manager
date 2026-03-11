@@ -22,6 +22,10 @@ use IXP\Services\Grapher\Graph\{
     PhysicalInterface   as PhysIntGraph,
     VirtualInterface    as VirtIntGraph,
     Customer            as CustomerGraph,
+    IXP                 as IXPGraph,
+    Infrastructure      as InfraGraph,
+    Switcher            as SwitcherGraph,
+    Location            as LocationGraph,
 };
 
 use IXP\Exceptions\Services\Grapher\CannotHandleRequestException;
@@ -33,7 +37,8 @@ use Illuminate\Support\Facades\Log;
  * Grapher Backend -> VictoriaMetrics
  *
  * Queries VictoriaMetrics/Prometheus for port traffic data.
- * Supports physical interfaces, virtual interfaces (LAGs), and customer aggregates.
+ * Supports physical interfaces, virtual interfaces (LAGs), customer aggregates,
+ * and infrastructure-level aggregates (IXP, infrastructure, switch, location).
  */
 class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
 {
@@ -141,24 +146,35 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             'physicalinterface' => $base,
             'virtualinterface'  => $base,
             'customer'          => $base,
+            'ixp'               => $base,
+            'infrastructure'    => $base,
+            'switcher'          => $base,
+            'location'          => $base,
         ];
     }
 
     /**
-     * Build the device_interface label value for a graph.
+     * Build a PromQL query for the given graph and metric.
      *
-     * @param Graph $graph
-     * @return string|array  A single label string, or array of strings for customer aggregates
+     * For per-port graphs (physical, virtual, customer), matches on device_interface.
+     * For aggregate graphs (IXP, infrastructure, switch, location), sums across
+     * all Ethernet interfaces on the relevant switches using the device label.
+     *
+     * @param Graph  $graph
+     * @param string $metric  The metric name (e.g. port_bitrate_rx:10s)
+     *
+     * @return string  PromQL query string
      *
      * @throws CannotHandleRequestException
      */
-    private function resolveDeviceInterface( Graph $graph ): string|array
+    private function buildQueryForGraph( Graph $graph, string $metric ): string
     {
+        // ── Per-port graphs: match on device_interface ──
+
         if( $graph instanceof PhysIntGraph ) {
             $pi = $graph->physicalInterface();
-            $switchName = $pi->switchPort->switcher->name;
-            $portName   = $pi->switchPort->name;
-            return "{$switchName}:{$portName}";
+            $label = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
+            return "{$metric}{device_interface=\"{$label}\"}";
         }
 
         if( $graph instanceof VirtIntGraph ) {
@@ -171,28 +187,23 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
 
             $switchName = $pi->switchPort->switcher->name;
 
-            // LAG (multiple physical interfaces) — use Port-Channel
             if( $vi->physicalInterfaces->count() > 1 && $vi->channelgroup ) {
-                return "{$switchName}:Port-Channel{$vi->channelgroup}";
+                $label = "{$switchName}:Port-Channel{$vi->channelgroup}";
+            } else {
+                $label = "{$switchName}:{$pi->switchPort->name}";
             }
 
-            // Single physical interface — use port name directly
-            return "{$switchName}:{$pi->switchPort->name}";
+            return "{$metric}{device_interface=\"{$label}\"}";
         }
 
         if( $graph instanceof CustomerGraph ) {
-            // Customer aggregate — return array of all port device_interface labels
             $labels = [];
-            $customer = $graph->customer();
-
-            foreach( $customer->virtualInterfaces as $vi ) {
+            foreach( $graph->customer()->virtualInterfaces as $vi ) {
                 $pi = $vi->physicalInterfaces->first();
                 if( !$pi || !$pi->switchPort || !$pi->switchPort->switcher ) {
                     continue;
                 }
-
                 $switchName = $pi->switchPort->switcher->name;
-
                 if( $vi->physicalInterfaces->count() > 1 && $vi->channelgroup ) {
                     $labels[] = "{$switchName}:Port-Channel{$vi->channelgroup}";
                 } else {
@@ -204,31 +215,83 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 throw new CannotHandleRequestException( 'Customer has no graphable interfaces' );
             }
 
-            return $labels;
+            return $this->buildSumQuery( $metric, 'device_interface', $labels );
+        }
+
+        // ── Aggregate graphs: sum all Ethernet interfaces on matching switches ──
+
+        if( $graph instanceof IXPGraph ) {
+            // IXP-wide: sum all Ethernet interfaces across all switches
+            return "sum({$metric}{interface_name=~\"Ethernet.*\"})";
+        }
+
+        if( $graph instanceof InfraGraph ) {
+            $switches = $graph->infrastructure()->switchers;
+            $names = $switches->pluck( 'name' )->filter()->values()->all();
+
+            if( empty( $names ) ) {
+                throw new CannotHandleRequestException( 'Infrastructure has no switches' );
+            }
+
+            return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
+        }
+
+        if( $graph instanceof SwitcherGraph ) {
+            $switchName = $graph->switch()->name;
+            return "sum({$metric}{device=\"{$switchName}\",interface_name=~\"Ethernet.*\"})";
+        }
+
+        if( $graph instanceof LocationGraph ) {
+            $names = [];
+            foreach( $graph->location()->cabinets as $cabinet ) {
+                foreach( $cabinet->switchers as $switcher ) {
+                    $names[] = $switcher->name;
+                }
+            }
+
+            if( empty( $names ) ) {
+                throw new CannotHandleRequestException( 'Location has no switches' );
+            }
+
+            return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
         }
 
         throw new CannotHandleRequestException( "VictoriaMetrics backend cannot handle graph type: " . $graph->classType() );
     }
 
     /**
-     * Build PromQL query for a given metric and device_interface selector.
+     * Build a sum() PromQL query with regex alternation on a label.
      *
-     * @param string       $metric   The metric name (e.g. port_bitrate_rx:10s)
-     * @param string|array $selector A device_interface label or array of labels
+     * @param string      $metric       The metric name
+     * @param string      $label        The label to match on (e.g. 'device_interface', 'device')
+     * @param array       $values       Values for regex alternation
+     * @param string|null $extraFilter   Additional label filter (e.g. 'interface_name=~"Ethernet.*"')
      *
      * @return string
      */
-    private function buildQuery( string $metric, string|array $selector ): string
+    private function buildSumQuery( string $metric, string $label, array $values, ?string $extraFilter = null ): string
     {
-        if( is_array( $selector ) ) {
-            // Multiple interfaces — use regex alternation with sum()
-            // Only escape RE2 metacharacters (not colons/slashes which are literal in PromQL strings)
-            $escaped = array_map( fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\$1', $s ), $selector );
-            $regex   = implode( '|', $escaped );
-            return "sum({$metric}{device_interface=~\"{$regex}\"})";
+        if( count( $values ) === 1 ) {
+            $filter = "{$label}=\"{$values[0]}\"";
+            if( $extraFilter ) {
+                $filter .= ",{$extraFilter}";
+            }
+            return "sum({$metric}{{$filter}})";
         }
 
-        return "{$metric}{device_interface=\"{$selector}\"}";
+        // Escape RE2 metacharacters for regex alternation
+        $escaped = array_map(
+            fn( $s ) => preg_replace( '/([.+*?^${}()\[\]\\\\|])/', '\\\\$1', $s ),
+            $values
+        );
+        $regex  = implode( '|', $escaped );
+        $filter = "{$label}=~\"{$regex}\"";
+
+        if( $extraFilter ) {
+            $filter .= ",{$extraFilter}";
+        }
+
+        return "sum({$metric}{{$filter}})";
     }
 
     /**
@@ -328,13 +391,12 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     {
         $category  = $graph->category();
         $period    = $graph->period();
-        $selector  = $this->resolveDeviceInterface( $graph );
 
         $metrics = self::METRIC_MAP[ $category ] ?? self::METRIC_MAP[ Graph::CATEGORY_BITS ];
         $timing  = self::PERIOD_MAP[ $period ]   ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
 
-        $queryRx = $this->buildQuery( $metrics['rx'], $selector );
-        $queryTx = $this->buildQuery( $metrics['tx'], $selector );
+        $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx'] );
+        $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx'] );
 
         $rxData = $this->queryRange( $queryRx, $timing['range'], $timing['step'] );
         $txData = $this->queryRange( $queryTx, $timing['range'], $timing['step'] );

@@ -58,7 +58,7 @@
             <h3>
                 <?php switch( get_class( $t->graph ) ):
                     case IXP\Services\Grapher\Graph\Customer::class: ?>
-                        Aggregate Statistics for All Peering Ports
+                        Aggregate Peering <?= $t->graph->resolveMyCategory() ?>
                         <?php break;
                     case IXP\Services\Grapher\Graph\VirtualInterface::class: ?>
                         LAG

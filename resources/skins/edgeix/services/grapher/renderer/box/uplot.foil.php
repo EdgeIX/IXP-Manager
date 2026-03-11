@@ -32,22 +32,55 @@
 
     // Category labels and units
     $isBits = $category === 'bits';
+    $unitSuffix = match( $category ) {
+        'bits'       => 'bps',
+        'packets'    => 'pps',
+        'errors'     => 'pps',
+        'discards'   => 'pps',
+        'broadcasts' => 'pps',
+        default      => 'pps',
+    };
 
-    // Colour scheme: aggregate/LAG graphs use a distinct palette
+    // Colour scheme: category-aware + aggregate/physical distinction
     $isAggregate = ( $graph instanceof \IXP\Services\Grapher\Graph\VirtualInterface )
-                || ( $graph instanceof \IXP\Services\Grapher\Graph\Customer );
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\Customer )
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\IXP )
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\Infrastructure )
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\Switcher )
+                || ( $graph instanceof \IXP\Services\Grapher\Graph\Location );
 
-    if( $isAggregate ) {
-        $rxStroke = '#8b5cf6';  // purple
-        $rxFill   = 'rgba(139, 92, 246, 0.25)';
-        $txStroke = '#f59e0b';  // amber
-        $txFill   = 'rgba(245, 158, 11, 0.25)';
-    } else {
-        $rxStroke = '#22c55e';  // green
-        $rxFill   = 'rgba(34, 197, 94, 0.25)';
-        $txStroke = '#3b82f6';  // blue
-        $txFill   = 'rgba(59, 130, 246, 0.25)';
-    }
+    // Category-specific colour palettes
+    // Each category has [aggregateRx, aggregateTx, physicalRx, physicalTx]
+    $colourMap = [
+        'bits' => [
+            'agg'  => [ '#8b5cf6', 'rgba(139, 92, 246, 0.25)', '#f59e0b', 'rgba(245, 158, 11, 0.25)' ],  // purple / amber
+            'phys' => [ '#22c55e', 'rgba(34, 197, 94, 0.25)',   '#3b82f6', 'rgba(59, 130, 246, 0.25)' ],  // green / blue
+        ],
+        'packets' => [
+            'agg'  => [ '#0ea5e9', 'rgba(14, 165, 233, 0.25)',  '#6366f1', 'rgba(99, 102, 241, 0.25)' ],  // sky / indigo
+            'phys' => [ '#06b6d4', 'rgba(6, 182, 212, 0.25)',   '#818cf8', 'rgba(129, 140, 248, 0.25)' ], // cyan / violet
+        ],
+        'errors' => [
+            'agg'  => [ '#ef4444', 'rgba(239, 68, 68, 0.25)',   '#f97316', 'rgba(249, 115, 22, 0.25)' ],  // red / orange
+            'phys' => [ '#dc2626', 'rgba(220, 38, 38, 0.25)',   '#ea580c', 'rgba(234, 88, 12, 0.25)' ],   // darker red / darker orange
+        ],
+        'discards' => [
+            'agg'  => [ '#f59e0b', 'rgba(245, 158, 11, 0.25)',  '#d946ef', 'rgba(217, 70, 239, 0.25)' ],  // amber / fuchsia
+            'phys' => [ '#eab308', 'rgba(234, 179, 8, 0.25)',   '#c026d3', 'rgba(192, 38, 211, 0.25)' ],  // yellow / purple
+        ],
+        'broadcasts' => [
+            'agg'  => [ '#14b8a6', 'rgba(20, 184, 166, 0.25)',  '#f43f5e', 'rgba(244, 63, 94, 0.25)' ],   // teal / rose
+            'phys' => [ '#0d9488', 'rgba(13, 148, 136, 0.25)',  '#e11d48', 'rgba(225, 29, 72, 0.25)' ],   // darker teal / darker rose
+        ],
+    ];
+
+    $palette = $colourMap[ $category ] ?? $colourMap['bits'];
+    $scheme  = $isAggregate ? $palette['agg'] : $palette['phys'];
+
+    $rxStroke = $scheme[0];
+    $rxFill   = $scheme[1];
+    $txStroke = $scheme[2];
+    $txFill   = $scheme[3];
 ?>
 
 <?php if( empty( $data ) ): ?>
@@ -87,8 +120,9 @@
 
 <script>
 (function() {
-    var graphId  = <?= json_encode( $graphId ) ?>;
-    var isBits   = <?= json_encode( $isBits ) ?>;
+    var graphId    = <?= json_encode( $graphId ) ?>;
+    var isBits     = <?= json_encode( $isBits ) ?>;
+    var unitSuffix = <?= json_encode( $unitSuffix ) ?>;
 
     var rxStroke = <?= json_encode( $rxStroke ) ?>;
     var rxFill   = <?= json_encode( $rxFill ) ?>;
@@ -112,11 +146,11 @@
     }
 
     function fmtAxis(val) {
-        return isBits ? fmtSI(val, 'bps') : fmtSI(val, 'pps');
+        return fmtSI(val, unitSuffix);
     }
 
     function fmtTooltip(val) {
-        return isBits ? fmtSI(val, 'bps') : fmtSI(val, 'pps');
+        return fmtSI(val, unitSuffix);
     }
 
     function tooltipPlugin() {
