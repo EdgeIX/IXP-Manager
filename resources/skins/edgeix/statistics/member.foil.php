@@ -43,7 +43,7 @@
                             </select>
 
                             <label for="period" class="mr-2">Period:</label>
-                            <select id="period" name="period" onchange="this.form.submit()" class="form-control mr-3">
+                            <select id="period" name="period" class="form-control mr-3">
                                 <?php foreach( IXP\Services\Grapher\Graph::PERIOD_DESCS as $pvalue => $pname ): ?>
                                     <option value="<?= $pvalue ?>" <?php if( $t->period === $pvalue ): ?> selected <?php endif; ?>><?= $pname ?></option>
                                 <?php endforeach; ?>

@@ -94,10 +94,10 @@ class StatisticsController extends Controller
      */
     private function processGraphParams( StatisticsRequest $request ): void
     {
-        $request->period   = Graph::processParameterPeriod( $request->period );
-        $request->category = Graph::processParameterCategory( $request->category );
-        $request->protocol = Graph::processParameterProtocol( $request->protocol );
-        $request->type     = Graph::processParameterType( $request->type );
+        $request->period   = Graph::processParameterPeriod( $request->input('period') );
+        $request->category = Graph::processParameterCategory( $request->input('category') );
+        $request->protocol = Graph::processParameterProtocol( $request->input('protocol') );
+        $request->type     = Graph::processParameterType( $request->input('type') );
     }
 
     /**
@@ -424,8 +424,8 @@ class StatisticsController extends Controller
                 'virtualinterfaces.physicalInterfaces.switchPort.switcher.cabinet.location',
             ] ),
             "grapher"               => $grapher,
-            "category"              => Graph::processParameterCategory( $r->category ),
-            "period"                => Graph::processParameterPeriod( $r->period ),
+            "category"              => Graph::processParameterCategory( $r->input('category') ),
+            "period"                => Graph::processParameterPeriod( $r->input('period') ),
         ]);
     }
 
@@ -462,7 +462,7 @@ class StatisticsController extends Controller
         }
 
         /** @var Graph $graph */
-        $graph->setCategory( Graph::processParameterCategory( $r->category ) );
+        $graph->setCategory( Graph::processParameterCategory( $r->input('category') ) );
         $graph->authorise();
 
         return view( 'statistics/member-drilldown' )->with( [
@@ -804,7 +804,7 @@ class StatisticsController extends Controller
         }
 
         $day        = Carbon::createFromFormat( 'Y-m-d', $tday );
-        $category   = Graph::processParameterCategory( $r->category );
+        $category   = Graph::processParameterCategory( $r->input('category') );
 
         return view( 'statistics/league-table' )->with( [
             'metric'       => $metric,
@@ -897,8 +897,8 @@ class StatisticsController extends Controller
             $vid = $vlan->id;
         }
 
-        $category = Graph::processParameterCategory( $r->category );
-        $period   = Graph::processParameterPeriod( $r->period, Graph::PERIOD_MONTH );
+        $category = Graph::processParameterCategory( $r->input('category') );
+        $period   = Graph::processParameterPeriod( $r->input('period'), Graph::PERIOD_MONTH );
 
         return view( 'statistics/utilisation' )->with( [
             'metric'       => $metric,
