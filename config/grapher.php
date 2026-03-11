@@ -97,6 +97,40 @@ return [
         'victoriametrics' => [
             // Victoria Metrics / Prometheus-compatible API base URL
             'url' => env( 'GRAPHER_BACKEND_VM_URL', 'http://localhost:8428' ),
+
+            // Recording rule metric names.
+            // These are pre-computed gauge metrics from VM/Prometheus recording rules
+            // that already have rate() and multiplier applied (e.g. rate(counter[30s])*8).
+            // Querying these avoids rate() at query time, massively reducing sample
+            // scanning and eliminating maxSamplesPerQuery errors on long time ranges.
+            //
+            // Set these to match your recording rules. The metrics must carry a
+            // 'device_interface' label (e.g. "pe1syd3:Ethernet9/2") for per-port
+            // matching, and 'device' + 'interface_name' labels for aggregate queries.
+            //
+            // If not set, the backend falls back to querying raw counters with rate().
+            'metrics' => [
+                'bits' => [
+                    'rx' => env( 'GRAPHER_VM_METRIC_BITS_RX', 'port_bitrate_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_METRIC_BITS_TX', 'port_bitrate_tx:10s' ),
+                ],
+                'packets' => [
+                    'rx' => env( 'GRAPHER_VM_METRIC_PKTS_RX', 'port_unicast_pps_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_METRIC_PKTS_TX', 'port_unicast_pps_tx:10s' ),
+                ],
+                'errors' => [
+                    'rx' => env( 'GRAPHER_VM_METRIC_ERRS_RX', 'port_errors_pps_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_METRIC_ERRS_TX', 'port_errors_pps_tx:10s' ),
+                ],
+                'discards' => [
+                    'rx' => env( 'GRAPHER_VM_METRIC_DISC_RX', 'port_discards_pps_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_METRIC_DISC_TX', 'port_discards_pps_tx:10s' ),
+                ],
+                'broadcasts' => [
+                    'rx' => env( 'GRAPHER_VM_METRIC_BCAST_RX', 'port_broadcasts_pps_rx:10s' ),
+                    'tx' => env( 'GRAPHER_VM_METRIC_BCAST_TX', 'port_broadcasts_pps_tx:10s' ),
+                ],
+            ],
         ],
 
         'smokeping' => [
