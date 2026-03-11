@@ -40,10 +40,10 @@
     </div>
 <?php else: ?>
 
-<div class="uplot-graph-container" style="margin-bottom: 1rem;">
-    <div id="<?= $graphId ?>" style="width: 100%;"></div>
+<div class="uplot-graph-container" style="margin-bottom: 0.5rem; overflow: hidden;">
+    <div id="<?= $graphId ?>" style="width: 100%; min-width: 0;"></div>
 
-    <table class="table table-sm table-borderless mt-2" style="font-size: 0.85rem; max-width: 500px;">
+    <table class="table table-sm table-borderless mt-1 mb-0" style="font-size: 0.85rem; max-width: 450px;">
         <thead>
             <tr>
                 <th></th>
@@ -134,11 +134,11 @@
         var el = document.getElementById(graphId);
         if (!el || typeof uPlot === 'undefined') return;
 
-        var width = el.parentElement.clientWidth || 800;
+        var width = el.clientWidth || el.parentElement.clientWidth || 800;
 
         var opts = {
             width: width,
-            height: 250,
+            height: 300,
             plugins: [tooltipPlugin()],
             cursor: { drag: { x: true, y: false } },
             legend: { show: false },

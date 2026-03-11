@@ -20,7 +20,7 @@ $c = $t->c; /** @var \IXP\Models\Customer $c */
                         </a>
                     </div>
                 </div>
-                <div class="card-body" style="max-width: 700px;">
+                <div class="card-body">
                     <?= $t->aggregateGraph->renderer()->boxUplot() ?>
                 </div>
             </div>
