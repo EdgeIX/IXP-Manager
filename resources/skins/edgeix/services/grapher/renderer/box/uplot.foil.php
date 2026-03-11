@@ -24,7 +24,7 @@
     foreach( $data as $point ) {
         $timestamps[] = $point[0];
         $rxValues[]   = $point[1];
-        $txValues[]   = -$point[2]; // negate TX for mirror chart
+        $txValues[]   = $point[2];
     }
 
     // Calculate statistics
@@ -118,7 +118,7 @@
                     tt.innerHTML =
                         '<strong>' + str + '</strong><br>' +
                         '<span style="color:#22c55e">\u25B2 RX:</span> ' + fmtTooltip(rx) + '<br>' +
-                        '<span style="color:#3b82f6">\u25BC TX:</span> ' + fmtTooltip(Math.abs(tx));
+                        '<span style="color:#3b82f6">\u25BC TX:</span> ' + fmtTooltip(tx);
 
                     var left = u.cursor.left + 10;
                     if (left + 180 > u.over.clientWidth) left = u.cursor.left - 180;
@@ -146,9 +146,8 @@
                 x: { time: true },
                 y: {
                     range: function(u, dmin, dmax) {
-                        var absMax = Math.max(Math.abs(dmin || 0), Math.abs(dmax || 0));
-                        absMax = absMax * 1.15 || 1;
-                        return [-absMax, absMax];
+                        var top = (dmax || 1) * 1.15;
+                        return [0, top];
                     }
                 }
             },
@@ -173,13 +172,13 @@
                 {
                     label: 'RX (In)',
                     stroke: '#22c55e',
-                    fill: 'rgba(34, 197, 94, 0.12)',
+                    fill: 'rgba(34, 197, 94, 0.25)',
                     width: 1.5
                 },
                 {
                     label: 'TX (Out)',
                     stroke: '#3b82f6',
-                    fill: 'rgba(59, 130, 246, 0.12)',
+                    fill: 'rgba(59, 130, 246, 0.25)',
                     width: 1.5
                 }
             ]
