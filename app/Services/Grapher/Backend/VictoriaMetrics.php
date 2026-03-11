@@ -26,6 +26,7 @@ use IXP\Services\Grapher\Graph\{
     Infrastructure      as InfraGraph,
     Switcher            as SwitcherGraph,
     Location            as LocationGraph,
+    CoreBundle          as CoreBundleGraph,
 };
 
 use IXP\Models\Switcher;
@@ -152,6 +153,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             'infrastructure'    => $base,
             'switcher'          => $base,
             'location'          => $base,
+            'corebundle'        => $base,
         ];
     }
 
@@ -258,6 +260,35 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             }
 
             return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
+        }
+
+        // ── Core Bundle graphs: sum member port metrics for the selected side ──
+
+        if( $graph instanceof CoreBundleGraph ) {
+            $cb   = $graph->coreBundle();
+            $side = $graph->side();
+
+            $labels = [];
+            foreach( $cb->corelinks as $cl ) {
+                $ci = $side === 'a' ? $cl->coreInterfaceSideA : $cl->coreInterfaceSideB;
+                $pi = $ci->physicalInterface;
+
+                if( !$pi || !$pi->switchPort || !$pi->switchPort->switcher ) {
+                    continue;
+                }
+
+                $labels[] = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
+            }
+
+            if( empty( $labels ) ) {
+                return null;
+            }
+
+            if( count( $labels ) === 1 ) {
+                return "{$metric}{device_interface=\"{$labels[0]}\"}";
+            }
+
+            return $this->buildSumQuery( $metric, 'device_interface', $labels );
         }
 
         throw new CannotHandleRequestException( "VictoriaMetrics backend cannot handle graph type: " . $graph->classType() );
