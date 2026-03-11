@@ -11,7 +11,7 @@ Replaces legacy server-rendered MRTG PNG graphs with client-side interactive tim
 - **Eight graph scopes** -- Physical Interface, Virtual Interface (LAG/Port-Channel), Customer Aggregate, IXP-wide, Infrastructure, Switch, Location, Core Bundle
 - **Four time periods** -- Day, Week, Month, Year
 - **Category-aware colour schemes** -- distinct palettes for each metric type, with separate aggregate/physical variants
-- **No recording rules or config files** -- queries raw OpenConfig counters directly; no cron jobs, no RRD files, no MRTG config
+- **Recording rule powered** -- queries pre-computed recording rule gauges for maximum performance; no `rate()` at query time, no sample limit issues even at year-long time ranges. Metric names are fully configurable for portability across deployments
 - **Pluggable** -- uses IXP Manager's existing `Grapher\Backend` contract; can run alongside MRTG as a fallback
 - **DOM (optical power) monitoring** -- RX/TX optical power (dBm) graphs on every physical port and core link, with multi-channel support for breakout optics
 - **Interface status overlay** -- red shading on traffic graphs during interface down periods (from `openconfig_interfaces_oper_status`)
@@ -39,10 +39,11 @@ gNMI Streaming Telemetry (Arista EOS / etc.)
 ### Data Pipeline
 
 1. **Collection**: gNMIC (or similar) streams OpenConfig interface counters from switches into VictoriaMetrics
-2. **Query**: The backend builds PromQL `rate()` queries on raw OpenConfig counters and sends `query_range` requests to the VictoriaMetrics HTTP API
-3. **Render**: The uPlot Foil template renders interactive JavaScript charts client-side
+2. **Recording rules**: VM/Prometheus recording rules pre-compute `rate()` and enrichment at write time, producing gauge metrics (e.g. `port_bitrate_rx:10s`)
+3. **Query**: The backend queries these pre-computed gauges via `query_range` — no `rate()` at query time
+4. **Render**: The uPlot Foil template renders interactive JavaScript charts client-side
 
-No recording rules or pre-computed metrics are required. The backend queries raw OpenConfig counters directly (e.g. `openconfig_interfaces_in_octets`) and wraps them with `rate(...[30s])` to derive per-second rates.
+The backend queries pre-computed recording rule gauges rather than raw counters. This eliminates `rate()` computation at query time, vastly reducing sample scanning and avoiding VictoriaMetrics `maxSamplesPerQuery` errors even on year-long aggregate queries across many switches.
 
 ## Prerequisites
 
@@ -51,19 +52,121 @@ No recording rules or pre-computed metrics are required. The backend queries raw
 - Streaming telemetry collector (gNMIC recommended) feeding metrics into VM
 - uPlot v1.6.31 vendored at `public/vendor/uplot/`
 
-### Required Raw OpenConfig Counters
+### Required Recording Rules
 
-The backend queries raw OpenConfig interface counters directly using `rate()`. No recording rules are needed. The following counters must be present with a `device_interface` label in the format `switch_name:port_name` (e.g. `pe1syd3:Ethernet9/2`):
+The backend queries pre-computed recording rule gauge metrics. Recording rules apply `rate()` and multipliers (e.g. `rate(counter[30s])*8`) at write time, so the backend queries them as simple gauges — no `rate()` at query time.
 
-| Category    | RX Counter                                    | TX Counter                                     | Multiplier |
-|-------------|-----------------------------------------------|------------------------------------------------|------------|
-| Bits        | `openconfig_interfaces_in_octets`             | `openconfig_interfaces_out_octets`              | ×8         |
-| Packets     | `openconfig_interfaces_in_unicast_pkts`       | `openconfig_interfaces_out_unicast_pkts`        | ×1         |
-| Errors      | `openconfig_interfaces_in_errors`             | `openconfig_interfaces_out_errors`              | ×1         |
-| Discards    | `openconfig_interfaces_in_discards`           | `openconfig_interfaces_out_discards`            | ×1         |
-| Broadcasts  | `openconfig_interfaces_in_broadcast_pkts`     | `openconfig_interfaces_out_broadcast_pkts`      | ×1         |
+Each recording rule metric must carry a `device_interface` label in the format `switch_name:port_name` (e.g. `pe1syd3:Ethernet9/2`), plus `device` and `interface_name` labels for aggregate queries.
 
-Values are raw monotonically-increasing counters. The backend applies `rate(...[30s])` to convert to per-second rates, then multiplies by 8 for octets→bits conversion where applicable.
+| Category    | RX Metric (default)            | TX Metric (default)             | Unit  |
+|-------------|--------------------------------|---------------------------------|-------|
+| Bits        | `port_bitrate_rx:10s`          | `port_bitrate_tx:10s`           | bps   |
+| Packets     | `port_unicast_pps_rx:10s`      | `port_unicast_pps_tx:10s`       | pps   |
+| Errors      | `port_errors_pps_rx:10s`       | `port_errors_pps_tx:10s`        | pps   |
+| Discards    | `port_discards_pps_rx:10s`     | `port_discards_pps_tx:10s`      | pps   |
+| Broadcasts  | `port_broadcasts_pps_rx:10s`   | `port_broadcasts_pps_tx:10s`    | pps   |
+
+These metrics are gauge values (already rate-computed). The metric names are configurable via `config/grapher.php` or `.env` variables — see [Configuration Reference](#configuration-reference).
+
+#### Example Recording Rules (VictoriaMetrics/Prometheus)
+
+```yaml
+groups:
+  - name: ixp_port_metrics
+    interval: 10s
+    rules:
+      - record: port_bitrate_rx:10s
+        expr: >
+          rate(openconfig_interfaces_in_octets[30s]) * 8
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_bitrate_tx:10s
+        expr: >
+          rate(openconfig_interfaces_out_octets[30s]) * 8
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_unicast_pps_rx:10s
+        expr: >
+          rate(openconfig_interfaces_in_unicast_pkts[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_unicast_pps_tx:10s
+        expr: >
+          rate(openconfig_interfaces_out_unicast_pkts[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_errors_pps_rx:10s
+        expr: >
+          rate(openconfig_interfaces_in_errors[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_errors_pps_tx:10s
+        expr: >
+          rate(openconfig_interfaces_out_errors[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_discards_pps_rx:10s
+        expr: >
+          rate(openconfig_interfaces_in_discards[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_discards_pps_tx:10s
+        expr: >
+          rate(openconfig_interfaces_out_discards[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_broadcasts_pps_rx:10s
+        expr: >
+          rate(openconfig_interfaces_in_broadcast_pkts[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+
+      - record: port_broadcasts_pps_tx:10s
+        expr: >
+          rate(openconfig_interfaces_out_broadcast_pkts[30s])
+          * on (device_interface)
+          group_left(customer, asn, member, bundle, bundle_parent)
+          ixpmanager_port
+```
+
+The `ixpmanager_port` join metric enriches each series with customer/ASN metadata. This is optional for the grapher backend (which only needs the `device_interface`, `device`, and `interface_name` labels) but useful for Grafana dashboards and alerting.
+
+#### Sub-interface Recording Rules (for Pseudowire Module)
+
+If using the `edgeix/ixpm-pseudowire` module, you also need sub-interface recording rules:
+
+```yaml
+      - record: svc_bitrate_rx:10s
+        expr: >
+          rate(openconfig_subinterfaces_in_octets[30s]) * 8
+          * on (device_interface)
+          group_left(customer, asn, parent_interface, type)
+          ixpmanager_svc
+
+      - record: svc_bitrate_tx:10s
+        expr: >
+          rate(openconfig_subinterfaces_out_octets[30s]) * 8
+          * on (device_interface)
+          group_left(customer, asn, parent_interface, type)
+          ixpmanager_svc
+```
 
 ### Optional: DOM (Optical Power) Metrics
 
@@ -112,29 +215,31 @@ These use the `device_interface` label for exact or regex matching:
 
 For **Customer Aggregate** graphs, the backend queries all of a customer's interfaces using PromQL regex alternation:
 ```promql
-sum(rate(openconfig_interfaces_in_octets{device_interface=~"pe1syd3:Port-Channel42|pe2syd3:Ethernet5/1"}[30s]))*8
+sum(port_bitrate_rx:10s{device_interface=~"pe1syd3:Port-Channel42|pe2syd3:Ethernet5/1"})
 ```
 
 #### Aggregate Graphs (IXP, Infrastructure, Switch, Location)
 
-These use the `device` and `interface_name` labels, summing `rate()` across all Ethernet interfaces on the relevant switches. The `interface_name=~"Ethernet.*"` filter avoids double-counting LAG members alongside Port-Channel aggregates (Port-Channel interfaces don't match `Ethernet.*`):
+These use the `device` and `interface_name` labels, summing across all Ethernet interfaces on the relevant switches. The `interface_name=~"Ethernet.*"` filter avoids double-counting LAG members alongside Port-Channel aggregates (Port-Channel interfaces don't match `Ethernet.*`):
 
 | Graph Type     | PromQL Pattern                                                           |
 |----------------|--------------------------------------------------------------------------|
-| IXP-wide       | `sum(rate(counter{interface_name=~"Ethernet.*"}[30s]))*multiplier`       |
-| Infrastructure | `sum(rate(counter{device=~"sw1\|sw2",interface_name=~"Ethernet.*"}[30s]))*multiplier` |
-| Switch         | `sum(rate(counter{device="name",interface_name=~"Ethernet.*"}[30s]))*multiplier` |
-| Location       | `sum(rate(counter{device=~"sw1\|sw2",interface_name=~"Ethernet.*"}[30s]))*multiplier` |
+| IXP-wide       | `sum(metric{interface_name=~"Ethernet.*"})`                              |
+| Infrastructure | `sum(metric{device=~"sw1\|sw2",interface_name=~"Ethernet.*"})`           |
+| Switch         | `sum(metric{device="name",interface_name=~"Ethernet.*"})`                |
+| Location       | `sum(metric{device=~"sw1\|sw2",interface_name=~"Ethernet.*"})`           |
+
+Since recording rules are pre-computed gauges, these queries are simple `sum()` lookups — no `rate()` at query time. This means IXP-wide aggregate queries work efficiently even at year-long time ranges across hundreds of interfaces.
 
 #### Core Bundle Graphs (inter-switch links)
 
-Core bundle graphs sum `rate()` across the member port interfaces for a given side (A or B):
+Core bundle graphs sum across the member port interfaces for a given side (A or B):
 
 | Graph Type     | PromQL Pattern                                                           |
 |----------------|--------------------------------------------------------------------------|
-| Core Bundle (aggregate) | `sum(rate(counter{device_interface=~"pe1:Eth25/1\|pe1:Eth26/1"}[30s]))*multiplier` |
-| Core Bundle (single link) | `rate(counter{device_interface="pe1:Ethernet25/1"}[30s])*multiplier` |
-| Individual member port | `rate(counter{device_interface="pe1:Ethernet25/1"}[30s])*multiplier` |
+| Core Bundle (aggregate) | `sum(metric{device_interface=~"pe1:Eth25/1\|pe1:Eth26/1"})` |
+| Core Bundle (single link) | `metric{device_interface="pe1:Ethernet25/1"}` |
+| Individual member port | `metric{device_interface="pe1:Ethernet25/1"}` |
 
 Core bundles walk the relationship chain: `CoreBundle → CoreLinks → CoreInterface(side) → PhysicalInterface → SwitchPort → Switcher` to resolve port labels.
 
@@ -169,6 +274,30 @@ And add the backend-specific config section:
 
     'victoriametrics' => [
         'url' => env( 'GRAPHER_BACKEND_VM_URL', 'http://localhost:8428' ),
+
+        // Recording rule metric names (override via .env if your rules use different names)
+        'metrics' => [
+            'bits' => [
+                'rx' => env( 'GRAPHER_VM_METRIC_BITS_RX', 'port_bitrate_rx:10s' ),
+                'tx' => env( 'GRAPHER_VM_METRIC_BITS_TX', 'port_bitrate_tx:10s' ),
+            ],
+            'packets' => [
+                'rx' => env( 'GRAPHER_VM_METRIC_PKTS_RX', 'port_unicast_pps_rx:10s' ),
+                'tx' => env( 'GRAPHER_VM_METRIC_PKTS_TX', 'port_unicast_pps_tx:10s' ),
+            ],
+            'errors' => [
+                'rx' => env( 'GRAPHER_VM_METRIC_ERRS_RX', 'port_errors_pps_rx:10s' ),
+                'tx' => env( 'GRAPHER_VM_METRIC_ERRS_TX', 'port_errors_pps_tx:10s' ),
+            ],
+            'discards' => [
+                'rx' => env( 'GRAPHER_VM_METRIC_DISC_RX', 'port_discards_pps_rx:10s' ),
+                'tx' => env( 'GRAPHER_VM_METRIC_DISC_TX', 'port_discards_pps_tx:10s' ),
+            ],
+            'broadcasts' => [
+                'rx' => env( 'GRAPHER_VM_METRIC_BCAST_RX', 'port_broadcasts_pps_rx:10s' ),
+                'tx' => env( 'GRAPHER_VM_METRIC_BCAST_TX', 'port_broadcasts_pps_tx:10s' ),
+            ],
+        ],
     ],
 ],
 ```
@@ -331,17 +460,18 @@ Beyond the `boxLegacy()` -> `boxUplot()` swap, you may also want to update layou
 
 1. **Graph creation**: Controller calls `$grapher->physint($pi)->setCategory('bits')->setPeriod('day')`
 2. **Backend resolution**: IXP Manager's Grapher service finds VictoriaMetrics as the first capable backend
-3. **Interface mapping**: `buildQueryForGraph()` maps the IXP Manager graph model to a PromQL `rate()` query on raw OpenConfig counters:
-   - Physical Interface → `rate(counter{device_interface="switch:port"}[30s])*multiplier`
-   - LAG → `rate(counter{device_interface="switch:Port-Channel<n>"}[30s])*multiplier`
-   - Customer → `sum(rate(counter{device_interface=~"regex"}[30s]))*multiplier` across all customer ports
-   - IXP → `sum(rate(counter{interface_name=~"Ethernet.*"}[30s]))*multiplier` across all switches
-   - Infrastructure → `sum(rate(counter{device=~"switch1|switch2",interface_name=~"Ethernet.*"}[30s]))*multiplier`
-   - Switch → `sum(rate(counter{device="name",interface_name=~"Ethernet.*"}[30s]))*multiplier`
+3. **Metric resolution**: `metricName()` reads the recording rule metric name from config (e.g. `port_bitrate_rx:10s`)
+4. **Query building**: `buildQueryForGraph()` maps the graph model to a PromQL query on the recording rule gauge:
+   - Physical Interface → `metric{device_interface="switch:port"}`
+   - LAG → `metric{device_interface="switch:Port-Channel<n>"}`
+   - Customer → `sum(metric{device_interface=~"regex"})` across all customer ports
+   - IXP → `sum(metric{device=~"all_switches",interface_name=~"Ethernet.*"})` across all switches
+   - Infrastructure → `sum(metric{device=~"switch1|switch2",interface_name=~"Ethernet.*"})`
+   - Switch → `sum(metric{device="name",interface_name=~"Ethernet.*"})`
    - Location → same as infrastructure but switches resolved via cabinets
-   - Core Bundle → `sum(rate(counter{device_interface=~"member1|member2"}[30s]))*multiplier` across bundle member ports
-4. **HTTP request**: `queryRange()` hits `/api/v1/query_range` with the query, time range, and step
-5. **Data merge**: RX and TX results are merged by timestamp into `[ts, avg_in, avg_out, max_in, max_out]`
+   - Core Bundle → `sum(metric{device_interface=~"member1|member2"})` across bundle member ports
+5. **HTTP request**: `queryRange()` hits `/api/v1/query_range` with the query, time range, and step
+6. **Data merge**: RX and TX results are merged by timestamp into `[ts, avg_in, avg_out, max_in, max_out]`
 
 ### Renderer: uPlot Template
 
@@ -445,10 +575,10 @@ An admin-only page (`/statistics/top-n`) showing the busiest ports by current tr
 
 ### How It Works
 
-Uses a PromQL `topk()` instant query to find the highest-traffic interfaces:
+Uses a PromQL `topk()` instant query on the recording rule gauge to find the highest-traffic interfaces:
 
 ```promql
-topk(20, rate(openconfig_interfaces_in_octets{interface_name=~"Ethernet.*"}[30s])*8)
+topk(20, port_bitrate_rx:10s{interface_name=~"Ethernet.*"})
 ```
 
 Each result is cross-referenced with the IXP Manager database to resolve the customer, port details, location, and speed. The `resolveDeviceInterface()` method splits the `device_interface` label, looks up the `Switcher` by name, finds the `SwitchPort`, then follows the relationship chain to `PhysicalInterface` → `VirtualInterface` → `Customer`.
@@ -464,12 +594,31 @@ Each result is cross-referenced with the IXP Manager database to resolve the cus
 
 ### Environment Variables
 
+#### Core Grapher Backend
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GRAPHER_BACKENDS` | `dummy` | Pipe-separated list of backend names |
 | `GRAPHER_BACKEND_VM_URL` | `http://localhost:8428` | VictoriaMetrics API endpoint |
 | `GRAPHER_CACHE_ENABLED` | `true` | Enable graph data caching |
 | `GRAPHER_CACHE_LIFETIME` | `5` | Cache TTL in minutes |
+
+#### Recording Rule Metric Names (optional overrides)
+
+These only need to be set if your recording rules use different names than the defaults.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GRAPHER_VM_METRIC_BITS_RX` | `port_bitrate_rx:10s` | RX bits/s recording rule |
+| `GRAPHER_VM_METRIC_BITS_TX` | `port_bitrate_tx:10s` | TX bits/s recording rule |
+| `GRAPHER_VM_METRIC_PKTS_RX` | `port_unicast_pps_rx:10s` | RX packets/s recording rule |
+| `GRAPHER_VM_METRIC_PKTS_TX` | `port_unicast_pps_tx:10s` | TX packets/s recording rule |
+| `GRAPHER_VM_METRIC_ERRS_RX` | `port_errors_pps_rx:10s` | RX errors/s recording rule |
+| `GRAPHER_VM_METRIC_ERRS_TX` | `port_errors_pps_tx:10s` | TX errors/s recording rule |
+| `GRAPHER_VM_METRIC_DISC_RX` | `port_discards_pps_rx:10s` | RX discards/s recording rule |
+| `GRAPHER_VM_METRIC_DISC_TX` | `port_discards_pps_tx:10s` | TX discards/s recording rule |
+| `GRAPHER_VM_METRIC_BCAST_RX` | `port_broadcasts_pps_rx:10s` | RX broadcasts/s recording rule |
+| `GRAPHER_VM_METRIC_BCAST_TX` | `port_broadcasts_pps_tx:10s` | TX broadcasts/s recording rule |
 
 ### Supported Graph Types
 
@@ -491,15 +640,17 @@ Not yet supported (still served by MRTG/other backends if configured):
 
 ## Pseudowire Traffic Graphs
 
-The `edgeix/ixpm-pseudowire` module includes standalone traffic graphs for pseudowire circuits. These are **independent of the core Grapher framework** because pseudowire circuits use sub-interface metrics that require raw `rate()` queries on OpenConfig counters, which are the same raw counters used by the main grapher but at the sub-interface level.
+The `edgeix/ixpm-pseudowire` module includes standalone traffic graphs for pseudowire circuits. These are **independent of the core Grapher framework** because pseudowire circuits use sub-interface metrics at a different level in the OpenConfig hierarchy.
 
 ### How It Works
 
-Each pseudowire circuit has two endpoints (A-End, Z-End). Each endpoint maps to a sub-interface identified by `switch_name:port_name.subif_vlan` (e.g. `pe2syd1:Port-Channel6.1020`). The `PwTrafficService` builds PromQL queries like:
+Each pseudowire circuit has two endpoints (A-End, Z-End). Each endpoint maps to a sub-interface identified by `switch_name:port_name.subif_vlan` (e.g. `pe2syd1:Port-Channel6.1020`). By default, the `PwTrafficService` queries pre-computed recording rule gauges:
 
 ```promql
-rate(openconfig_subinterfaces_in_octets{device_interface="pe2syd1:Port-Channel6.1020"}[30s])*8
+svc_bitrate_rx:10s{device_interface="pe2syd1:Port-Channel6.1020"}
 ```
+
+For deployments without recording rules, set `PW_METRICS_USE_RECORDING_RULES=false` to fall back to raw counter queries with `rate()`.
 
 The admin circuit detail page fetches data via AJAX (`GET /pseudowire/admin/circuits/{id}/traffic?period=day`) and renders uPlot charts for both ends.
 
@@ -510,12 +661,13 @@ All metrics settings live in `config/pseudowire.php` under the `metrics` key. Th
 | `.env` Variable | Default | Description |
 |-----------------|---------|-------------|
 | `PW_METRICS_URL` | *(none — feature disabled)* | VictoriaMetrics / Prometheus base URL |
-| `PW_METRICS_RX` | `openconfig_subinterfaces_in_octets` | RX counter metric name |
-| `PW_METRICS_TX` | `openconfig_subinterfaces_out_octets` | TX counter metric name |
+| `PW_METRICS_RX` | `svc_bitrate_rx:10s` | RX metric name (recording rule gauge) |
+| `PW_METRICS_TX` | `svc_bitrate_tx:10s` | TX metric name (recording rule gauge) |
+| `PW_METRICS_USE_RECORDING_RULES` | `true` | `true` = query as gauge; `false` = wrap in `rate()*multiplier` |
 | `PW_METRICS_LABEL` | `device_interface` | Label name for sub-interface matching |
 | `PW_METRICS_LABEL_FORMAT` | `{switch_name}:{port_name}.{subif_vlan}` | Label value pattern with placeholders |
-| `PW_METRICS_RATE_INTERVAL` | `30s` | `rate()` window for PromQL |
-| `PW_METRICS_MULTIPLIER` | `8` | Octets-to-bits multiplier |
+| `PW_METRICS_RATE_INTERVAL` | `30s` | `rate()` window (only when `USE_RECORDING_RULES=false`) |
+| `PW_METRICS_MULTIPLIER` | `8` | Post-rate multiplier (only when `USE_RECORDING_RULES=false`) |
 
 **Feature gate**: If `PW_METRICS_URL` is not set, the traffic graph card does not render.
 
@@ -548,20 +700,21 @@ This uses the same LAG detection logic as the core VictoriaMetrics backend (`Vic
 
 | Aspect | Core Grapher | Pseudowire Module |
 |--------|-------------|-------------------|
-| Metrics | Raw OpenConfig counters with `rate()` (interface-level) | Raw OpenConfig counters with `rate()` (sub-interface-level) |
+| Metrics | Recording rule gauges (interface-level) | Recording rule gauges (sub-interface-level) |
 | Query building | `buildQueryForGraph()` in Backend class | `PwTrafficService::buildQuery()` |
 | Data loading | Server-side (PHP, baked into Foil template) | Client-side (AJAX fetch, JS rendering) |
-| Config | `config/grapher.php` | `config/pseudowire.php` → `metrics` |
+| Config | `config/grapher.php` → `backends.victoriametrics.metrics` | `config/pseudowire.php` → `metrics` |
 | Label format | `switch:port` | `switch:port.subif_vlan` |
+| Raw counter fallback | No (recording rules required) | Yes (`PW_METRICS_USE_RECORDING_RULES=false`) |
 
 ## Troubleshooting
 
 ### No data displayed
 
-1. Check VictoriaMetrics is reachable from the IXP Manager host:
+1. Check VictoriaMetrics is reachable and the recording rule metric exists:
    ```bash
    curl -G 'http://your-vm:8428/api/v1/query' \
-     --data-urlencode 'query=rate(openconfig_interfaces_in_octets{device_interface="pe1syd3:Ethernet9/2"}[30s])*8'
+     --data-urlencode 'query=port_bitrate_rx:10s{device_interface="pe1syd3:Ethernet9/2"}'
    ```
 
 2. Verify the `device_interface` label format matches. Check what labels exist in VM:
@@ -569,7 +722,7 @@ This uses the same LAG detection logic as the core VictoriaMetrics backend (`Vic
    curl 'http://your-vm:8428/api/v1/label/device_interface/values' | grep pe1syd3
    ```
 
-3. Check all available raw metrics for a port:
+3. Check all available recording rule metrics for a port:
    ```bash
    curl -G 'http://your-vm:8428/api/v1/label/__name__/values' \
      --data-urlencode 'match[]={device_interface="pe1syd3:Ethernet9/2"}'
@@ -603,7 +756,7 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 - Interactive uPlot charts with tooltips, zoom, responsive layout
 - Category-aware headings and colour schemes
 - Statistics tables (max, average, current)
-- All queries use raw OpenConfig counters with `rate()` — no recording rules required
+- All queries use pre-computed recording rule gauges — no `rate()` at query time, configurable metric names
 - DOM (optical power) graphs — RX/TX dBm time series on physical ports and core link members
 - Interface status overlay — red background shading on traffic graphs during down periods
 - Capacity utilization badges — colour-coded % on port/LAG/core bundle headers
@@ -612,8 +765,8 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 ### Pseudowire Circuit Traffic Graphs (via `edgeix/ixpm-pseudowire`)
 - Per-circuit sub-interface traffic graphs on admin circuit detail page
 - Standalone implementation — does **not** use the core Grapher Backend; queries VM directly via `PwTrafficService`
-- Uses raw `rate()` on OpenConfig sub-interface counters
-- Fully configurable via `config/pseudowire.php` `metrics` key (metric names, label format, VM URL, rate interval)
+- Uses recording rule gauges by default (`svc_bitrate_rx:10s`), with raw counter fallback
+- Fully configurable via `config/pseudowire.php` `metrics` key (metric names, label format, VM URL, recording rule toggle)
 - See [Pseudowire Traffic Graphs](#pseudowire-traffic-graphs) section below
 
 ### Planned
