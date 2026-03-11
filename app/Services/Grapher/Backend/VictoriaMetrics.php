@@ -761,24 +761,24 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $txByChannel[ $ch ] = $series['values'] ?? [];
         }
 
+        // Index by channel_index to deduplicate (VM may return multiple
+        // series with the same channel_index from different label combos)
         $channels = [];
         foreach( $rxResults as $series ) {
             $ch = $series['metric']['channel_index'] ?? '0';
-            $channels[] = [
-                'channel_index' => $ch,
-                'rx'            => $series['values'] ?? [],
-                'tx'            => $txByChannel[ $ch ] ?? [],
-            ];
+            if( !isset( $channels[ $ch ] ) ) {
+                $channels[ $ch ] = [
+                    'channel_index' => $ch,
+                    'rx'            => $series['values'] ?? [],
+                    'tx'            => $txByChannel[ $ch ] ?? [],
+                ];
+            }
         }
 
         // If we got TX channels but no RX (unusual), include them
         foreach( $txByChannel as $ch => $values ) {
-            $found = false;
-            foreach( $channels as $c ) {
-                if( $c['channel_index'] === $ch ) { $found = true; break; }
-            }
-            if( !$found ) {
-                $channels[] = [
+            if( !isset( $channels[ $ch ] ) ) {
+                $channels[ $ch ] = [
                     'channel_index' => $ch,
                     'rx'            => [],
                     'tx'            => $values,
@@ -786,7 +786,8 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             }
         }
 
-        // Sort by channel index
+        // Sort by channel index and re-index
+        $channels = array_values( $channels );
         usort( $channels, fn( $a, $b ) => (int) $a['channel_index'] <=> (int) $b['channel_index'] );
 
         return [ 'channels' => $channels ];
