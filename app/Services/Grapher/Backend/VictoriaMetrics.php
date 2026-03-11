@@ -85,18 +85,17 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     ];
 
     /**
-     * Rate interval for raw counter queries.
-     */
-    private const RATE_INTERVAL = '30s';
-
-    /**
-     * Mapping of graph periods to PromQL time range and step size.
+     * Mapping of graph periods to PromQL time range, step size, and rate interval.
+     *
+     * Longer periods use longer rate intervals to reduce the number of raw
+     * samples VictoriaMetrics needs to scan (avoids maxSamplesPerQuery errors
+     * on aggregate queries spanning many series over long time ranges).
      */
     private const PERIOD_MAP = [
-        Graph::PERIOD_DAY   => [ 'range' => '24h',  'step' => '60s'    ],
-        Graph::PERIOD_WEEK  => [ 'range' => '7d',   'step' => '300s'   ],
-        Graph::PERIOD_MONTH => [ 'range' => '30d',  'step' => '1800s'  ],
-        Graph::PERIOD_YEAR  => [ 'range' => '365d', 'step' => '86400s' ],
+        Graph::PERIOD_DAY   => [ 'range' => '24h',  'step' => '60s',    'rate' => '30s' ],
+        Graph::PERIOD_WEEK  => [ 'range' => '7d',   'step' => '300s',   'rate' => '5m'  ],
+        Graph::PERIOD_MONTH => [ 'range' => '30d',  'step' => '1800s',  'rate' => '30m' ],
+        Graph::PERIOD_YEAR  => [ 'range' => '365d', 'step' => '86400s', 'rate' => '2h'  ],
     ];
 
     /**
@@ -182,14 +181,14 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      * @param Graph  $graph
      * @param string $counter     Raw OpenConfig counter (e.g. openconfig_interfaces_in_octets)
      * @param int    $multiplier  Post-rate multiplier (8 for octets→bits, 1 for pps)
+     * @param string $interval    Rate interval (e.g. '30s', '5m') — longer for longer periods
      *
      * @return string|null  PromQL query string, or null if no data sources exist
      *
      * @throws CannotHandleRequestException
      */
-    private function buildQueryForGraph( Graph $graph, string $counter, int $multiplier ): ?string
+    private function buildQueryForGraph( Graph $graph, string $counter, int $multiplier, string $interval = '30s' ): ?string
     {
-        $interval = self::RATE_INTERVAL;
         $suffix   = $multiplier > 1 ? "*{$multiplier}" : '';
 
         // ── Per-port graphs: match on device_interface ──
@@ -243,9 +242,22 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         }
 
         // ── Aggregate graphs: sum rate() across matching interfaces ──
+        // All aggregate queries scope to known switches to avoid scanning
+        // every device in VictoriaMetrics (prevents maxSamplesPerQuery errors).
 
         if( $graph instanceof IXPGraph ) {
-            return "sum(rate({$counter}{interface_name=~\"Ethernet.*\"}[{$interval}])){$suffix}";
+            $names = Switcher::whereNotNull( 'name' )
+                ->where( 'active', true )
+                ->pluck( 'name' )
+                ->filter()
+                ->values()
+                ->all();
+
+            if( empty( $names ) ) {
+                return null;
+            }
+
+            return $this->buildSumRateQuery( $counter, $interval, $multiplier, 'device', $names, 'interface_name=~"Ethernet.*"' );
         }
 
         if( $graph instanceof InfraGraph ) {
@@ -450,11 +462,12 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         $category  = $graph->category();
         $period    = $graph->period();
 
-        $metrics = self::METRIC_MAP[ $category ] ?? self::METRIC_MAP[ Graph::CATEGORY_BITS ];
-        $timing  = self::PERIOD_MAP[ $period ]   ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+        $metrics  = self::METRIC_MAP[ $category ] ?? self::METRIC_MAP[ Graph::CATEGORY_BITS ];
+        $timing   = self::PERIOD_MAP[ $period ]   ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+        $rateInt  = $timing['rate'] ?? '30s';
 
-        $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx']['counter'], $metrics['rx']['multiplier'] );
-        $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx']['counter'], $metrics['tx']['multiplier'] );
+        $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx']['counter'], $metrics['rx']['multiplier'], $rateInt );
+        $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx']['counter'], $metrics['tx']['multiplier'], $rateInt );
 
         // No data sources (e.g. location with no switches) — return empty
         if( $queryRx === null || $queryTx === null ) {
@@ -634,8 +647,8 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      */
     public function topInterfaces( int $limit = 20, string $direction = 'in' ): array
     {
-        $counter    = $direction === 'out' ? 'openconfig_interfaces_out_octets' : 'openconfig_interfaces_in_octets';
-        $interval   = self::RATE_INTERVAL;
+        $counter  = $direction === 'out' ? 'openconfig_interfaces_out_octets' : 'openconfig_interfaces_in_octets';
+        $interval = '5m';  // instant query uses moderate rate window for smoothing
 
         $query = "topk({$limit}, rate({$counter}{interface_name=~\"Ethernet.*\"}[{$interval}])*8)";
 
