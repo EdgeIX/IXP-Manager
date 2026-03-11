@@ -261,6 +261,14 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $pi    = $graph->physicalInterface();
             $label = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
 
+            // Sub-interface ports (e.g. Port-Channel2.502) use svc_bitrate_* metrics
+            if( str_contains( $pi->switchPort->name, '.' ) ) {
+                $svcMetric = $this->svcMetricName( $category, $direction );
+                if( $svcMetric ) {
+                    return "{$svcMetric}{device_interface=\"{$label}\"}";
+                }
+            }
+
             return "{$metric}{device_interface=\"{$label}\"}";
         }
 
@@ -631,11 +639,28 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             $pi    = $graph->physicalInterface();
             $label = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
 
-            $rawRx = $this->buildRawRateQuery( $category, 'rx', $label );
-            $rawTx = $this->buildRawRateQuery( $category, 'tx', $label );
+            // Sub-interface ports use openconfig_subinterfaces counters
+            if( str_contains( $pi->switchPort->name, '.' ) ) {
+                $raw = self::RAW_SUBINT_COUNTERS[ $category ] ?? null;
+                if( $raw ) {
+                    $rxRaw = $raw['rx'];
+                    $txRaw = $raw['tx'];
+                    $rxSuffix = $rxRaw['multiplier'] > 1 ? "*{$rxRaw['multiplier']}" : '';
+                    $txSuffix = $txRaw['multiplier'] > 1 ? "*{$txRaw['multiplier']}" : '';
 
-            $rxData = $this->queryRange( $rawRx, $timing['range'], $timing['step'] );
-            $txData = $this->queryRange( $rawTx, $timing['range'], $timing['step'] );
+                    $rawRx = "rate({$rxRaw['counter']}{device_interface=\"{$label}\"}[30s]){$rxSuffix}";
+                    $rawTx = "rate({$txRaw['counter']}{device_interface=\"{$label}\"}[30s]){$txSuffix}";
+
+                    $rxData = $this->queryRange( $rawRx, $timing['range'], $timing['step'] );
+                    $txData = $this->queryRange( $rawTx, $timing['range'], $timing['step'] );
+                }
+            } else {
+                $rawRx = $this->buildRawRateQuery( $category, 'rx', $label );
+                $rawTx = $this->buildRawRateQuery( $category, 'tx', $label );
+
+                $rxData = $this->queryRange( $rawRx, $timing['range'], $timing['step'] );
+                $txData = $this->queryRange( $rawTx, $timing['range'], $timing['step'] );
+            }
         }
 
         // Index TX data by timestamp for merging
