@@ -288,29 +288,27 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 $portName = $pi->switchPort->name;
             }
 
-            // Check if this VI is a sub-interface (has a VLAN tag).
-            // Sub-interfaces use svc_bitrate_* recording rules with .vlan suffix.
-            $vli = $vi->vlanInterfaces->first();
-            $vlanTag = $vli && $vli->vlan ? $vli->vlan->number : null;
+            $label = "{$switchName}:{$portName}";
 
-            if( $vlanTag ) {
-                $subLabel  = "{$switchName}:{$portName}.{$vlanTag}";
+            // Sub-interface ports (name contains '.', e.g. Port-Channel2.502)
+            // use svc_bitrate_* recording rules — the sub-interface index is
+            // already in the SwitchPort name, don't append VLAN tag.
+            if( str_contains( $portName, '.' ) ) {
                 $svcMetric = $this->svcMetricName( $category, $direction );
-
                 if( $svcMetric ) {
-                    return "{$svcMetric}{device_interface=\"{$subLabel}\"}";
+                    return "{$svcMetric}{device_interface=\"{$label}\"}";
                 }
 
                 // No sub-interface recording rule for this category — use raw counter
                 $raw = self::RAW_SUBINT_COUNTERS[ $category ][ $direction ] ?? null;
                 if( $raw ) {
                     $suffix = $raw['multiplier'] > 1 ? "*{$raw['multiplier']}" : '';
-                    return "rate({$raw['counter']}{device_interface=\"{$subLabel}\"}[30s]){$suffix}";
+                    return "rate({$raw['counter']}{device_interface=\"{$label}\"}[30s]){$suffix}";
                 }
             }
 
-            // Parent interface (dedicated port or no VLAN tag)
-            return "{$metric}{device_interface=\"{$switchName}:{$portName}\"}";
+            // Parent interface (dedicated port or no sub-interface suffix)
+            return "{$metric}{device_interface=\"{$label}\"}";
         }
 
         if( $graph instanceof CustomerGraph ) {
@@ -330,12 +328,10 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                     $portName = $pi->switchPort->name;
                 }
 
-                // Classify as sub-interface or parent port
-                $vli     = $vi->vlanInterfaces->first();
-                $vlanTag = $vli && $vli->vlan ? $vli->vlan->number : null;
-
-                if( $vlanTag ) {
-                    $subLabels[] = "{$switchName}:{$portName}.{$vlanTag}";
+                // Classify as sub-interface or parent port.
+                // Sub-interface index is already in the SwitchPort name (e.g. Port-Channel2.502).
+                if( str_contains( $portName, '.' ) ) {
+                    $subLabels[] = "{$switchName}:{$portName}";
                 } else {
                     $portLabels[] = "{$switchName}:{$portName}";
                 }
