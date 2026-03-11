@@ -100,11 +100,30 @@
 
                 <?php if( $isLAG ): ?>
                     <?php // ── LAG: aggregate full-width, member ports in 2-col grid ── ?>
+                    <?php
+                        // Calculate LAG capacity utilization %
+                        $lagSpeedMbps = 0;
+                        foreach( $pis as $p ) { $lagSpeedMbps += $p->speed; }
+                        $lagCapBps = $lagSpeedMbps * 1000000;
+                        $lagUtilPct = null;
+                        if( $lagCapBps > 0 && $vi->isGraphable() && $t->category === 'bits' ) {
+                            try {
+                                $lagStats = $t->grapher->virtint( $vi )->setCategory( 'bits' )->setPeriod( $t->period )->statistics();
+                                $lagCurMax = max( $lagStats->curIn(), $lagStats->curOut() );
+                                $lagUtilPct = $lagCurMax / $lagCapBps * 100;
+                            } catch( \Throwable $e ) {}
+                        }
+                    ?>
                     <div class="card mb-4">
                         <div class="card-header d-flex py-2" style="background-color: #f8f9fa;">
                             <h5 class="mb-0 mr-auto">
                                 LAG on <?= $pi->switchPort->switcher->cabinet->location->name ?>
                                 / <?= $pi->switchPort->switcher->name ?>
+                                <?php if( $lagUtilPct !== null ): ?>
+                                    <span class="badge badge-<?= $lagUtilPct > 80 ? 'danger' : ( $lagUtilPct > 50 ? 'warning' : 'success' ) ?> ml-2" title="LAG capacity utilization (<?= $t->scaleBits( $lagCapBps, 0 ) ?> total)">
+                                        <?= number_format( $lagUtilPct, 1 ) ?>%
+                                    </span>
+                                <?php endif; ?>
                             </h5>
                             <?php if( $vi->isGraphable() ): ?>
                                 <div class="btn-group btn-group-sm my-auto">
@@ -137,6 +156,17 @@
                                                 <h6 class="mb-0 mr-auto">
                                                     <?= $pi->switchPort->switcher->name ?> ::
                                                     <?= $pi->switchPort->name ?> (<?= $t->scaleSpeed( $pi->configuredSpeed() ) . ( $pi->isRateLimited() ? '/' . $pi->speed() : '' ) ?>)
+                                                    <?php if( $pi->isConnectedOrQuarantine() && $t->category === 'bits' ):
+                                                        try {
+                                                            $piStats = $t->grapher->physint( $pi )->setCategory( 'bits' )->setPeriod( $t->period )->statistics();
+                                                            $piCapBps = $pi->speed * 1000000;
+                                                            $piUtilPct = $piCapBps > 0 ? max( $piStats->curIn(), $piStats->curOut() ) / $piCapBps * 100 : 0;
+                                                        ?>
+                                                            <span class="badge badge-<?= $piUtilPct > 80 ? 'danger' : ( $piUtilPct > 50 ? 'warning' : 'success' ) ?> ml-1" title="Port utilization">
+                                                                <?= number_format( $piUtilPct, 1 ) ?>%
+                                                            </span>
+                                                        <?php } catch( \Throwable $e ) {} ?>
+                                                    <?php endif; ?>
                                                 </h6>
                                                 <?php if( $pi->isConnectedOrQuarantine() ): ?>
                                                     <div class="btn-group btn-group-sm my-auto">
@@ -149,6 +179,17 @@
                                             <div class="card-body py-2">
                                                 <?php if( $pi->isConnectedOrQuarantine() ): ?>
                                                     <?= $t->grapher->physint( $pi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                                                    <?php if( $t->category === 'bits' ):
+                                                        try {
+                                                            $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+                                                            $domData = $vmBackend->domData( $pi, $t->period );
+                                                            echo $t->insert( 'services/grapher/renderer/box/dom', [
+                                                                'domData'   => $domData,
+                                                                'domLabel'  => $pi->switchPort->switcher->name . ':' . $pi->switchPort->name,
+                                                                'domPeriod' => $t->period,
+                                                            ]);
+                                                        } catch( \Throwable $e ) {}
+                                                    endif; ?>
                                                 <?php else: ?>
                                                     <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $pi, 'isSuperUser' => $isSuperUser ] ) ?>
                                                 <?php endif; ?>
@@ -168,6 +209,17 @@
                                 <?= $pi->switchPort->switcher->cabinet->location->name ?>
                                 / <?= $pi->switchPort->switcher->name ?>
                                 :: <?= $pi->switchPort->name ?> (<?= $pi->speed() ?>)
+                                <?php if( $pi->isConnectedOrQuarantine() && $t->category === 'bits' ):
+                                    try {
+                                        $piStats = $t->grapher->physint( $pi )->setCategory( 'bits' )->setPeriod( $t->period )->statistics();
+                                        $piCapBps = $pi->speed * 1000000;
+                                        $piUtilPct = $piCapBps > 0 ? max( $piStats->curIn(), $piStats->curOut() ) / $piCapBps * 100 : 0;
+                                    ?>
+                                        <span class="badge badge-<?= $piUtilPct > 80 ? 'danger' : ( $piUtilPct > 50 ? 'warning' : 'success' ) ?> ml-1" title="Port utilization">
+                                            <?= number_format( $piUtilPct, 1 ) ?>%
+                                        </span>
+                                    <?php } catch( \Throwable $e ) {} ?>
+                                <?php endif; ?>
 
                                 <?php if( $t->resellerMode() && $t->c->isReseller ): ?>
                                     <small class="text-muted">
@@ -204,6 +256,17 @@
                         <div class="card-body py-2">
                             <?php if( $pi->isConnectedOrQuarantine() ): ?>
                                 <?= $t->grapher->physint( $pi )->setCategory( $t->category )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                                <?php if( $t->category === 'bits' ):
+                                    try {
+                                        $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+                                        $domData = $vmBackend->domData( $pi, $t->period );
+                                        echo $t->insert( 'services/grapher/renderer/box/dom', [
+                                            'domData'   => $domData,
+                                            'domLabel'  => $pi->switchPort->switcher->name . ':' . $pi->switchPort->name,
+                                            'domPeriod' => $t->period,
+                                        ]);
+                                    } catch( \Throwable $e ) {}
+                                endif; ?>
                             <?php else: ?>
                                 <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $pi, 'isSuperUser' => $isSuperUser ] ) ?>
                             <?php endif; ?>

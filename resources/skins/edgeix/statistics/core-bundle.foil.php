@@ -60,6 +60,18 @@
                     <?php else: ?>
                         <?= $t->scaleBits( $cb->speedPi() * 1000000, 0 ) ?>
                     <?php endif ?>
+
+                    <?php if( $t->category === 'bits' ):
+                        try {
+                            $cbStats = $t->graph->setCategory( 'bits' )->setPeriod( 'day' )->statistics();
+                            $cbCapBps = ( $nb ?: 1 ) * $cb->speedPi() * 1000000;
+                            $cbUtilPct = $cbCapBps > 0 ? max( $cbStats->curIn(), $cbStats->curOut() ) / $cbCapBps * 100 : 0;
+                        ?>
+                            <span class="badge badge-<?= $cbUtilPct > 80 ? 'danger' : ( $cbUtilPct > 50 ? 'warning' : 'success' ) ?> ml-2" title="Bundle utilization">
+                                <?= number_format( $cbUtilPct, 1 ) ?>%
+                            </span>
+                        <?php } catch( \Throwable $e ) {} ?>
+                    <?php endif; ?>
                 </div>
             </nav>
 
@@ -122,6 +134,17 @@
                                     </div>
                                 <?php endforeach; ?>
                             </div>
+                            <?php if( $t->category === 'bits' ):
+                                try {
+                                    $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+                                    $domData = $vmBackend->domData( $mg['pi'], 'day' );
+                                    echo $t->insert( 'services/grapher/renderer/box/dom', [
+                                        'domData'   => $domData,
+                                        'domLabel'  => $mg['label'],
+                                        'domPeriod' => 'day',
+                                    ]);
+                                } catch( \Throwable $e ) {}
+                            endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

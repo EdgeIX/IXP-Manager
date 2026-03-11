@@ -121,6 +121,13 @@ use PragmaRX\Google2FALaravel\Support\Authenticator as GoogleAuthenticator;
                         </a>
                     <?php endif; ?>
 
+                    <?php if( Auth::getUser()->isSuperUser() ): ?>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item <?= !request()->is( 'statistics/top-n' ) ?: 'active' ?>" href="<?= route('statistics@top-n') ?>">
+                            Top Ports
+                        </a>
+                    <?php endif; ?>
+
                     <?php if( is_array( config( 'ixp_tools.weathermap', false ) ) ): ?>
                         <div class="dropdown-divider"></div>
 

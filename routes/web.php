@@ -107,6 +107,7 @@ Route::group( [ 'prefix' => 'statistics' ], function() {
     Route::get(  'member-drilldown/{type}/{typeid}',            'StatisticsController@memberDrilldown'      )->name( 'statistics@member-drilldown'      );
     Route::get(  'latency/{vli}/{protocol}',                    'StatisticsController@latency'              )->name( 'statistics@latency'               );
     Route::get(  'core-bundle/{cb}',                            'StatisticsController@coreBundle'           )->name( 'statistics@core-bundle'           );
+    Route::get(  'top-n',                                       'StatisticsController@topN'                 )->name( 'statistics@top-n'                 );
 });
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

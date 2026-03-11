@@ -33,7 +33,11 @@ use IXP\Services\Grapher\Graph\{
     CoreBundle          as CoreBundleGraph,
 };
 
-use IXP\Models\Switcher;
+use IXP\Models\{
+    PhysicalInterface as PhysicalInterfaceModel,
+    Switcher,
+    SwitchPort,
+};
 
 use IXP\Exceptions\Services\Grapher\CannotHandleRequestException;
 
@@ -519,5 +523,286 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
     public function dataPath( Graph $graph ): string
     {
         return '';
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // DOM (Digital Optical Monitoring) data
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * DOM metric names. These use device + interface_name labels
+     * (not the combined device_interface used by traffic metrics).
+     */
+    private const DOM_METRICS = [
+        'rx' => 'dom_rx_power:interface',
+        'tx' => 'dom_tx_power:interface',
+    ];
+
+    /**
+     * Fetch DOM (optical power) time series for a physical interface.
+     *
+     * Returns per-channel RX/TX optical power in dBm.
+     *
+     * @param PhysicalInterfaceModel $pi
+     * @param string                 $period  Graph period constant
+     *
+     * @return array  [ 'channels' => [ [ 'channel_index' => '0', 'rx' => [[ts,val],...], 'tx' => [[ts,val],...] ], ... ] ]
+     */
+    public function domData( PhysicalInterfaceModel $pi, string $period = Graph::PERIOD_DAY ): array
+    {
+        $device        = $pi->switchPort->switcher->name;
+        $interfaceName = $pi->switchPort->name;
+        $timing        = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+
+        $rxQuery = self::DOM_METRICS['rx'] . "{device=\"{$device}\",interface_name=\"{$interfaceName}\"}";
+        $txQuery = self::DOM_METRICS['tx'] . "{device=\"{$device}\",interface_name=\"{$interfaceName}\"}";
+
+        $rxResults = $this->queryRangeMulti( $rxQuery, $timing['range'], $timing['step'] );
+        $txResults = $this->queryRangeMulti( $txQuery, $timing['range'], $timing['step'] );
+
+        // Index TX results by channel_index for merging
+        $txByChannel = [];
+        foreach( $txResults as $series ) {
+            $ch = $series['metric']['channel_index'] ?? '0';
+            $txByChannel[ $ch ] = $series['values'] ?? [];
+        }
+
+        $channels = [];
+        foreach( $rxResults as $series ) {
+            $ch = $series['metric']['channel_index'] ?? '0';
+            $channels[] = [
+                'channel_index' => $ch,
+                'rx'            => $series['values'] ?? [],
+                'tx'            => $txByChannel[ $ch ] ?? [],
+            ];
+        }
+
+        // If we got TX channels but no RX (unusual), include them
+        foreach( $txByChannel as $ch => $values ) {
+            $found = false;
+            foreach( $channels as $c ) {
+                if( $c['channel_index'] === $ch ) { $found = true; break; }
+            }
+            if( !$found ) {
+                $channels[] = [
+                    'channel_index' => $ch,
+                    'rx'            => [],
+                    'tx'            => $values,
+                ];
+            }
+        }
+
+        // Sort by channel index
+        usort( $channels, fn( $a, $b ) => (int) $a['channel_index'] <=> (int) $b['channel_index'] );
+
+        return [ 'channels' => $channels ];
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Interface status (oper state) data
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Fetch interface operational status time series.
+     *
+     * @param PhysicalInterfaceModel $pi
+     * @param string                 $period
+     *
+     * @return array  Array of [timestamp, status] pairs (1=UP)
+     */
+    public function statusData( PhysicalInterfaceModel $pi, string $period = Graph::PERIOD_DAY ): array
+    {
+        $label  = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
+        $timing = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+
+        $query = "openconfig_interfaces_oper_status{device_interface=\"{$label}\"}";
+
+        return $this->queryRange( $query, $timing['range'], $timing['step'] );
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Top-N interfaces by traffic
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Get the top N interfaces by current traffic rate.
+     *
+     * @param int    $limit      Number of results
+     * @param string $direction  'in' or 'out'
+     *
+     * @return array  [ [ 'device_interface' => 'pe1syd3:Ethernet9/2', 'rate_bps' => 45000000000.0 ], ... ]
+     */
+    public function topInterfaces( int $limit = 20, string $direction = 'in' ): array
+    {
+        $counter    = $direction === 'out' ? 'openconfig_interfaces_out_octets' : 'openconfig_interfaces_in_octets';
+        $interval   = self::RATE_INTERVAL;
+
+        $query = "topk({$limit}, rate({$counter}{interface_name=~\"Ethernet.*\"}[{$interval}])*8)";
+
+        $results = $this->queryInstant( $query );
+
+        $top = [];
+        foreach( $results as $series ) {
+            $deviceInterface = $series['metric']['device_interface'] ?? null;
+            $value           = (float) ( $series['value'][1] ?? 0 );
+
+            if( $deviceInterface ) {
+                $top[] = [
+                    'device_interface' => $deviceInterface,
+                    'rate_bps'         => $value,
+                ];
+            }
+        }
+
+        // Sort descending by rate (topk should already, but be safe)
+        usort( $top, fn( $a, $b ) => $b['rate_bps'] <=> $a['rate_bps'] );
+
+        return $top;
+    }
+
+    /**
+     * Resolve a device_interface label to its database models.
+     *
+     * @param string $deviceInterface  e.g. "pe1syd3:Ethernet9/2"
+     *
+     * @return array|null  [ 'switcher' => Switcher, 'switchPort' => SwitchPort, 'pi' => PhysicalInterface, 'customer' => Customer ] or null
+     */
+    public function resolveDeviceInterface( string $deviceInterface ): ?array
+    {
+        $parts = explode( ':', $deviceInterface, 2 );
+        if( count( $parts ) !== 2 ) {
+            return null;
+        }
+
+        [ $switchName, $portName ] = $parts;
+
+        $switcher = Switcher::where( 'name', $switchName )->first();
+        if( !$switcher ) {
+            return null;
+        }
+
+        $switchPort = SwitchPort::where( 'switchid', $switcher->id )
+            ->where( 'name', $portName )
+            ->first();
+
+        if( !$switchPort ) {
+            return null;
+        }
+
+        $pi = $switchPort->physicalInterface;
+        if( !$pi ) {
+            return null;
+        }
+
+        $vi = $pi->virtualInterface;
+        $customer = $vi ? $vi->customer : null;
+
+        return [
+            'switcher'   => $switcher,
+            'switchPort'  => $switchPort,
+            'pi'          => $pi,
+            'vi'          => $vi,
+            'customer'    => $customer,
+        ];
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Query helpers
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Query Victoria Metrics range API, returning ALL result series.
+     *
+     * Unlike queryRange() which returns only the first result's values,
+     * this returns all series with their metric labels — needed for
+     * multi-channel DOM data and multi-series queries.
+     *
+     * @param string $query  PromQL query
+     * @param string $range  Time range (e.g. '24h')
+     * @param string $step   Step interval (e.g. '60s')
+     *
+     * @return array  Array of [ 'metric' => [...], 'values' => [[ts, val], ...] ]
+     */
+    private function queryRangeMulti( string $query, string $range, string $step ): array
+    {
+        $baseUrl = config( 'grapher.backends.victoriametrics.url', 'http://localhost:8428' );
+        $url     = rtrim( $baseUrl, '/' ) . '/api/v1/query_range';
+
+        $end   = time();
+        $start = $end - $this->rangeToSeconds( $range );
+
+        Log::debug( "[Grapher] [VictoriaMetrics] QueryRangeMulti: {$url}", [
+            'query' => $query,
+            'start' => $start,
+            'end'   => $end,
+            'step'  => $step,
+        ]);
+
+        try {
+            $response = Http::timeout( 30 )->get( $url, [
+                'query' => $query,
+                'start' => $start,
+                'end'   => $end,
+                'step'  => $step,
+            ]);
+
+            if( !$response->successful() ) {
+                Log::warning( "[Grapher] [VictoriaMetrics] QueryRangeMulti failed: HTTP {$response->status()}" );
+                return [];
+            }
+
+            $data = $response->json();
+
+            if( ( $data['status'] ?? '' ) !== 'success' ) {
+                return [];
+            }
+
+            return $data['data']['result'] ?? [];
+
+        } catch( \Exception $e ) {
+            Log::error( "[Grapher] [VictoriaMetrics] QueryRangeMulti exception: {$e->getMessage()}" );
+            return [];
+        }
+    }
+
+    /**
+     * Query Victoria Metrics instant API (current values).
+     *
+     * @param string $query  PromQL query
+     *
+     * @return array  Array of [ 'metric' => [...], 'value' => [ts, val] ]
+     */
+    private function queryInstant( string $query ): array
+    {
+        $baseUrl = config( 'grapher.backends.victoriametrics.url', 'http://localhost:8428' );
+        $url     = rtrim( $baseUrl, '/' ) . '/api/v1/query';
+
+        Log::debug( "[Grapher] [VictoriaMetrics] QueryInstant: {$url}", [
+            'query' => $query,
+        ]);
+
+        try {
+            $response = Http::timeout( 30 )->get( $url, [
+                'query' => $query,
+                'time'  => time(),
+            ]);
+
+            if( !$response->successful() ) {
+                Log::warning( "[Grapher] [VictoriaMetrics] QueryInstant failed: HTTP {$response->status()}" );
+                return [];
+            }
+
+            $data = $response->json();
+
+            if( ( $data['status'] ?? '' ) !== 'success' ) {
+                return [];
+            }
+
+            return $data['data']['result'] ?? [];
+
+        } catch( \Exception $e ) {
+            Log::error( "[Grapher] [VictoriaMetrics] QueryInstant exception: {$e->getMessage()}" );
+            return [];
+        }
     }
 }

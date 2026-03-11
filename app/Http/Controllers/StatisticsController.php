@@ -912,4 +912,69 @@ class StatisticsController extends Controller
             'vlan'         => $vid,
         ] );
     }
+
+    /**
+     * Top-N ports by current traffic rate (admin only).
+     *
+     * @param Request $r
+     *
+     * @return View
+     */
+    public function topN( Request $r ): View
+    {
+        /** @var User $us */
+        $us = Auth::getUser();
+
+        if( !$us || !$us->isSuperUser() ) {
+            abort( 403 );
+        }
+
+        $limit     = min( (int) $r->input( 'limit', 20 ), 100 );
+        $direction = $r->input( 'direction', 'in' ) === 'out' ? 'out' : 'in';
+
+        $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+        $topRaw    = $vmBackend->topInterfaces( $limit, $direction );
+
+        // Enrich with database models
+        $topPorts = [];
+        foreach( $topRaw as $entry ) {
+            $resolved = $vmBackend->resolveDeviceInterface( $entry['device_interface'] );
+
+            $speedMbps = 0;
+            $utilPct   = null;
+            $custName  = null;
+            $custId    = null;
+            $piId      = null;
+            $location  = null;
+
+            if( $resolved ) {
+                $speedMbps = $resolved['pi']->speed ?? 0;
+                $piId      = $resolved['pi']->id;
+                $utilPct   = $speedMbps > 0 ? $entry['rate_bps'] / ( $speedMbps * 1000000 ) * 100 : null;
+                $location  = $resolved['switchPort']->switcher->cabinet->location->name ?? null;
+
+                if( $resolved['customer'] ) {
+                    $custName = $resolved['customer']->abbreviatedName;
+                    $custId   = $resolved['customer']->id;
+                }
+            }
+
+            $topPorts[] = [
+                'device_interface' => $entry['device_interface'],
+                'rate_bps'         => $entry['rate_bps'],
+                'speed_mbps'       => $speedMbps,
+                'util_pct'         => $utilPct,
+                'customer_name'    => $custName,
+                'customer_id'      => $custId,
+                'pi_id'            => $piId,
+                'location'         => $location,
+            ];
+        }
+
+        return view( 'statistics/top-n' )->with( [
+            'topPorts'  => $topPorts,
+            'limit'     => $limit,
+            'direction' => $direction,
+        ] );
+    }
 }

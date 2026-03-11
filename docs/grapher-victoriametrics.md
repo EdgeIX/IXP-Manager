@@ -13,6 +13,10 @@ Replaces legacy server-rendered MRTG PNG graphs with client-side interactive tim
 - **Category-aware colour schemes** -- distinct palettes for each metric type, with separate aggregate/physical variants
 - **No recording rules or config files** -- queries raw OpenConfig counters directly; no cron jobs, no RRD files, no MRTG config
 - **Pluggable** -- uses IXP Manager's existing `Grapher\Backend` contract; can run alongside MRTG as a fallback
+- **DOM (optical power) monitoring** -- RX/TX optical power (dBm) graphs on every physical port and core link, with multi-channel support for breakout optics
+- **Interface status overlay** -- red shading on traffic graphs during interface down periods (from `openconfig_interfaces_oper_status`)
+- **Capacity utilization badges** -- colour-coded percentage badges on port and LAG headers (green <50%, yellow 50-80%, red >80%); LAGs show aggregate utilization across all member ports
+- **Top-N dashboard** -- admin-only page showing the busiest ports by current traffic rate, with customer, port, location, speed, and utilization columns
 
 ## Architecture
 
@@ -61,9 +65,32 @@ The backend queries raw OpenConfig interface counters directly using `rate()`. N
 
 Values are raw monotonically-increasing counters. The backend applies `rate(...[30s])` to convert to per-second rates, then multiplies by 8 for octets→bits conversion where applicable.
 
+### Optional: DOM (Optical Power) Metrics
+
+For DOM monitoring, the following enriched metrics must be present with `device` + `interface_name` labels:
+
+| Metric                  | Description                  | Unit | Labels                                   |
+|-------------------------|------------------------------|------|------------------------------------------|
+| `dom_rx_power:interface` | RX optical power            | dBm  | `device`, `interface_name`, `channel_index` |
+| `dom_tx_power:interface` | TX optical power            | dBm  | `device`, `interface_name`, `channel_index` |
+
+These are **gauge values** (not counters), so no `rate()` is applied. The `channel_index` label supports multi-lane optics (breakouts).
+
+**Note:** The DOM metrics use separate `device` and `interface_name` labels, not the combined `device_interface` label used by traffic counters. This is because DOM data comes from the OpenConfig transceiver subscription which uses `component_name` (chip-level) rather than the interface hierarchy. A recording rule or relabelling step maps the component to its associated interface.
+
+### Optional: Interface Status Metrics
+
+For interface status overlays on traffic graphs:
+
+| Metric                            | Description        | Values | Labels              |
+|-----------------------------------|--------------------|--------|---------------------|
+| `openconfig_interfaces_oper_status` | Operational state | 1=UP   | `device_interface`  |
+
+This is a gauge value. When the status is anything other than 1, the traffic graph background is shaded red to indicate a down period.
+
 ### Label Format
 
-The recording rules must include these labels:
+The raw OpenConfig counters must include these labels:
 
 | Label              | Description                                    | Example                        |
 |--------------------|------------------------------------------------|--------------------------------|
@@ -350,6 +377,89 @@ Each category has distinct RX/TX colour pairs, with separate palettes for aggreg
 | Discards    | Amber / Fuchsia      | Yellow / Purple     |
 | Broadcasts  | Teal / Rose          | Dark Teal / Dark Rose |
 
+## DOM (Optical Power) Monitoring
+
+DOM graphs appear automatically below each physical interface traffic graph and below each core bundle member link graph, when the **Bits** category is selected.
+
+### How It Works
+
+The backend queries `dom_rx_power:interface` and `dom_tx_power:interface` using the `device` and `interface_name` labels (not the combined `device_interface` label used by traffic counters). These are gauge values in dBm — no `rate()` is applied.
+
+For breakout optics, the `channel_index` label distinguishes lanes. The DOM chart renders one RX/TX line pair per channel.
+
+### PromQL Queries
+
+```promql
+# Single-lane optic
+dom_rx_power:interface{device="pe1syd3",interface_name="Ethernet9/2"}
+dom_tx_power:interface{device="pe1syd3",interface_name="Ethernet9/2"}
+
+# Multi-lane breakout — returns one series per channel_index
+dom_rx_power:interface{device="pe1syd3",interface_name="Ethernet25/1"}
+```
+
+### Display
+
+- **Chart**: 180px uPlot time series, Y-axis in dBm
+- **Stats table**: Min, Avg, Max, Current for each RX/TX channel
+- Values of -30 dBm are filtered out (sentinel for no-light / SFP not present)
+- Multi-channel optics show separate colour-coded lines per lane
+
+### Prerequisite
+
+These metrics typically require a recording rule or relabelling step to map the OpenConfig transceiver subscription's `component_name` (e.g. `Ethernet1`) to the actual `interface_name` (e.g. `Ethernet1/1`). The raw OpenConfig transceiver metrics use `component_name` which does not match the interface hierarchy directly.
+
+## Interface Status Overlay
+
+Physical interface traffic graphs automatically show a red semi-transparent background overlay during periods when the interface was operationally down.
+
+### How It Works
+
+The uPlot renderer detects `PhysicalInterface` graphs and queries `openconfig_interfaces_oper_status{device_interface="..."}` as a time series. A uPlot `draw` hook plugin paints red rectangles (`rgba(239, 68, 68, 0.12)`) over time ranges where the status value is not 1 (UP).
+
+This provides immediate visual correlation between interface flaps and traffic drops.
+
+## Capacity Utilization Badges
+
+Colour-coded utilization percentage badges appear in port and LAG card headers when viewing the **Bits** category.
+
+### Calculation
+
+- **Single port**: `max(current_rx, current_tx) / (port_speed_mbps × 1,000,000) × 100`
+- **LAG**: `max(current_rx, current_tx) / (sum_of_member_port_speeds × 1,000,000) × 100`
+- **Core Bundle**: `max(current_rx, current_tx) / (link_count × link_speed × 1,000,000) × 100`
+
+### Colour Coding
+
+| Utilization | Badge Colour |
+|-------------|-------------|
+| < 50%       | Green       |
+| 50–80%      | Yellow      |
+| > 80%       | Red         |
+
+The port speed comes from the `PhysicalInterface.speed` database column (in Mbps). The current rate comes from the traffic graph statistics (already computed from the VM query).
+
+## Top-N Ports Dashboard
+
+An admin-only page (`/statistics/top-n`) showing the busiest ports by current traffic rate. Accessible via the "Top Ports" link in the Statistics dropdown menu (visible to superusers only).
+
+### How It Works
+
+Uses a PromQL `topk()` instant query to find the highest-traffic interfaces:
+
+```promql
+topk(20, rate(openconfig_interfaces_in_octets{interface_name=~"Ethernet.*"}[30s])*8)
+```
+
+Each result is cross-referenced with the IXP Manager database to resolve the customer, port details, location, and speed. The `resolveDeviceInterface()` method splits the `device_interface` label, looks up the `Switcher` by name, finds the `SwitchPort`, then follows the relationship chain to `PhysicalInterface` → `VirtualInterface` → `Customer`.
+
+### Features
+
+- Direction filter: RX (In) or TX (Out)
+- Limit selector: Top 10, 20, 50, or 100
+- Sortable table with columns: Rank, Customer (linked), Port (linked to drilldown), Location, Current Rate, Port Speed, Utilization %
+- Ports not mapped to a customer in IXP Manager (e.g. unprovisioned or core ports) show as "-"
+
 ## Configuration Reference
 
 ### Environment Variables
@@ -381,7 +491,7 @@ Not yet supported (still served by MRTG/other backends if configured):
 
 ## Pseudowire Traffic Graphs
 
-The `edgeix/ixpm-pseudowire` module includes standalone traffic graphs for pseudowire circuits. These are **independent of the core Grapher framework** because pseudowire circuits use sub-interface metrics that require raw `rate()` queries on OpenConfig counters, not the pre-computed recording rules used by the main grapher.
+The `edgeix/ixpm-pseudowire` module includes standalone traffic graphs for pseudowire circuits. These are **independent of the core Grapher framework** because pseudowire circuits use sub-interface metrics that require raw `rate()` queries on OpenConfig counters, which are the same raw counters used by the main grapher but at the sub-interface level.
 
 ### How It Works
 
@@ -494,6 +604,10 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 - Category-aware headings and colour schemes
 - Statistics tables (max, average, current)
 - All queries use raw OpenConfig counters with `rate()` — no recording rules required
+- DOM (optical power) graphs — RX/TX dBm time series on physical ports and core link members
+- Interface status overlay — red background shading on traffic graphs during down periods
+- Capacity utilization badges — colour-coded % on port/LAG/core bundle headers
+- Top-N ports dashboard — admin-only page showing busiest ports by current traffic
 
 ### Pseudowire Circuit Traffic Graphs (via `edgeix/ixpm-pseudowire`)
 - Per-circuit sub-interface traffic graphs on admin circuit detail page
@@ -504,7 +618,6 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 
 ### Planned
 - VLAN graphs (sflow-based, separate data pipeline)
-- DOM optics monitoring panel
 - Sflow P2P replacement
 - Exportable graph images (server-side PNG via headless rendering)
 

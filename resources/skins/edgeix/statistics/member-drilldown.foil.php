@@ -113,6 +113,27 @@
                     </div>
                 <?php endforeach; ?>
             </div>
+
+            <?php if( $t->graph instanceof \IXP\Services\Grapher\Graph\PhysicalInterface && $t->graph->category() === 'bits' ):
+                try {
+                    $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+                    $piModel = $t->graph->physicalInterface();
+                    $domData = $vmBackend->domData( $piModel, 'day' );
+                ?>
+                    <div class="card mt-4">
+                        <div class="card-header d-flex py-2">
+                            <h5 class="mb-0 mr-auto">Optical Power (DOM)</h5>
+                        </div>
+                        <div class="card-body py-2">
+                            <?= $t->insert( 'services/grapher/renderer/box/dom', [
+                                'domData'   => $domData,
+                                'domLabel'  => $piModel->switchPort->switcher->name . ':' . $piModel->switchPort->name,
+                                'domPeriod' => 'day',
+                            ]) ?>
+                        </div>
+                    </div>
+                <?php } catch( \Throwable $e ) {} ?>
+            <?php endif; ?>
         </div>
     </div>
     <?php if( Auth::check() && $isSuperUser ):?>

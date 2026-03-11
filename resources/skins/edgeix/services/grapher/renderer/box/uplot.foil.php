@@ -16,6 +16,17 @@
     $period   = $graph->period();
     $graphId  = 'uplot-' . md5( $graph->identifier() . $category . $period . uniqid() );
 
+    // Auto-fetch interface status overlay for physical interface graphs
+    $statusData = null;
+    if( $graph instanceof \IXP\Services\Grapher\Graph\PhysicalInterface ) {
+        try {
+            $vmBackend = app( \IXP\Services\Grapher\Backend\VictoriaMetrics::class );
+            $statusData = $vmBackend->statusData( $graph->physicalInterface(), $period );
+        } catch( \Throwable $e ) {
+            // Silently skip if status data unavailable
+        }
+    }
+
     // Build uPlot data format: [ timestamps[], series1[], series2[], ... ]
     $timestamps = [];
     $rxValues   = [];
@@ -132,6 +143,7 @@
     var timestamps = <?= json_encode( $timestamps ) ?>;
     var rxValues   = <?= json_encode( $rxValues ) ?>;
     var txValues   = <?= json_encode( $txValues ) ?>;
+    var statusData = <?= json_encode( $statusData ) ?>;
 
     function fmtSI(val, suffix) {
         if (val == null || isNaN(val)) return '';
@@ -151,6 +163,44 @@
 
     function fmtTooltip(val) {
         return fmtSI(val, unitSuffix);
+    }
+
+    function statusOverlayPlugin() {
+        if (!statusData || !statusData.length) return {};
+
+        return {
+            hooks: {
+                draw: function(u) {
+                    var ctx = u.ctx;
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+
+                    var downStart = null;
+                    for (var i = 0; i < statusData.length; i++) {
+                        var ts     = statusData[i][0];
+                        var status = parseFloat(statusData[i][1]);
+
+                        if (status !== 1 && downStart === null) {
+                            downStart = ts;
+                        } else if (status === 1 && downStart !== null) {
+                            var x0 = u.valToPos(downStart, 'x', true);
+                            var x1 = u.valToPos(ts, 'x', true);
+                            ctx.fillRect(x0, u.bbox.top, x1 - x0, u.bbox.height);
+                            downStart = null;
+                        }
+                    }
+
+                    // If still down at the end, shade to the right edge
+                    if (downStart !== null) {
+                        var x0 = u.valToPos(downStart, 'x', true);
+                        var x1 = u.bbox.left + u.bbox.width;
+                        ctx.fillRect(x0, u.bbox.top, x1 - x0, u.bbox.height);
+                    }
+
+                    ctx.restore();
+                }
+            }
+        };
     }
 
     function tooltipPlugin() {
@@ -194,7 +244,7 @@
         var opts = {
             width: width,
             height: 300,
-            plugins: [tooltipPlugin()],
+            plugins: [statusOverlayPlugin(), tooltipPlugin()],
             cursor: { drag: { x: true, y: false } },
             legend: { show: false },
             scales: {
