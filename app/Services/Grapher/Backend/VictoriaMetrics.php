@@ -28,6 +28,8 @@ use IXP\Services\Grapher\Graph\{
     Location            as LocationGraph,
 };
 
+use IXP\Models\Switcher;
+
 use IXP\Exceptions\Services\Grapher\CannotHandleRequestException;
 
 use Illuminate\Support\Facades\Http;
@@ -226,8 +228,8 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         }
 
         if( $graph instanceof InfraGraph ) {
-            $switches = $graph->infrastructure()->switchers;
-            $names = $switches->pluck( 'name' )->filter()->values()->all();
+            $names = $graph->infrastructure()->switchers()->whereNotNull( 'name' )
+                ->pluck( 'name' )->filter()->values()->all();
 
             if( empty( $names ) ) {
                 throw new CannotHandleRequestException( 'Infrastructure has no switches' );
@@ -242,12 +244,14 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         }
 
         if( $graph instanceof LocationGraph ) {
-            $names = [];
-            foreach( $graph->location()->cabinets as $cabinet ) {
-                foreach( $cabinet->switchers as $switcher ) {
-                    $names[] = $switcher->name;
-                }
-            }
+            $cabinetIds = $graph->location()->cabinets()->pluck( 'id' )->all();
+
+            $names = Switcher::whereIn( 'cabinetid', $cabinetIds )
+                ->whereNotNull( 'name' )
+                ->pluck( 'name' )
+                ->filter()
+                ->values()
+                ->all();
 
             if( empty( $names ) ) {
                 throw new CannotHandleRequestException( 'Location has no switches' );

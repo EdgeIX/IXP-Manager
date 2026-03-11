@@ -8,7 +8,7 @@ Replaces legacy server-rendered MRTG PNG graphs with client-side interactive tim
 
 - **Interactive charts** -- zoom, hover tooltips, responsive resizing (uPlot, ~50KB JS)
 - **All five graph categories** -- Bits, Packets, Errors, Discards, Broadcasts
-- **Three graph scopes** -- Physical Interface, Virtual Interface (LAG/Port-Channel), Customer Aggregate
+- **Seven graph scopes** -- Physical Interface, Virtual Interface (LAG/Port-Channel), Customer Aggregate, IXP-wide, Infrastructure, Switch, Location
 - **Four time periods** -- Day, Week, Month, Year
 - **Category-aware colour schemes** -- distinct palettes for each metric type, with separate aggregate/physical variants
 - **No config file generation** -- no cron jobs, no RRD files, no MRTG config; just point at your TSDB
@@ -60,9 +60,21 @@ The backend expects these recording rule metric names with a `device_interface` 
 
 Values should be **rates** (bits per second or packets per second), not raw counters.
 
-### device_interface Label Format
+### Label Format
 
-The `device_interface` label must match what IXP Manager generates:
+The recording rules must include these labels:
+
+| Label              | Description                                    | Example                        |
+|--------------------|------------------------------------------------|--------------------------------|
+| `device_interface` | `switch_name:port_name`                        | `pe1syd3:Ethernet9/2`          |
+| `device`           | Switch name (matches IXP Manager Switch `name`) | `pe1syd3`                      |
+| `interface_name`   | Port name only                                 | `Ethernet9/2`                  |
+
+**Important**: `device` / the switch name portion of `device_interface` comes from the Switch model's `name` field in IXP Manager (not the `hostname` field, which is typically the management IP/FQDN).
+
+#### Per-Port Graphs (Physical, Virtual, Customer)
+
+These use the `device_interface` label for exact or regex matching:
 
 | Graph Type         | Label Format                          | Example                        |
 |--------------------|---------------------------------------|--------------------------------|
@@ -70,12 +82,26 @@ The `device_interface` label must match what IXP Manager generates:
 | LAG (Port-Channel) | `switch_name:Port-Channel<group>`     | `pe1syd3:Port-Channel42`       |
 | Single-member VI   | `switch_name:port_name`               | `pe1syd3:Ethernet8/3`          |
 
-**Important**: `switch_name` comes from the Switch model's `name` field in IXP Manager (not the `hostname` field, which is typically the management IP/FQDN).
-
 For **Customer Aggregate** graphs, the backend queries all of a customer's interfaces using PromQL regex alternation:
 ```promql
 sum(port_bitrate_rx:10s{device_interface=~"pe1syd3:Port-Channel42|pe2syd3:Ethernet5/1"})
 ```
+
+#### Aggregate Graphs (IXP, Infrastructure, Switch, Location)
+
+These use the `device` and `interface_name` labels, summing all Ethernet interfaces on the relevant switches. The `interface_name=~"Ethernet.*"` filter avoids double-counting LAG members alongside Port-Channel aggregates (Port-Channel interfaces don't match `Ethernet.*`):
+
+| Graph Type     | PromQL Pattern                                                           |
+|----------------|--------------------------------------------------------------------------|
+| IXP-wide       | `sum(metric{interface_name=~"Ethernet.*"})`                              |
+| Infrastructure | `sum(metric{device=~"switch1\|switch2",interface_name=~"Ethernet.*"})`   |
+| Switch         | `sum(metric{device="switch_name",interface_name=~"Ethernet.*"})`         |
+| Location       | `sum(metric{device=~"switch1\|switch2",interface_name=~"Ethernet.*"})`   |
+
+The backend resolves switches for each scope via IXP Manager's model relationships:
+- **Infrastructure** → `Infrastructure->switchers` (HasMany)
+- **Location** → `Location->cabinets->switchers` (HasMany through Cabinet)
+- **Switch** → direct match on `Switcher->name`
 
 ## Installation
 
@@ -190,6 +216,10 @@ To get uPlot charts everywhere, you need to override these views and change `box
 | `dashboard/dashboard-tabs/overview.foil.php` | Customer self-service dashboard | 1 |
 | `admin/dashboard.foil.php` | Admin dashboard | 1 |
 | `statistics/members.foil.php` | All-members comparison page | 1 |
+| `statistics/ixp.foil.php` | IXP-wide aggregate statistics | 1 |
+| `statistics/infrastructure.foil.php` | Per-infrastructure aggregate | 1 |
+| `statistics/switch.foil.php` | Per-switch aggregate | 1 |
+| `statistics/location.foil.php` | Per-location (facility) aggregate | 1 |
 
 For each file, the change is mechanical -- find `->renderer()->boxLegacy()` and replace with `->renderer()->boxUplot()`:
 
@@ -260,13 +290,16 @@ Beyond the `boxLegacy()` -> `boxUplot()` swap, you may also want to update layou
 
 1. **Graph creation**: Controller calls `$grapher->physint($pi)->setCategory('bits')->setPeriod('day')`
 2. **Backend resolution**: IXP Manager's Grapher service finds VictoriaMetrics as the first capable backend
-3. **Interface mapping**: `resolveDeviceInterface()` maps the IXP Manager model to a `device_interface` label:
-   - Physical Interface -> `switch_name:port_name`
-   - LAG -> `switch_name:Port-Channel<channelgroup>`
-   - Customer -> array of all interface labels
-4. **PromQL query**: `buildQuery()` constructs the query. Single interfaces use exact match; customer aggregates use `sum()` with regex
-5. **HTTP request**: `queryRange()` hits `/api/v1/query_range` with the query, time range, and step
-6. **Data merge**: RX and TX results are merged by timestamp into `[ts, avg_in, avg_out, max_in, max_out]`
+3. **Interface mapping**: `buildQueryForGraph()` maps the IXP Manager graph model to a PromQL query:
+   - Physical Interface → `metric{device_interface="switch:port"}`
+   - LAG → `metric{device_interface="switch:Port-Channel<n>"}`
+   - Customer → `sum(metric{device_interface=~"regex"})` across all customer ports
+   - IXP → `sum(metric{interface_name=~"Ethernet.*"})` across all switches
+   - Infrastructure → `sum(metric{device=~"switch1|switch2",interface_name=~"Ethernet.*"})`
+   - Switch → `sum(metric{device="name",interface_name=~"Ethernet.*"})`
+   - Location → same as infrastructure but switches resolved via cabinets
+4. **HTTP request**: `queryRange()` hits `/api/v1/query_range` with the query, time range, and step
+5. **Data merge**: RX and TX results are merged by timestamp into `[ts, avg_in, avg_out, max_in, max_out]`
 
 ### Renderer: uPlot Template
 
@@ -320,15 +353,16 @@ The VictoriaMetrics backend currently supports:
 - **Physical Interface** -- individual switch ports
 - **Virtual Interface** -- LAGs / Port-Channels
 - **Customer** -- aggregate across all customer ports
+- **IXP** -- IXP-wide aggregate (all Ethernet interfaces across all switches)
+- **Infrastructure** -- per-infrastructure aggregate (all switches in an infrastructure)
+- **Switch** -- per-switch aggregate (all Ethernet interfaces on a switch)
+- **Location** -- per-location/facility aggregate (all switches in cabinets at a location)
 
 Not yet supported (still served by MRTG/other backends if configured):
 
-- IXP aggregate
-- Infrastructure
-- Switch
-- Trunk
-- VLAN
-- P2P (sflow)
+- **Trunk / Core Bundle** -- inter-switch links (requires raw OpenConfig counter metrics with `rate()`, not enriched recording rules)
+- **VLAN** -- per-VLAN sub-interface graphs (requires `openconfig_subinterfaces` metrics)
+- **P2P** -- peer-to-peer traffic (requires sflow)
 
 ## Troubleshooting
 
@@ -363,13 +397,18 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 - Physical interface graphs (all categories, all periods)
 - Virtual interface / LAG graphs (aggregate + member ports)
 - Customer aggregate graphs
+- IXP-wide aggregate graphs
+- Per-infrastructure aggregate graphs
+- Per-switch aggregate graphs
+- Per-location (facility) aggregate graphs
+- Admin dashboard aggregate graphs (IXP + Infrastructure)
 - Interactive uPlot charts with tooltips, zoom, responsive layout
 - Category-aware headings and colour schemes
 - Statistics tables (max, average, current)
 
 ### Planned
-- IXP/Infrastructure/Switch/VLAN aggregate graphs
-- Sub-interface graphs (per-VLAN, per-pseudowire)
+- Trunk / Core Bundle graphs (requires raw OpenConfig `rate(openconfig_interfaces_*_octets[30s])*8`)
+- Sub-interface / VLAN graphs (requires `openconfig_subinterfaces_in_octets{device_interface="port.subinterface"}`)
 - DOM optics monitoring panel
 - Sflow P2P replacement
 - Exportable graph images (server-side PNG via headless rendering)
