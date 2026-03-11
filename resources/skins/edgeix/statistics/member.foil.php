@@ -25,51 +25,41 @@
     <div class="row">
         <div class="col-sm-12">
             <?= $t->alerts() ?>
-            <nav id="filter-row" class="navbar navbar-expand-lg navbar-light bg-light mb-4 shadow-sm">
-                <a class="navbar-brand">
-                    Graph Options:
-                </a>
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNavDropdown">
-                    <ul class="navbar-nav">
-                        <form class="navbar-form navbar-left form-inline d-block d-lg-flex"  action="<?= route( "statistics@member", [ "cust" => $t->c->id ] ) ?>" method="GET">
-                            <li class="nav-item">
-                                <div class="nav-link d-flex ">
-                                    <label for="category" class="col-sm-4 col-lg-4">Type:</label>
-                                    <select id="category" name="category" onchange="" class="form-control">
-                                        <?php foreach( IXP\Services\Grapher\Graph::CATEGORY_DESCS as $cvalue => $cname ): ?>
-                                            <option value="<?= $cvalue ?>" <?php if( $t->category === $cvalue ): ?> selected <?php endif; ?> ><?= $cname ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </li>
+            <form action="<?= route( "statistics@member", [ "cust" => $t->c->id ] ) ?>" method="GET">
+                <nav id="filter-row" class="navbar navbar-expand-lg navbar-light bg-light mb-4 shadow-sm">
+                    <span class="navbar-brand">Graph Options:</span>
 
-                            <li class="nav-item">
-                                <div class="nav-link d-flex ">
-                                    <label for="period" class="col-sm-4 col-lg-6">Period:</label>
-                                    <select id="period" name="period" onchange="" class="form-control" placeholder="Select State">
-                                        <option></option>
-                                        <?php foreach( IXP\Services\Grapher\Graph::PERIOD_DESCS as $pvalue => $pname ): ?>
-                                            <option value="<?= $pvalue ?>" <?php if( $t->period === $pvalue ): ?> selected <?php endif; ?>  ><?= $pname ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </li>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
 
-                            <li class="nav-item float-right ml-3">
-                                <input type="submit" class="btn btn-white" value="Show Graphs">
-                                <?php if( config('grapher.backends.sflow.enabled') && $t->grapher()->canAccessAllCustomerP2pGraphs() ): ?>
-                                    <a class="btn btn-white ml-2" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] ) ?>">
-                                        <i class="fa fa-random"></i>&nbsp;&nbsp;P2P Graphs
-                                    </a>&nbsp;&nbsp;&nbsp;&nbsp;
-                                <?php endif; ?>
-                            </li>
-                        </form>
-                    </ul>
-                </div>
-            </nav>
+                    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                        <div class="form-inline">
+                            <label for="category" class="mr-2">Type:</label>
+                            <select id="category" name="category" onchange="this.form.submit()" class="form-control mr-3">
+                                <?php foreach( IXP\Services\Grapher\Graph::CATEGORY_DESCS as $cvalue => $cname ): ?>
+                                    <option value="<?= $cvalue ?>" <?php if( $t->category === $cvalue ): ?> selected <?php endif; ?>><?= $cname ?></option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <label for="period" class="mr-2">Period:</label>
+                            <select id="period" name="period" onchange="this.form.submit()" class="form-control mr-3">
+                                <?php foreach( IXP\Services\Grapher\Graph::PERIOD_DESCS as $pvalue => $pname ): ?>
+                                    <option value="<?= $pvalue ?>" <?php if( $t->period === $pvalue ): ?> selected <?php endif; ?>><?= $pname ?></option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <input type="submit" class="btn btn-white mr-2" value="Show Graphs">
+
+                            <?php if( config('grapher.backends.sflow.enabled') && $t->grapher()->canAccessAllCustomerP2pGraphs() ): ?>
+                                <a class="btn btn-white" href="<?= route( 'statistics@p2ps-get', [ 'customer' => $t->c->id ] ) ?>">
+                                    <i class="fa fa-random"></i>&nbsp;&nbsp;P2P Graphs
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </nav>
+            </form>
 
             <div class="row">
                 <div class="col-12">

@@ -25,38 +25,36 @@
     <div class="row">
         <div class="col-sm-12">
             <?= $t->alerts() ?>
-            <nav id="filter-row" class="navbar navbar-expand-lg navbar-light bg-light mb-4 shadow-sm">
-                <a class="navbar-brand" href="#">Graph Options:</a>
+            <form method="GET">
+                <nav id="filter-row" class="navbar navbar-expand-lg navbar-light bg-light mb-4 shadow-sm">
+                    <span class="navbar-brand">Graph Options:</span>
 
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
 
-                <div class="collapse navbar-collapse mr-auto" id="navbarNavDropdown">
-                    <ul class="navbar-nav">
-                        <form class="navbar-form navbar-left form-inline d-block d-lg-flex">
-                            <li class="nav-item mr-2">
-                                <div class="nav-link d-flex ">
-                                    <label for="category" class="mr-2">Type:</label>
-                                    <select id="category" name="category" onchange="this.form.submit()" class="form-control">
-                                        <?php foreach( IXP\Services\Grapher\Graph::CATEGORY_DESCS as $cvalue => $cname ): ?>
-                                            <option value="<?= $cvalue ?>" <?= $t->graph->category() === $cvalue ? 'selected="selected"' : '' ?>><?= $cname ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </li>
-                            <a class="btn btn-white float-right" href="<?= route( 'statistics@member', [ 'cust' => $t->c->id ] ) ?>?category=<?= $t->graph->category() ?>">
+                    <div class="collapse navbar-collapse mr-auto" id="navbarNavDropdown">
+                        <div class="form-inline">
+                            <label for="category" class="mr-2">Type:</label>
+                            <select id="category" name="category" onchange="this.form.submit()" class="form-control mr-3">
+                                <?php foreach( IXP\Services\Grapher\Graph::CATEGORY_DESCS as $cvalue => $cname ): ?>
+                                    <option value="<?= $cvalue ?>" <?= $t->graph->category() === $cvalue ? 'selected="selected"' : '' ?>><?= $cname ?></option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <a class="btn btn-white" href="<?= route( 'statistics@member', [ 'cust' => $t->c->id ] ) ?>?category=<?= $t->graph->category() ?>">
                                 All Ports
                             </a>
-                        </form>
-                    </ul>
-                </div>
-                <?php if( Auth::check() && $isSuperUser ): ?>
-                    <button type="button" class="btn btn-white pull-right" data-toggle="modal" data-target="#grapher-backend-info-modal">
-                        Backend Info
-                    </button>
-                <?php endif; ?>
-            </nav>
+                        </div>
+                    </div>
+
+                    <?php if( Auth::check() && $isSuperUser ): ?>
+                        <button type="button" class="btn btn-white pull-right" data-toggle="modal" data-target="#grapher-backend-info-modal">
+                            Backend Info
+                        </button>
+                    <?php endif; ?>
+                </nav>
+            </form>
             <h3>
                 <?php switch( get_class( $t->graph ) ):
                     case IXP\Services\Grapher\Graph\Customer::class: ?>
