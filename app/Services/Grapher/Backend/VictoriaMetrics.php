@@ -165,11 +165,11 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      * @param Graph  $graph
      * @param string $metric  The metric name (e.g. port_bitrate_rx:10s)
      *
-     * @return string  PromQL query string
+     * @return string|null  PromQL query string, or null if no data sources exist
      *
      * @throws CannotHandleRequestException
      */
-    private function buildQueryForGraph( Graph $graph, string $metric ): string
+    private function buildQueryForGraph( Graph $graph, string $metric ): ?string
     {
         // ── Per-port graphs: match on device_interface ──
 
@@ -214,7 +214,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
             }
 
             if( empty( $labels ) ) {
-                throw new CannotHandleRequestException( 'Customer has no graphable interfaces' );
+                return null;
             }
 
             return $this->buildSumQuery( $metric, 'device_interface', $labels );
@@ -232,7 +232,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 ->pluck( 'name' )->filter()->values()->all();
 
             if( empty( $names ) ) {
-                throw new CannotHandleRequestException( 'Infrastructure has no switches' );
+                return null;
             }
 
             return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
@@ -254,7 +254,7 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
                 ->all();
 
             if( empty( $names ) ) {
-                throw new CannotHandleRequestException( 'Location has no switches' );
+                return null;
             }
 
             return $this->buildSumQuery( $metric, 'device', $names, 'interface_name=~"Ethernet.*"' );
@@ -401,6 +401,11 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
 
         $queryRx = $this->buildQueryForGraph( $graph, $metrics['rx'] );
         $queryTx = $this->buildQueryForGraph( $graph, $metrics['tx'] );
+
+        // No data sources (e.g. location with no switches) — return empty
+        if( $queryRx === null || $queryTx === null ) {
+            return [];
+        }
 
         $rxData = $this->queryRange( $queryRx, $timing['range'], $timing['step'] );
         $txData = $this->queryRange( $queryTx, $timing['range'], $timing['step'] );
