@@ -14,23 +14,25 @@
     --eix-orange-dark: #A8621F;
     --eix-orange-light: #E8A35C;
     --eix-orange-lightest: #FDF3E8;
-    --eix-warm-bg: #F5F0EB;
-    --eix-warm-card: #FFFFFF;
-    --eix-warm-sidebar: #FAF7F4;
+    --eix-bg: #EFEAE5;
+    --eix-card: #FFFFFF;
+    --eix-sidebar: #FFFFFF;
     --eix-navbar: #2D2A26;
     --eix-footer-bg: #2D2A26;
     --eix-text-dark: #2D2A26;
-    --eix-section-heading-bg: #F0E9E1;
-    --eix-border-warm: #E0D6CC;
+    --eix-text-muted: #6B6560;
+    --eix-section-heading-bg: #F0EBE6;
+    --eix-border: #DDD6CE;
+    --eix-border-light: #E8E2DB;
     --eix-transition: 0.15s ease-in-out;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   2. Page Background
+   2. Page Background — slightly warm, gives cards contrast
    ═══════════════════════════════════════════════════════════════ */
 
 body {
-    background-color: var(--eix-warm-bg) !important;
+    background-color: var(--eix-bg) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -65,7 +67,7 @@ body {
 
 /* Navbar dropdown menus */
 .navbar .dropdown-menu {
-    border: 1px solid var(--eix-border-warm);
+    border: 1px solid var(--eix-border);
     border-top: 2px solid var(--eix-orange);
     border-radius: 0 0 4px 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -84,21 +86,22 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   4. Sidebar
+   4. Sidebar — clean white, orange accent on active
    ═══════════════════════════════════════════════════════════════ */
 
 #side-navbar {
-    background-color: var(--eix-warm-sidebar) !important;
-    border-right: 1px solid var(--eix-border-warm) !important;
-    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.04) !important;
+    background-color: var(--eix-sidebar) !important;
+    border-right: 1px solid var(--eix-border) !important;
+    box-shadow: none !important;
 }
 
+/* Section headings — subtle dividers */
 #side-navbar h6 {
     background-color: var(--eix-section-heading-bg) !important;
-    border-right-color: var(--eix-border-warm) !important;
-    color: var(--eix-text-dark) !important;
-    font-size: 0.7rem !important;
-    letter-spacing: 0.05em;
+    border-right-color: var(--eix-border) !important;
+    color: var(--eix-text-muted) !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.06em;
 }
 
 #side-navbar li {
@@ -113,7 +116,7 @@ body {
 
 #side-navbar li:hover {
     border-right-color: var(--eix-orange-light) !important;
-    background-color: var(--eix-orange-lightest) !important;
+    background-color: #FBF8F5 !important;
 }
 
 #side-navbar .nav-link {
@@ -135,7 +138,7 @@ body {
 }
 
 #side-navbar::-webkit-scrollbar-thumb {
-    background-color: var(--eix-border-warm);
+    background-color: var(--eix-border);
     border-radius: 4px;
 }
 
@@ -144,7 +147,7 @@ body {
    ═══════════════════════════════════════════════════════════════ */
 
 #main-div > .d-flex.border-bottom {
-    border-bottom: 2px solid var(--eix-border-warm) !important;
+    border-bottom: 2px solid var(--eix-border) !important;
     padding-bottom: 0.75rem !important;
     margin-bottom: 1.5rem !important;
 }
@@ -155,59 +158,56 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   6. Cards
+   6. Cards — white on warm bg = clear separation
    ═══════════════════════════════════════════════════════════════ */
 
 .card {
-    background-color: var(--eix-warm-card);
-    border: 1px solid var(--eix-border-warm) !important;
+    background-color: var(--eix-card);
+    border: 1px solid var(--eix-border-light) !important;
     border-radius: 6px !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
     transition: box-shadow var(--eix-transition);
 }
 
 .card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
 .card .card-header {
-    background-color: #FDFBF9;
-    border-bottom: 1px solid var(--eix-border-warm);
+    background-color: #FAFAF9;
+    border-bottom: 1px solid var(--eix-border-light);
     border-radius: 6px 6px 0 0 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   7. Tables
+   7. Tables — keep them clean, don't over-style
    ═══════════════════════════════════════════════════════════════ */
 
 .table thead th {
-    background-color: #FAF7F4;
-    border-bottom: 2px solid var(--eix-border-warm);
-    color: var(--eix-text-dark);
+    background-color: #F7F5F3;
+    border-bottom: 2px solid var(--eix-border);
+    color: var(--eix-text-muted);
     font-weight: 600;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
 }
 
 .table td, .table th {
-    border-color: #EDE6DE;
+    border-color: var(--eix-border-light);
 }
 
 .table-light td,
 .table-light thead th {
-    border-color: #EDE6DE !important;
+    border-color: var(--eix-border-light) !important;
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(204, 122, 47, 0.03);
+    background-color: #FAFAF9;
 }
 
 .table-hover tbody tr:hover {
     background-color: var(--eix-orange-lightest);
 }
 
-/* DataTables pagination */
+/* DataTables pagination — orange brand accent */
 .dataTables_wrapper .dataTables_paginate .paginate_button.current,
 .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
     background: var(--eix-orange) !important;
@@ -218,7 +218,7 @@ body {
 
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
     background: var(--eix-orange-lightest) !important;
-    border-color: var(--eix-border-warm) !important;
+    border-color: var(--eix-border) !important;
     color: var(--eix-orange-dark) !important;
 }
 
@@ -252,7 +252,6 @@ body {
 .btn {
     border-radius: 4px !important;
     transition: all var(--eix-transition);
-    font-weight: 600;
 }
 
 .btn:hover {
@@ -304,7 +303,7 @@ footer a:hover .fa-inverse {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   11. Form Inputs
+   11. Form Inputs — orange focus ring
    ═══════════════════════════════════════════════════════════════ */
 
 input.form-control:focus,
@@ -327,7 +326,7 @@ textarea.form-control:focus {
 .tabButton.active {
     color: var(--eix-orange-dark) !important;
     border-bottom: 2px solid var(--eix-orange) !important;
-    background-color: var(--eix-warm-card);
+    background-color: var(--eix-card);
 }
 
 .tabButton:hover {
@@ -358,14 +357,23 @@ a {
 
 /* Filter/option bars (graph options, etc.) */
 .navbar.navbar-light.bg-light {
-    background-color: #FAF7F4 !important;
-    border: 1px solid var(--eix-border-warm);
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--eix-border-light);
     border-radius: 6px;
 }
 
-/* Alert styling warmup */
+/* Alert info — warm tint */
 .alert-info {
     background-color: var(--eix-orange-lightest);
     border-color: var(--eix-orange-light);
     color: var(--eix-orange-dark);
+}
+
+/* Main content area on warm bg — give it a white card feel */
+#main-div > .container-fluid {
+    background-color: var(--eix-card);
+    border-radius: 6px;
+    padding: 1.25rem !important;
+    border: 1px solid var(--eix-border-light);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
