@@ -1,7 +1,13 @@
 <?php $this->layout('services/lg/layout') ?>
 
+<?php
+    // Default peerName if not passed by controller
+    $peerName = null;
+    try { $peerName = $t->peerName; } catch( \RuntimeException $e ) {}
+?>
+
 <?php $this->section('title') ?>
-    <small>Routes for <?= ucwords( $t->source ) ?> <code><?= $t->name ?></code><?php if( $t->peerName ?? null ): ?> — <?= $t->ee( $t->peerName ) ?><?php endif; ?></small>
+    <small>Routes for <?= ucwords( $t->source ) ?> <code><?= $t->name ?></code><?php if( $peerName ): ?> — <?= $t->ee( $peerName ) ?><?php endif; ?></small>
 <?php $this->append() ?>
 
 <?php $this->section('content') ?>
@@ -50,7 +56,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <?php if( $t->source ?? false ): ?>
-                <b>Routes <?= $t->source === 'export to protocol' ? 'exported to protocol' : ( $t->source === 'filtered from protocol' ? 'filtered/rejected from protocol' : ( $t->source === 'not exported to protocol' ? 'not exported to protocol' : 'from ' . $t->source ) ) ?>: <code><?= $t->name ?></code><?php if( $t->peerName ?? null ): ?> — <?= $t->ee( $t->peerName ) ?><?php endif; ?>.</b>
+                <b>Routes <?= $t->source === 'export to protocol' ? 'exported to protocol' : ( $t->source === 'filtered from protocol' ? 'filtered/rejected from protocol' : ( $t->source === 'not exported to protocol' ? 'not exported to protocol' : 'from ' . $t->source ) ) ?>: <code><?= $t->name ?></code><?php if( $peerName ): ?> — <?= $t->ee( $peerName ) ?><?php endif; ?>.</b>
             <?php endif; ?>
 
             <div class="mt-2">
