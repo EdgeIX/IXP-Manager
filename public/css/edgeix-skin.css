@@ -496,23 +496,81 @@ textarea.form-control:focus {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TAB PANELS
+   TAB PANELS — rounded pill style
    ═══════════════════════════════════════════════════════════════ */
 
-.tabButton {
-    border-radius: 6px 6px 0 0;
-    font-weight: 500;
+.tabNavMenu {
+    border-bottom: none !important;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    background-color: var(--eix-bg);
+    border-radius: 10px;
+    display: inline-flex !important;
+    margin-bottom: 1rem;
 }
 
-.tabButton.active {
-    color: var(--eix-orange-dark) !important;
-    border-bottom: 2px solid var(--eix-orange) !important;
-    background-color: var(--eix-card);
-    font-weight: 600;
+.tabButton {
+    border-radius: 8px !important;
+    border: none !important;
+    font-weight: 500;
+    font-size: 0.84rem;
+    padding: 0.5rem 1.1rem !important;
+    color: var(--eix-text-muted);
+    background-color: transparent;
+    transition: all var(--eix-transition);
+    margin-bottom: 0 !important;
 }
 
 .tabButton:hover {
-    color: var(--eix-orange);
+    color: var(--eix-text);
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.tabButton.active {
+    color: var(--eix-text) !important;
+    background-color: var(--eix-card) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+    border: none !important;
+}
+
+/* Also style Bootstrap .nav-tabs if used */
+.nav-tabs {
+    border-bottom: none;
+    gap: 0.35rem;
+    background-color: var(--eix-bg);
+    border-radius: 10px;
+    padding: 0.25rem;
+    display: inline-flex;
+    margin-bottom: 1rem;
+}
+
+.nav-tabs .nav-link {
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 0.84rem;
+    font-weight: 500;
+    padding: 0.5rem 1.1rem;
+    color: var(--eix-text-muted) !important;
+    transition: all var(--eix-transition);
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--eix-text) !important;
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+    color: var(--eix-text) !important;
+    background-color: var(--eix-card) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+}
+
+.tabContent .tabPanel.active {
+    border: 1px solid var(--eix-border);
+    border-radius: 10px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -590,6 +648,31 @@ a {
 /* Main content wrapper */
 #main-div {
     padding-top: 0.5rem;
+}
+
+/* Period selector buttons (Day/Week/Month/Year) — pill toggle group */
+.btn-toolbar .btn-white,
+.btn-group .btn-white {
+    border-radius: 8px !important;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.85rem;
+}
+
+/* Customer-side navbar (no sidebar) — ensure same dark treatment */
+.navbar.navbar-dark .navbar-nav .nav-item .nav-link {
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: all var(--eix-transition);
+}
+
+.navbar.navbar-dark .navbar-nav .nav-item .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Recent Members / Top Peers table headers on customer dashboard */
+.table thead th[style*="background"] {
+    border-radius: 6px 6px 0 0;
 }
 
 /* Scroll-to-top smoothness */

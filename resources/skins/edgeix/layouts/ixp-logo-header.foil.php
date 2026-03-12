@@ -1,4 +1,4 @@
-<a class="navbar-brand" style="font-size:18px" href="<?= url('') ?>">
-    <img class="tw-inline" style="max-height: 26px !important; margin-right: 1rem !important;" src="<?= asset( "images/EdgeIX-E.png" ) ?>">
-    <?= config('identity.titlename' ) ?>
+<a class="navbar-brand d-flex align-items-center" href="<?= url('') ?>" style="gap: 0.5rem;">
+    <img src="<?= asset( "images/EdgeIX-E.png" ) ?>" alt="EdgeIX" style="height: 32px; width: auto;">
+    <span style="font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em;"><?= config('identity.titlename' ) ?></span>
 </a>
