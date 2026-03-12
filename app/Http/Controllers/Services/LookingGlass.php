@@ -403,10 +403,14 @@ class LookingGlass extends Controller
 
             if( empty( $allRoutes ) ) {
                 $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
+                \Log::info( "Community search: routesForTable({$masterTable}) returned empty" );
             } else {
                 $data = json_decode( $allRoutes, true );
                 if( !$data || !isset( $data['routes'] ) ) {
+                    \Log::info( "Community search: routesForTable({$masterTable}) returned non-route data, length=" . strlen( $allRoutes ) );
                     $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
+                } else {
+                    \Log::info( "Community search: got " . count( $data['routes'] ) . " routes from {$masterTable}" );
                 }
             }
 
