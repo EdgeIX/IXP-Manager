@@ -496,13 +496,10 @@ class BirdWatcher implements LookingGlassContract
     #[\Override]
     public function routesProtocolLargeCommunityWildXYRoutes( string $protocol, int $x, int $y ): string
     {
-        if( $y === 1101 ) {
-            // Filtered/rejected routes — use Birdwatcher's native filtered endpoint
-            return $this->apiCall( 'routes/filtered/' . urlencode( $protocol ) );
-        }
-
-        // For other community queries (e.g. 1000=RPKI, 1001=IRRDB info),
-        // fetch all routes and filter client-side by large community
+        // Fetch all routes for the protocol and filter by large community (x, y, *).
+        // We always use community-based filtering rather than birdwatcher's /routes/filtered/
+        // because IXP Manager route servers typically accept routes and tag them with
+        // (ASN, 1101, reason) communities rather than having BIRD reject them at import.
         $allRoutes = $this->apiCall( 'routes/protocol/' . urlencode( $protocol ) );
 
         if( empty( $allRoutes ) ) {

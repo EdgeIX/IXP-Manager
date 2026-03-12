@@ -443,17 +443,17 @@ class LookingGlass extends Controller
 
     /**
      * Fetch filtered routes from the appropriate backend.
+     *
+     * Uses large community (ASN, 1101, *) filtering for both backends.
+     * Birdwatcher's /routes/filtered/ only returns routes BIRD rejected at import,
+     * but IXP Manager route servers accept routes and tag them with (ASN, 1101, reason)
+     * communities instead. So we use the community-based approach for both.
      */
     private function getFilteredRoutes( string $protocol ): string
     {
-        $lg = $this->lg();
-
-        if( $lg->router()->apiType() === Router::API_TYPE_BIRDWATCHER && method_exists( $lg, 'routesFiltered' ) ) {
-            return $lg->routesFiltered( $protocol );
-        }
-
-        // Birdseye: use large community wildcard (ASN, 1101, *)
-        return $lg->routesProtocolLargeCommunityWildXYRoutes( $protocol, $lg->router()->asn, 1101 );
+        return $this->lg()->routesProtocolLargeCommunityWildXYRoutes(
+            $protocol, $this->lg()->router()->asn, 1101
+        );
     }
 
     /**
