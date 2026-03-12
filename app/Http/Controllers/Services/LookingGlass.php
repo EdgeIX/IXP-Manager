@@ -46,6 +46,7 @@ use IXP\Http\Controllers\Controller;
 use IXP\Models\{
     Aggregators\RouterAggregator,
     Customer,
+    Router,
     User
 };
 
@@ -369,5 +370,104 @@ class LookingGlass extends Controller
             'content' => json_decode( $this->lg()->symbols(), false ),
         ]);
         return $this->addCommonParams( $view );
+    }
+
+    /**
+     * Get filtered/rejected routes for a protocol.
+     *
+     * Birdwatcher: uses /routes/filtered/ endpoint
+     * Birdseye: uses lc-zwild with (ASN, 1101, *) large communities
+     */
+    public function routesFiltered( string $handle, string $protocol ): RedirectResponse|View
+    {
+        try {
+            $routes = $this->getFilteredRoutes( $protocol );
+            $view = view('services/lg/routes' )->with([
+                'content' => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'source'  => 'filtered from protocol',
+                'name'    => $protocol,
+            ]);
+            return $this->addCommonParams( $view );
+        } catch( \Exception $e ) {
+            AlertContainer::push( 'Could not retrieve filtered routes.', Alert::DANGER );
+            return redirect( route( 'lg::bgp-sum', [ 'handle' => $handle ] ) );
+        }
+    }
+
+    /**
+     * Get not-exported routes for a protocol (birdwatcher only).
+     */
+    public function routesNotExported( string $handle, string $protocol ): RedirectResponse|View
+    {
+        try {
+            $routes = $this->getNotExportedRoutes( $protocol );
+            $view = view('services/lg/routes' )->with([
+                'content' => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'source'  => 'not exported to protocol',
+                'name'    => $protocol,
+            ]);
+            return $this->addCommonParams( $view );
+        } catch( \Exception $e ) {
+            AlertContainer::push( 'Could not retrieve not-exported routes.', Alert::DANGER );
+            return redirect( route( 'lg::bgp-sum', [ 'handle' => $handle ] ) );
+        }
+    }
+
+    /**
+     * API: filtered routes as JSON (for AJAX tab loading)
+     */
+    public function routesFilteredApi( string $handle, string $protocol ): Response
+    {
+        try {
+            return response()
+                ->make( $this->getFilteredRoutes( $protocol ) )
+                ->header( 'Content-Type', 'application/json' );
+        } catch( \Exception $e ) {
+            return response()->json( [ 'routes' => [], 'error' => 'Could not retrieve filtered routes' ], 200 );
+        }
+    }
+
+    /**
+     * API: not-exported routes as JSON (for AJAX tab loading)
+     */
+    public function routesNotExportedApi( string $handle, string $protocol ): Response
+    {
+        try {
+            return response()
+                ->make( $this->getNotExportedRoutes( $protocol ) )
+                ->header( 'Content-Type', 'application/json' );
+        } catch( \Exception $e ) {
+            return response()->json( [ 'routes' => [], 'error' => 'Could not retrieve not-exported routes' ], 200 );
+        }
+    }
+
+    /**
+     * Fetch filtered routes from the appropriate backend.
+     */
+    private function getFilteredRoutes( string $protocol ): string
+    {
+        $lg = $this->lg();
+
+        if( $lg->router()->apiType() === Router::API_TYPE_BIRDWATCHER && method_exists( $lg, 'routesFiltered' ) ) {
+            return $lg->routesFiltered( $protocol );
+        }
+
+        // Birdseye: use large community wildcard (ASN, 1101, *)
+        return $lg->routesProtocolLargeCommunityWildXYRoutes( $protocol, $lg->router()->asn, 1101 );
+    }
+
+    /**
+     * Fetch not-exported routes from the appropriate backend.
+     */
+    private function getNotExportedRoutes( string $protocol ): string
+    {
+        $lg = $this->lg();
+
+        if( $lg->router()->apiType() === Router::API_TYPE_BIRDWATCHER && method_exists( $lg, 'routesNoExport' ) ) {
+            return $lg->routesNoExport( $protocol );
+        }
+
+        // Birdseye doesn't have a not-exported concept — return empty
+        return json_encode( [ 'api' => [ 'version' => 'birdseye' ], 'routes' => [] ] );
     }
 }

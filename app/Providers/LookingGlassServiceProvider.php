@@ -64,6 +64,8 @@ class LookingGlassServiceProvider extends ServiceProvider
             Route::get( '{handle}/routes/table/{table}',                    'LookingGlass@routesForTable'    );
             Route::get( '{handle}/routes/protocol/{protocol}',              'LookingGlass@routesForProtocol' )->name( 'route-protocol' );
             Route::get( '{handle}/routes/export/{protocol}',                'LookingGlass@routesForExport'   );
+            Route::get( '{handle}/routes/filtered/{protocol}',              'LookingGlass@routesFiltered'    );
+            Route::get( '{handle}/routes/not-exported/{protocol}',          'LookingGlass@routesNotExported' );
             Route::get( '{handle}/route-search',                            'LookingGlass@routeSearch'       )->name( 'route-search' );
             Route::get( '{handle}/route/{net}/{mask}/protocol/{protocol}',  'LookingGlass@routeProtocol'     );
             Route::get( '{handle}/route/{net}/{mask}/table/{table}',        'LookingGlass@routeTable'        );
@@ -73,8 +75,10 @@ class LookingGlassServiceProvider extends ServiceProvider
         Route::group( [ 'middleware' => 'lookingglass', 'namespace' => 'IXP\Http\Controllers\Services',
             'as' => 'lg-api::', 'prefix' => 'api/v4/lg' ], function() {
 
-            Route::get( '{handle}/status',      'LookingGlass@status'        )->name('status');
-            Route::get( '{handle}/bgp-summary', 'LookingGlass@bgpSummaryApi' )->name('bgp-sum');
+            Route::get( '{handle}/status',                          'LookingGlass@status'              )->name('status');
+            Route::get( '{handle}/bgp-summary',                     'LookingGlass@bgpSummaryApi'       )->name('bgp-sum');
+            Route::get( '{handle}/routes/filtered/{protocol}',      'LookingGlass@routesFilteredApi'   )->name('routes-filtered');
+            Route::get( '{handle}/routes/not-exported/{protocol}',  'LookingGlass@routesNotExportedApi')->name('routes-not-exported');
         });
     }
 
