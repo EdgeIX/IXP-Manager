@@ -127,7 +127,8 @@ class BirdWatcher implements LookingGlassContract
             $url .= ( str_contains( $url, '?' ) ? '&' : '?' ) . 'uncached=true';
         }
 
-        $ret = @file_get_contents( $url );
+        $ctx = stream_context_create( [ 'http' => [ 'timeout' => 15 ] ] );
+        $ret = @file_get_contents( $url, false, $ctx );
 
         if( !$ret ) {
             return "";

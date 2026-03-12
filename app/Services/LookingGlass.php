@@ -63,11 +63,9 @@ class LookingGlass
                 return $be;
                 break;
             case Router::API_TYPE_BIRDWATCHER:
-                $be = new BirdwatcherLookingGlass( $router );    
-                if( Auth::check() ) {
-                    $be->setCacheEnabled(false);
-                }
-                return $be;
+                // Birdwatcher's cache is server-side with short TTL — don't bypass it
+                // as each uncached request runs birdc synchronously and is slow
+                return new BirdwatcherLookingGlass( $router );
                 break;
             default:
                 throw new ConfigurationException( 'Invalid, no or unimplemented looking glass backend requested: ' . $router->apiType() );
