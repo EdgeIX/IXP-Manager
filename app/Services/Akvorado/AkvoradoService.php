@@ -65,7 +65,7 @@ class AkvoradoService
     public function __construct()
     {
         $this->url      = rtrim( config( 'grapher.backends.akvorado.url', '' ), '/' );
-        $this->timeout  = (int) config( 'grapher.backends.akvorado.timeout', 10 );
+        $this->timeout  = (int) config( 'grapher.backends.akvorado.timeout', 30 );
         $this->authUser = config( 'grapher.backends.akvorado.auth_user' ) ?: null;
         $this->authPass = config( 'grapher.backends.akvorado.auth_pass' ) ?: null;
     }
@@ -151,6 +151,7 @@ class AkvoradoService
             'filter'     => $filter,
             'units'      => $units,
             'points'     => $timing['points'],
+            'limit'      => 5,
         ];
 
         if( !empty( $dimensions ) ) {
