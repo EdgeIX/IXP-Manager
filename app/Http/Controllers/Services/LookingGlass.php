@@ -247,7 +247,8 @@ class LookingGlass extends Controller
 
         $view = view('services/lg/routes' )->with([
             'content'   => json_decode($routes, false, 512, JSON_THROW_ON_ERROR),
-            'source'    => 'table', 'name' => $table
+            'source'    => 'table', 'name' => $table,
+            'peerName'  => null,
         ]);
 
         return $this->addCommonParams( $view );
