@@ -32,6 +32,7 @@ return [
         'sflow'           => IXP\Services\Grapher\Backend\Sflow::class,
         'smokeping'       => IXP\Services\Grapher\Backend\Smokeping::class,
         'victoriametrics' => IXP\Services\Grapher\Backend\VictoriaMetrics::class,
+        'akvorado'        => IXP\Services\Grapher\Backend\Akvorado::class,
     ],
 
     /*
@@ -161,6 +162,18 @@ return [
                 }
             }),
 
+        ],
+
+        'akvorado' => [
+            // Akvorado flow collector API URL
+            'url'       => env( 'AKVORADO_URL', '' ),
+
+            // HTTP request timeout in seconds
+            'timeout'   => env( 'AKVORADO_TIMEOUT', 10 ),
+
+            // Optional basic auth credentials (for nginx-protected Akvorado)
+            'auth_user' => env( 'AKVORADO_AUTH_USER', '' ),
+            'auth_pass' => env( 'AKVORADO_AUTH_PASS', '' ),
         ],
 
     ],
