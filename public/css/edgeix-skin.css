@@ -130,7 +130,7 @@ body {
 
 #side-navbar .sidebar-search .form-control {
     background-color: var(--eix-sidebar-hover) !important;
-    border: 1px solid var(--eix-sidebar-border) !important;
+    border: 1px solid var(--eix-orange) !important;
     color: #E2E8F0 !important;
     font-size: 0.8rem;
     box-shadow: none !important;
@@ -148,8 +148,8 @@ body {
 #side-navbar .sidebar-search .btn,
 #side-navbar .sidebar-search .input-group-text {
     background-color: var(--eix-sidebar-hover) !important;
-    border: 1px solid var(--eix-sidebar-border) !important;
-    color: var(--eix-sidebar-text) !important;
+    border: 1px solid var(--eix-orange) !important;
+    color: var(--eix-orange) !important;
     box-shadow: none !important;
 }
 
