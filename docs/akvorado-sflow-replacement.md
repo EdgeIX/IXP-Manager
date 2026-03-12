@@ -1,337 +1,361 @@
-# Akvorado sFlow Replacement
+# Akvorado Grapher Backend for IXP Manager
 
-> Replace the legacy Perl sflow-to-rrd-handler with Akvorado API queries for p2p traffic graphs, rendered with uPlot. Eliminates RRD files and one of the two IXP-Manager sflow fanout targets.
+Drop-in replacement for the legacy Perl sflow-to-RRD pipeline. Uses the [Akvorado](https://github.com/akvorado/akvorado) flow collector's REST API to serve sFlow-based traffic graphs (P2P, per-customer, per-exchange) rendered with interactive uPlot charts instead of static PNG images.
 
----
-
-## Current Architecture
-
-```
-sflow from switches
-        |
-        +---> Akvorado (NOC dashboards)
-        |
-        +---> IXP-Manager sflowtool (x2)
-               +---> jix-sflow-to-rrd-handler --> RRD files --> p2p traffic graphs (PNG)
-               +---> sflow-detect-ixp-bgp-sessions --> bgpsessiondata table --> bilateral matrix
-```
-
-### Current Components (to be replaced)
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `jix-interface-map-dump` | `tools/runtime/sflow/` | Perl script, queries DB to build `switch_ip -> ifIndex -> {ixp_vlan, interface_name, egress_vlan}` JSON map |
-| `jix-sflow-to-rrd-handler` | `tools/runtime/sflow/` | Perl daemon, reads sflowtool output, translates VLANs via interface map, maps MAC -> VLI via API, writes RRD files |
-| `Sflow.php` backend | `app/Services/Grapher/Backend/` | PHP, reads RRD files to render PNG p2p/aggregate/individual graphs |
-| RRD files | `/srv/ixpmatrix/` | On-disk round-robin databases: p2p, individual, aggregate per VLI/VLAN |
-| `sflow-db-mapper` API | `/api/v4/sflow-db-mapper/` | Returns `infrastructure -> vlan -> mac -> vli_id` mapping |
-
-### Retained (unchanged)
-
-| Component | Purpose |
-|-----------|---------|
-| `sflow-detect-ixp-bgp-sessions` | BGP bilateral detection via TCP/179 sflow samples -> `bgpsessiondata` table |
-| Akvorado | Existing sflow collector, already deployed for NOC |
+**Replaces:** `jix-sflow-to-rrd-handler`, `jix-interface-map-dump`, `Sflow.php` backend, RRD files, `rrdcached`
+**Retains:** `sflow-detect-ixp-bgp-sessions` (BGP bilateral detection — unchanged)
 
 ---
 
-## Target Architecture
+## Prerequisites
 
-```
-sflow from switches
-        |
-        +---> Akvorado (NOC + IXP-Manager p2p source)
-        |         |
-        |         +---> IXP-Manager queries Akvorado REST API
-        |                +---> p2p graphs (uPlot, per VLI pair)
-        |                +---> individual graphs (uPlot, per VLI)
-        |                +---> aggregate graphs (uPlot, per VLAN/exchange)
-        |                +---> MAC anomaly detection
-        |
-        +---> sflow-detect-ixp-bgp-sessions (stays as-is)
-```
-
----
-
-## Akvorado API
-
-### Endpoint
-
-```
-POST /api/v0/console/graph/line
-```
-
-> **Note:** API is `v0` (unstable) but being stabilized for Akvorado 2.0. The OVH Grafana plugin uses the same endpoint as a reference implementation.
-
-### Request Format
-
-```json
-{
-  "start": "2026-03-11T00:00:00Z",
-  "end": "2026-03-12T00:00:00Z",
-  "dimensions": ["SrcMAC", "DstMAC"],
-  "filter": "SrcMAC = '00:1a:2b:3c:4d:5e' AND DstMAC = '00:5e:4d:3c:2b:1a' AND SrcVlan = 123",
-  "limit": 10,
-  "units": "l3bps",
-  "points": 200
-}
-```
-
-### Response Format
-
-```json
-{
-  "t": [1709200000, 1709200300, ...],
-  "rows": [["00:1a:2b:3c:4d:5e", "00:5e:4d:3c:2b:1a"]],
-  "points": [[1234567, 2345678, ...]],
-  "axis": [...],
-  "stats": [{"avg": 1500000, "min": 500000, "max": 3000000, "last": 1200000, "95th": 2800000}]
-}
-```
-
-### Available Units
-
-- `l3bps` — Layer 3 bits/s
-- `l2bps` — Layer 2 bits/s
-- `pps` — Packets/s
-- `inl2%` — Ingress utilization %
-- `outl2%` — Egress utilization %
-
-### Akvorado Schema (already configured)
+1. **Akvorado** deployed and receiving sFlow from your switches
+2. **Akvorado schema** must include MAC and VLAN columns:
 
 ```yaml
-# /srv/akvorado/config/akvorado.yaml
+# akvorado.yaml
 schema:
   enabled:
     - SrcVlan
     - DstVlan
     - SrcMAC
     - DstMAC
-    - SrcNetPrefix
-    - DstNetPrefix
 ```
+
+3. **IXP-Manager** with configured MAC addresses (`l2address` table) for all peering members. The backend resolves traffic by MAC address — members without configured MACs will show no data.
+
+4. **Network access** from IXP-Manager to Akvorado's HTTP API (default port 8080)
 
 ---
 
-## VLAN Resolution
+## Installation
 
-### The Problem
+### 1. Add Files
 
-sFlow samples at ingress **before VLAN rewrite**. Customers may have port-specific VLAN tagging:
-
-- Trunk port with `vlantag = 123` for Sydney (IXP VLAN 200) -> sFlow sees VLAN 123
-- Trunk port with `vlantag = 456` for Adelaide (IXP VLAN 300) -> sFlow sees VLAN 456
-- Untagged port on Sydney -> sFlow sees VLAN 200 (the IXP VLAN directly)
-
-A customer can peer on multiple exchanges from the **same physical port on the same switch** (same ExporterName, same InIfName, same MAC). The only differentiator is the VLAN tag.
-
-### The Solution
-
-IXP-Manager already has both values:
-
-- `vlaninterface.vlantag` = customer-facing tag (123, 456) or `NULL` for untagged
-- `vlan.number` = IXP internal peering VLAN (200, 300)
-
-Query logic:
+Copy these files into your IXP-Manager installation:
 
 ```
-For a given VlanInterface:
-  if vlantag is set  -> filter SrcVlan = vlantag     (e.g., 123)
-  if vlantag is NULL -> filter SrcVlan = vlan.number  (e.g., 200)
+app/Services/Akvorado/AkvoradoService.php       # HTTP client + query builder
+app/Services/Grapher/Backend/Akvorado.php        # Grapher backend integration
+app/Console/Commands/Grapher/UploadDailyP2pAkvorado.php  # Daily P2P stats collector
 ```
 
-### Same MAC, Multiple Exchanges
+### 2. Register the Backend
 
-Valid scenario: Customer X peers on Sydney (VLAN 200) and Adelaide (VLAN 300) with the same MAC.
-
-Resolution: `SrcMAC + SrcVlan` uniquely identifies the customer on a specific exchange. The VLAN (resolved per above) scopes the query to a single exchange.
-
-### Same MAC, Same VLAN
-
-Invalid scenario: enforced by IXP-Manager. Same MAC must not appear twice on the same VLAN.
-
----
-
-## MAC Anomaly Detection
-
-### Concept
-
-Periodically query Akvorado for distinct MACs seen per interface/VLAN. Compare against IXP-Manager's `l2address` table (configured/static MACs). Any MAC not in the table is a potential rogue.
-
-### Query
-
-```json
-{
-  "start": "<now - 6h>",
-  "end": "<now>",
-  "dimensions": ["SrcMAC", "SrcVlan", "ExporterName", "InIfName"],
-  "filter": "ExporterName = 'pe1syd3'",
-  "units": "l3bps",
-  "limit": 1000
-}
-```
-
-### Detection Logic
-
-1. Fetch all distinct `SrcMAC` values seen in Akvorado for a given time window
-2. Load all known MACs from `l2address` table (configured) and optionally `macaddress` table (learned)
-3. Diff: any MAC in Akvorado but not in IXP-Manager is flagged
-4. Group by `SrcVlan` + `InIfName` to identify which port/exchange the rogue appeared on
-5. Output: admin alert, dashboard panel, or email notification
-
-### Implementation
-
-- Artisan command: `php artisan akvorado:check-macs`
-- Can be scheduled via cron (e.g., every 15 minutes)
-- Could feed into existing IXP-Manager notification system
-
----
-
-## Graph Types to Replace
-
-### 1. P2P (Peer-to-Peer)
-
-Traffic between two specific VlanInterfaces on the same exchange.
-
-**Current:** RRD file per `srcvli/dstvli` pair, rendered as PNG
-**New:** Akvorado query: `SrcMAC + DstMAC + SrcVlan` -> uPlot chart
-
-### 2. Individual (Per-VlanInterface)
-
-Aggregate in/out traffic for a single VlanInterface across all peers.
-
-**Current:** RRD file per `srcvli`, rendered as PNG
-**New:** Akvorado query: `SrcMAC + SrcVlan` (in) / `DstMAC + SrcVlan` (out) -> uPlot chart
-
-### 3. Aggregate (Per-VLAN/Exchange)
-
-Total traffic across an entire exchange VLAN.
-
-**Current:** RRD file per VLAN, rendered as PNG
-**New:** Akvorado query: `SrcVlan = <ixp_vlan>` -> uPlot chart
-**Note:** For aggregate, use the IXP VLAN number directly — covers all traffic on that exchange regardless of per-port vlantag rewriting.
-
----
-
-## Implementation Components
-
-### 1. Grapher Backend — `Akvorado.php`
-
-**File:** `app/Services/Grapher/Backend/Akvorado.php`
-
-New grapher backend alongside Sflow/Mrtg/VictoriaMetrics. Implements the same `canProcess()` interface for graph types: `P2p`, `VlanInterface` (individual), `Vlan` (aggregate).
-
-### 2. AkvoradoService — HTTP client + query builder
-
-**File:** `app/Services/Akvorado/AkvoradoService.php`
-
-**Key methods:**
-- `queryTimeSeries(array $filter, string $unit, string $start, string $end, int $points): array`
-- `p2pTraffic(VlanInterface $src, VlanInterface $dst, string $period): array`
-- `individualTraffic(VlanInterface $vli, string $period): array`
-- `aggregateTraffic(Vlan $vlan, string $period): array`
-- `resolveVlan(VlanInterface $vli): int` — returns vlantag if set, else vlan.number
-- `resolveMACs(VlanInterface $vli): array` — returns configured l2address MACs for a VLI
-- `distinctMACs(string $exporterName, string $period): array` — for anomaly detection
-
-### 3. Config — `config/grapher.php`
-
-Add `akvorado` backend config:
+Add the Akvorado backend to `config/grapher.php`:
 
 ```php
-'akvorado' => [
-    'enabled'  => env('AKVORADO_ENABLED', false),
-    'url'      => env('AKVORADO_URL', 'http://localhost:8080'),
-    'timeout'  => env('AKVORADO_TIMEOUT', 10),
-    'periods'  => [
-        'hour'  => ['range' => '1h',  'points' => 240],
-        'day'   => ['range' => '24h', 'points' => 288],
-        'week'  => ['range' => '7d',  'points' => 336],
-        'month' => ['range' => '30d', 'points' => 360],
-        'year'  => ['range' => '365d','points' => 365],
+'providers' => [
+    // ... existing backends ...
+    'akvorado' => IXP\Services\Grapher\Backend\Akvorado::class,
+],
+```
+
+Add the Akvorado config block inside the `backends` array:
+
+```php
+'backends' => [
+    // ... existing backends ...
+
+    'akvorado' => [
+        // Akvorado API URL (required)
+        'url'       => env( 'AKVORADO_URL', '' ),
+
+        // HTTP request timeout in seconds
+        'timeout'   => env( 'AKVORADO_TIMEOUT', 30 ),
+
+        // Optional basic auth (if Akvorado is behind nginx auth)
+        'auth_user' => env( 'AKVORADO_AUTH_USER', '' ),
+        'auth_pass' => env( 'AKVORADO_AUTH_PASS', '' ),
     ],
 ],
 ```
 
-### 4. uPlot P2P Renderer (skin override)
+### 3. Configure `.env`
 
-**File:** `resources/skins/edgeix/services/grapher/renderer/box/p2p.foil.php` (new)
+```bash
+# Add akvorado to your grapher backends (alongside existing backends)
+# Akvorado handles: vlan, vlaninterface, p2p graph types
+# Your existing backend (e.g. victoriametrics) continues to handle: physicalinterface, customer, etc.
+GRAPHER_BACKENDS="victoriametrics|akvorado"
 
-- Period selector (Hour/Day/Week/Month/Year)
-- AJAX fetch to new API endpoint
-- uPlot chart with green RX / blue TX (matching existing traffic graph style)
-- Stats row: max, avg, current, 95th percentile (Akvorado provides these)
-- SI-unit Y-axis formatter (bits/s)
-- Lazy-load uPlot via shared queue pattern
+# Akvorado API URL
+AKVORADO_URL="https://akvorado.example.com"
 
-### 5. API Endpoints
+# Optional: increase timeout for large queries (default: 30s)
+AKVORADO_TIMEOUT=30
+
+# Optional: basic auth if your Akvorado is behind nginx auth
+# AKVORADO_AUTH_USER=ixpmanager
+# AKVORADO_AUTH_PASS=secret
+```
+
+### 4. Switch Views to uPlot (Skin Override)
+
+The Akvorado backend returns data through the standard grapher framework, so existing views work out of the box. However, the legacy views render `<img>` tags pointing to PNG URLs — since Akvorado returns a 1x1 transparent PNG placeholder, you'll want to switch to uPlot rendering.
+
+Create skin overrides for the affected views. In each, replace:
 
 ```php
-// New routes for AJAX graph data
-Route::get('/api/v4/grapher/p2p/{srcVli}/{dstVli}', 'GrapherController@p2pAkvorado');
-Route::get('/api/v4/grapher/individual/{vli}', 'GrapherController@individualAkvorado');
-Route::get('/api/v4/grapher/aggregate/{vlan}', 'GrapherController@aggregateAkvorado');
+<!-- Old: PNG image -->
+<img src="<?= $t->graph->url() ?>" />
 ```
 
-### 6. MAC Anomaly Command
-
-**File:** `app/Console/Commands/AkvoradoCheckMacs.php`
+With:
 
 ```php
-php artisan akvorado:check-macs [--period=6h] [--notify]
+<!-- New: Interactive uPlot chart -->
+<?= $t->graph->renderer()->boxUplot() ?>
 ```
 
-### File Layout Summary
+Views that need skin overrides:
 
+| View | Graph Type |
+|------|-----------|
+| `statistics/vlan.foil.php` | VLAN aggregate (per-exchange) |
+| `statistics/p2p-single.foil.php` | P2P detail (single peer, 4 periods) |
+| `statistics/p2ps.foil.php` | P2P overview (all peers for a customer) |
+| `statistics/member.foil.php` | Member statistics (per-customer VLI graphs) |
+
+### 5. P2P Daily Stats (Cron)
+
+The P2P table page (`/statistics/p2p-table`) shows daily traffic totals per peer. This data is stored in the `p2p_daily_stats` database table and needs to be populated daily.
+
+```bash
+# Run once to backfill a specific day:
+php artisan akvorado:upload-daily-p2p 2026-03-11
+
+# Add to cron for automatic daily collection (runs for yesterday):
+# /etc/cron.d/ixpmanager-akvorado
+0 2 * * * www-data cd /srv/ixpmanager && php artisan akvorado:upload-daily-p2p >> /dev/null 2>&1
 ```
-IXP-Manager (EdgIX fork)
-├── app/Services/Grapher/Backend/Akvorado.php      # grapher backend
-├── app/Services/Akvorado/AkvoradoService.php      # HTTP client + query builder
-├── app/Console/Commands/AkvoradoCheckMacs.php      # rogue MAC detection
-├── config/grapher.php                              # add akvorado backend config
-└── resources/skins/edgeix/
-    └── services/grapher/renderer/box/p2p.foil.php  # uPlot renderer
+
+Options:
+- `{day}` — Target day in `YYYY-MM-DD` format (defaults to yesterday)
+- `--customer-id=N` — Process a single customer (for testing/debugging)
+- `-v` — Show per-customer timing
+- `-vv` — Show per-VLAN detail
+
+**Performance:** Uses batch dimension queries — 2 API calls per VLAN per protocol per customer (vs 2 per peer in the old approach). A 170-member exchange completes in ~15-20 minutes.
+
+### 6. Clear Config Cache
+
+```bash
+php artisan config:clear
 ```
+
+If running with OPcache (`validate_timestamps=0`), restart your web server.
 
 ---
 
-## Migration Path
+## How It Works
 
-### Phase 1: Read-only (parallel operation)
-- Deploy AkvoradoService + uPlot renderer
-- Keep RRD pipeline running
-- New graphs render from Akvorado, old graphs still available
-- Validate data matches between RRD and Akvorado
+### Architecture
 
-### Phase 2: Switchover
-- Disable sflow fanout to jix-sflow-to-rrd-handler
-- Remove RRD pipeline (handler, interface-map-dump, rrdcached)
-- Akvorado is sole source for p2p/individual/aggregate graphs
+```
+sflow from switches
+        |
+        +---> Akvorado (ClickHouse storage)
+        |         |
+        |         +---> IXP-Manager queries REST API
+        |                +---> P2P graphs (per VLI pair)
+        |                +---> Individual graphs (per VLI)
+        |                +---> Aggregate graphs (per VLAN/exchange)
+        |                +---> P2P daily stats table
+        |
+        +---> sflow-detect-ixp-bgp-sessions (unchanged)
+```
 
-### Phase 3: Enhancements
-- MAC anomaly detection command + cron schedule
-- Admin dashboard panel for rogue MAC alerts
+### Traffic Identification
 
-### Out of Scope (use Akvorado UI directly)
-- Prefix-level traffic breakdown (SrcNetPrefix/DstNetPrefix)
-- Country/geo analysis (SrcCountry/DstCountry)
-- Protocol/port breakdown (Proto/DstPort)
-- Packet size distribution (PacketSizeBucket)
-- Sankey flow diagrams
-- ASN-level deep-dive analysis
+Akvorado stores raw sFlow samples with MAC addresses and VLAN tags. IXP-Manager maps these to customers using:
 
-These are all available in the Akvorado console and don't need to be duplicated in IXP-Manager. IXP-Manager's value-add is context enrichment: mapping Akvorado's raw flow data (MACs, VLANs) to customers, exchanges, and authorised MAC tables — things Akvorado doesn't know about.
+- **MAC addresses** — from the `l2address` table (configured per VlanInterface)
+- **VLAN tags** — `vlaninterface.vlantag` if set (customer-specific tag before rewrite), else `vlan.number` (IXP exchange VLAN)
+
+The combination of `SrcMAC + SrcVlan` uniquely identifies a customer on a specific exchange, even when the same MAC appears on multiple exchanges via the same physical port.
+
+### sFlow Direction Model
+
+sFlow is enabled **ingress-only** on peer ports. This means:
+
+- **Outbound traffic** (customer A → customer B): Captured at A's ingress as `SrcMAC = A, DstMAC = B, SrcVlan = A's VLAN`
+- **Inbound traffic** (customer B → customer A): Captured at B's ingress as `SrcMAC = B, DstMAC = A, SrcVlan = B's VLAN`
+
+The backend makes two API calls per graph — one for each direction — and merges them.
+
+### Query Types
+
+| Graph Type | OUT Query | IN Query |
+|-----------|-----------|----------|
+| **P2P** | `SrcMAC = src AND DstMAC = dst AND SrcVlan = src_vlan AND EType = IPv4` | `SrcMAC = dst AND DstMAC = src AND SrcVlan = dst_vlan AND EType = IPv4` |
+| **Individual** | `SrcMAC = mac AND SrcVlan = vlan AND EType = IPv4` | `DstMAC = mac AND DstVlan = vlan AND EType = IPv4` |
+| **Aggregate** | `SrcVlan = ixp_vlan AND EType = IPv4` | (mirrored — same data in/out) |
+
+### P2P Batch Optimization
+
+The P2P overview page (showing mini-graphs for all peers) uses Akvorado's **dimension grouping** to fetch all peer traffic in just 2 API calls instead of 2 per peer:
+
+- OUT: `SrcMAC = customer AND SrcVlan = vlan AND EType = IPv4` with `dimensions: ["DstMAC"]`
+- IN: `DstMAC = customer AND EType = IPv4` with `dimensions: ["SrcMAC"]`
+
+Each response row contains a MAC address that maps back to a peer customer. The `limit` parameter must be set high enough to cover all peers (we use `count(known_MACs) + 10`).
+
+### Response Format
+
+Akvorado's `/api/v0/console/graph/line` returns:
+
+```json
+{
+  "t": ["2026-03-11T00:00:00Z", "2026-03-11T00:05:00Z", ...],
+  "rows": [["AA:BB:CC:DD:EE:FF"], ["11:22:33:44:55:66"]],
+  "points": [[1234567, 2345678, ...], [345678, 456789, ...]],
+  "average": [1500000, 400000],
+  "min": [500000, 100000],
+  "max": [3000000, 800000],
+  "95th": [2800000, 750000]
+}
+```
+
+Key details:
+- `rows` are **numeric arrays** (not associative) — access via `$row[0]`, not `$row['DstMAC']`
+- MACs are returned **uppercase** — normalize with `strtolower()` before matching
+- `average`/`max` arrays have one value per dimension row — used for daily stats calculation
+- `points` arrays have one sub-array per dimension row, each containing time-series values
+- Filter syntax: `SrcMAC = aa:bb:cc:dd:ee:ff` (no quotes around MAC values), `EType = IPv4` (named, not numeric `0x0800`)
+
+### Caching
+
+Live graph queries are cached for 5 minutes using Laravel's cache (keyed on filter + period + units, rounded to 5-minute windows). The daily stats command (`akvorado:upload-daily-p2p`) does not use caching.
+
+### Daily Stats Calculation
+
+For the P2P daily stats table, traffic totals are derived from Akvorado's per-row `average` field:
+
+```
+total_bytes = average_bps * 86400 / 8
+```
+
+Where `86400` is seconds per day and `/8` converts bits to bytes. Peak rates come directly from the `max` field.
 
 ---
 
-## Decisions
+## VLAN Resolution Detail
 
-1. **Use Akvorado API** (not direct ClickHouse). Accept v0 instability risk; monitor Akvorado 2.0 for stable API.
-2. **Keep IPv4/IPv6 split** — filter by `EType` (0x0800 for IPv4, 0x86DD for IPv6), matching current RRD behaviour.
-3. **Core IXP-Manager** (EdgIX fork) — not the pseudowire module. P2P graphs are a core feature; Akvorado is a new grapher backend alongside Sflow/Mrtg/VictoriaMetrics. uPlot renderer in EdgIX skin.
+sFlow captures packets at ingress **before VLAN rewrite**. Customers may have port-specific VLAN tagging:
 
-## Open Questions
+| Scenario | sFlow Sees | IXP-Manager Has |
+|----------|-----------|----------------|
+| Trunk port with vlantag 123 for Sydney (VLAN 200) | VLAN 123 | `vlaninterface.vlantag = 123` |
+| Trunk port with vlantag 456 for Adelaide (VLAN 300) | VLAN 456 | `vlaninterface.vlantag = 456` |
+| Untagged port on Sydney | VLAN 200 | `vlaninterface.vlantag = NULL`, `vlan.number = 200` |
 
-1. **Akvorado API stability** — v0 API may change. Monitor Akvorado 2.0 release for stable API.
-2. **Historical data** — Akvorado retention depends on ClickHouse materialized views (default: 15 days raw, 3 months @ 5min, 1 year @ 1h). Ensure retention config matches current RRD retention.
-3. **Sampling accuracy** — sFlow is sampled (1:N). Akvorado applies the same sample rate multiplication. Values are statistical estimates, same as current RRD approach.
+Resolution logic in `AkvoradoService::resolveVlan()`:
+
+```php
+if ($vli->vlantag !== null && $vli->vlantag > 0) {
+    return $vli->vlantag;  // customer-facing tag (pre-rewrite)
+}
+return $vli->vlan->number;  // IXP exchange VLAN
+```
+
+For **aggregate** (per-exchange) graphs, the IXP VLAN number is used directly — this covers all traffic on the exchange regardless of per-port vlantag rewriting.
+
+---
+
+## File Reference
+
+```
+app/
+├── Services/
+│   ├── Akvorado/
+│   │   └── AkvoradoService.php          # HTTP client, query builder, MAC/VLAN resolution
+│   └── Grapher/
+│       └── Backend/
+│           └── Akvorado.php             # Grapher backend (implements Backend contract)
+└── Console/
+    └── Commands/
+        └── Grapher/
+            └── UploadDailyP2pAkvorado.php  # Daily P2P stats cron command
+
+config/
+└── grapher.php                          # Backend registration + Akvorado config
+
+resources/skins/<your-skin>/
+└── statistics/
+    ├── vlan.foil.php                    # VLAN aggregate graphs (uPlot)
+    ├── p2p-single.foil.php              # P2P detail graphs (uPlot)
+    └── p2ps.foil.php                    # P2P overview with batch queries
+```
+
+### AkvoradoService Methods
+
+| Method | Purpose |
+|--------|---------|
+| `queryTimeSeries()` | Rolling-window query with caching (for live graphs) |
+| `queryDateRange()` | Fixed start/end query without caching (for batch/cron) |
+| `p2pTraffic()` | P2P graph data for a single src/dst VLI pair |
+| `p2pBatchTraffic()` | P2P data for ALL peers via dimension grouping (2 API calls) |
+| `p2pDailyStats()` | Daily stats (totals + peaks) for all peers via dimension grouping |
+| `individualTraffic()` | Per-VLI aggregate traffic |
+| `aggregateTraffic()` | Per-VLAN/exchange aggregate traffic |
+| `resolveVlan()` | VLI → VLAN tag for Akvorado filter |
+| `resolveMACs()` | VLI → configured MAC addresses |
+
+---
+
+## Troubleshooting
+
+### No data on graphs
+
+1. **Check Akvorado connectivity:** `curl -X POST https://akvorado.example.com/api/v0/console/graph/line -H 'Content-Type: application/json' -d '{"start":"2026-03-11T00:00:00Z","end":"2026-03-12T00:00:00Z","filter":"SrcVlan = 200","units":"l3bps","points":10,"limit":5}'`
+2. **Check MAC addresses:** Members must have configured MACs in the `l2address` table (via IXP-Manager admin UI → Interfaces → Layer 2 Addresses)
+3. **Check Akvorado schema:** `SrcMAC`, `DstMAC`, `SrcVlan`, `DstVlan` must be enabled
+4. **Check Laravel logs:** `tail -f storage/logs/laravel.log | grep Akvorado`
+
+### Filter parse errors
+
+- **MAC addresses:** No quotes — `SrcMAC = aa:bb:cc:dd:ee:ff` (not `SrcMAC = 'aa:bb:cc:dd:ee:ff'`)
+- **EType:** Named values — `EType = IPv4` (not `EType = 2048` or `EType = 0x0800`)
+- **VLAN:** Numeric — `SrcVlan = 200`
+
+### P2P overview shows "No data" for all peers
+
+- The `limit` parameter must be high enough to cover all peer MACs. If some peers are bucketed into "Other" in the response, they won't be mapped. Check that `limit >= count(unique_peer_MACs) + 10`.
+- Verify MAC format: Akvorado returns **uppercase** MACs (e.g. `AA:BB:CC:DD:EE:FF`). The code normalizes with `strtolower()` — if you modify the mapping code, ensure case-insensitive matching.
+- Dimension rows are **numeric arrays** (`["AA:BB:CC:DD:EE:FF"]`), not associative. Access via `$row[0]`, not `$row['DstMAC']`.
+
+### P2P daily stats table is empty
+
+1. Run manually: `php artisan akvorado:upload-daily-p2p 2026-03-11 -v`
+2. Check that Akvorado has data for that date (retention depends on ClickHouse materialized views)
+3. Verify the `p2p_daily_stats` migration has been run: `php artisan migrate`
+
+### Timeouts on large exchanges
+
+- Increase `AKVORADO_TIMEOUT` in `.env` (default 30s)
+- For the daily stats command, each customer makes 2-4 API calls — large exchanges (170+ members) may take 15-20 minutes total
+
+---
+
+## Akvorado Retention
+
+Akvorado's data retention depends on ClickHouse materialized views. Default configuration:
+
+| Resolution | Retention |
+|-----------|-----------|
+| Raw (5s) | 15 days |
+| 5-minute | 3 months |
+| 1-hour | 1 year |
+
+Ensure your retention config covers the graph periods you need (day/week/month/year). The `year` period queries 365 days of data at 365 points — this requires at least 1-year retention at hourly resolution.
+
+---
+
+## Decisions & Rationale
+
+1. **Akvorado REST API** (not direct ClickHouse) — provides a stable abstraction layer; the OVH Grafana plugin uses the same endpoint
+2. **Standard grapher framework** — plugs into existing `canProcess()` / `data()` / `statistics()` pipeline, so all existing renderers and stats calculations work unchanged
+3. **Batch dimension queries** for P2P overview — 2 API calls instead of 2N, critical for exchanges with 100+ members
+4. **Daily stats via cron** (not live query) — the P2P table needs totals for a specific calendar day; a nightly cron job populates the DB table, keeping the page fast
+5. **5-minute cache** for live graphs — balances freshness vs API load; keyed on filter+period+units with time-window bucketing
