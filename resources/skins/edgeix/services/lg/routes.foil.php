@@ -318,7 +318,9 @@
             let table = $('#routes').DataTable({
                 stateSave: true,
                 stateDuration : DATATABLE_STATE_DURATION,
-                paging: false,
+                deferRender: true,
+                pageLength: 100,
+                lengthMenu: [ 50, 100, 250, 500 ],
                 order: [[ 0, "asc" ]],
                 columnDefs: [
                     { type: 'ip-address', targets: 0 },
