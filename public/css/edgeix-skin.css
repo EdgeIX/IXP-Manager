@@ -15,9 +15,9 @@
     --eix-sidebar: #1B2A3D;
     --eix-sidebar-hover: #243549;
     --eix-sidebar-active: #2C4058;
-    --eix-sidebar-text: #94A3B8;
+    --eix-sidebar-text: #CBD5E1;
     --eix-sidebar-text-active: #FFFFFF;
-    --eix-sidebar-heading: #64748B;
+    --eix-sidebar-heading: #8899AA;
     --eix-sidebar-border: #2C3E50;
 
     /* Page */
@@ -174,8 +174,8 @@ body {
 
 #side-navbar .nav-link {
     color: var(--eix-sidebar-text) !important;
-    font-size: 0.82rem;
-    font-weight: 400;
+    font-size: 0.875rem;
+    font-weight: 500;
     padding: 0.45rem 1rem !important;
     border-left: 3px solid transparent;
     transition: all var(--eix-transition);
@@ -223,7 +223,7 @@ body {
 
 #side-navbar .nav-sub-menu-item .nav-link {
     padding-left: 2.75rem !important;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
 }
 
 /* Sidebar scrollbar */
