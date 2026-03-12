@@ -478,17 +478,106 @@ class LookingGlass extends Controller
     }
 
     /**
-     * Fetch not-exported routes from the appropriate backend.
+     * Fetch not-exported routes — routes suppressed to this peer via no-announce communities.
+     *
+     * Checks for all no-announce community variants:
+     *   Standard: (0, peer_asn)     — prevent announcement to this peer
+     *   Standard: (0, RS_ASN)       — prevent announcement to ALL peers
+     *   Large:    (RS_ASN, 0, peer_asn) — prevent announcement to this peer
+     *   Large:    (RS_ASN, 0, 0)    — prevent announcement to ALL peers
+     *
+     * A route is considered "not exported" if it has any no-announce community
+     * UNLESS it also has an explicit announce override:
+     *   Standard: (RS_ASN, peer_asn) — announce to this peer
+     *   Large:    (RS_ASN, 1, peer_asn) — announce to this peer
+     *   Standard: (RS_ASN, RS_ASN)  — announce to ALL peers
+     *   Large:    (RS_ASN, 1, 0)    — announce to ALL peers
      */
     private function getNotExportedRoutes( string $protocol ): string
     {
         $lg = $this->lg();
+        $rsAsn = $lg->router()->asn;
 
-        if( $lg->router()->apiType() === Router::API_TYPE_BIRDWATCHER && method_exists( $lg, 'routesNoExport' ) ) {
-            return $lg->routesNoExport( $protocol );
+        // Get the peer ASN from BGP summary
+        $peerAsn = $this->peerAsn( $protocol );
+        if( !$peerAsn ) {
+            return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
         }
 
-        // Birdseye doesn't have a not-exported concept — return empty
-        return json_encode( [ 'api' => [ 'version' => 'birdseye' ], 'routes' => [] ] );
+        // Fetch all routes for this protocol
+        $allRoutes = $lg->routesForProtocol( $protocol );
+
+        if( empty( $allRoutes ) ) {
+            return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
+        }
+
+        $data = json_decode( $allRoutes, true );
+        if( !$data || !isset( $data['routes'] ) ) {
+            return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
+        }
+
+        $notExported = [];
+        foreach( $data['routes'] as $route ) {
+            $communities    = $route['bgp']['communities'] ?? [];
+            $largeCommunities = $route['bgp']['large_communities'] ?? [];
+
+            $suppressed = false;
+            $overridden = false;
+
+            // Check standard communities
+            foreach( $communities as $c ) {
+                if( !is_array( $c ) || count( $c ) < 2 ) continue;
+                $a = (int)$c[0]; $b = (int)$c[1];
+
+                // No-announce: (0, peer_asn) or (0, RS_ASN)
+                if( $a === 0 && ( $b === $peerAsn || $b === $rsAsn ) ) {
+                    $suppressed = true;
+                }
+                // Announce override: (RS_ASN, peer_asn) or (RS_ASN, RS_ASN)
+                if( $a === $rsAsn && ( $b === $peerAsn || $b === $rsAsn ) ) {
+                    $overridden = true;
+                }
+            }
+
+            // Check large communities
+            foreach( $largeCommunities as $lc ) {
+                if( !is_array( $lc ) || count( $lc ) < 3 ) continue;
+                $a = (int)$lc[0]; $b = (int)$lc[1]; $c = (int)$lc[2];
+
+                if( $a !== $rsAsn ) continue;
+
+                // No-announce: (RS_ASN, 0, peer_asn) or (RS_ASN, 0, 0)
+                if( $b === 0 && ( $c === $peerAsn || $c === 0 ) ) {
+                    $suppressed = true;
+                }
+                // Announce override: (RS_ASN, 1, peer_asn) or (RS_ASN, 1, 0)
+                if( $b === 1 && ( $c === $peerAsn || $c === 0 ) ) {
+                    $overridden = true;
+                }
+            }
+
+            if( $suppressed && !$overridden ) {
+                $notExported[] = $route;
+            }
+        }
+
+        $data['routes'] = $notExported;
+        return json_encode( $data );
+    }
+
+    /**
+     * Look up the peer ASN for a protocol name from BGP summary.
+     */
+    private function peerAsn( string $protocol ): ?int
+    {
+        try {
+            $summary = json_decode( $this->lg()->bgpSummary(), false );
+            if( isset( $summary->protocols->$protocol->neighbor_as ) ) {
+                return (int)$summary->protocols->$protocol->neighbor_as;
+            }
+        } catch( \Exception $e ) {
+            // Non-critical
+        }
+        return null;
     }
 }

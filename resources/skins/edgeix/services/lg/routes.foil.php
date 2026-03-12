@@ -38,14 +38,12 @@
                     <i class="fa fa-exclamation-triangle"></i> Filtered
                 </a>
             </li>
-            <?php if( $isBirdwatcher ): ?>
-                <li class="nav-item">
-                    <a class="nav-link <?= $isNotExported ? 'active' : '' ?>"
-                       href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/not-exported/<?= urlencode( $protocolName ) ?>">
-                        Not Exported
-                    </a>
-                </li>
-            <?php endif; ?>
+            <li class="nav-item">
+                <a class="nav-link <?= $isNotExported ? 'active' : '' ?>"
+                   href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/not-exported/<?= urlencode( $protocolName ) ?>">
+                    Not Exported
+                </a>
+            </li>
         </ul>
     <?php endif; ?>
 
@@ -55,12 +53,14 @@
                 <b>Routes <?= $t->source === 'export to protocol' ? 'exported to protocol' : ( $t->source === 'filtered from protocol' ? 'filtered/rejected from protocol' : ( $t->source === 'not exported to protocol' ? 'not exported to protocol' : 'from ' . $t->source ) ) ?>: <code><?= $t->name ?></code><?php if( $t->peerName ?? null ): ?> — <?= $t->ee( $t->peerName ) ?><?php endif; ?>.</b>
             <?php endif; ?>
 
-            <b>Key:</b> <span class="badge badge-success">P</span>
-            - Primary / active route.
-            <span class="badge badge-warning">N</span>
-            - Inactive route.
-            <i class="fa fa-exclamation-triangle"></i>
-            - Blocked / filtered route.
+            <div class="mt-2">
+                <b>Key:</b> <span class="badge badge-success">P</span>
+                - Primary / active route.
+                <span class="badge badge-warning">N</span>
+                - Inactive route.
+                <i class="fa fa-exclamation-triangle"></i>
+                - Blocked / filtered route.
+            </div>
 
             <div class="mt-2">
                 <b>Filter:</b>
@@ -105,7 +105,7 @@
                 <th>
                     Communities?&nbsp;
                 </th>
-                <?php if( $isFiltered ): ?>
+                <?php if( $isFiltered || $isNotExported ): ?>
                     <th>
                         Reason
                     </th>
@@ -125,38 +125,81 @@
                         $rpki = null;
                         $irrdb = null;
                         $filterReasons = [];
+                        $actionCommunities = [];
+                        $rsAsn = $t->lg->router()->asn;
+
+                        // Parse large communities
                         if( isset( $r->bgp->large_communities ) ) {
                             foreach( $r->bgp->large_communities as $lc ) {
                                 if( !is_array( $lc ) || count( $lc ) < 3 ) continue;
-                                if( $lc[0] != $t->lg->router()->asn ) continue;
 
-                                // Blocked/filtered: (ASN, 1101, reason)
-                                if( $lc[1] == 1101 ) {
-                                    $blocked = true;
-                                    $reason = $t->bird()->translateBgpFilteringLargeCommunity( ':1101:' . $lc[2] );
-                                    if( $reason ) {
-                                        $filterReasons[] = $reason;
+                                if( (int)$lc[0] === $rsAsn ) {
+                                    // Blocked/filtered: (ASN, 1101, reason)
+                                    if( $lc[1] == 1101 ) {
+                                        $blocked = true;
+                                        $reason = $t->bird()->translateBgpFilteringLargeCommunity( ':1101:' . $lc[2] );
+                                        if( $reason ) {
+                                            $filterReasons[] = $reason;
+                                        }
                                     }
-                                }
-                                // RPKI: (ASN, 1000, status)
-                                if( $lc[1] == 1000 ) {
-                                    switch( (int)$lc[2] ) {
-                                        case 1: $rpki = [ 'VALID', 'success' ]; break;
-                                        case 2: $rpki = [ 'UNKNOWN', 'info' ]; break;
-                                        case 3: $rpki = [ 'NOT CHECKED', 'warning' ]; break;
+                                    // RPKI: (ASN, 1000, status)
+                                    if( $lc[1] == 1000 ) {
+                                        switch( (int)$lc[2] ) {
+                                            case 1: $rpki = [ 'VALID', 'success' ]; break;
+                                            case 2: $rpki = [ 'UNKNOWN', 'info' ]; break;
+                                            case 3: $rpki = [ 'NOT CHECKED', 'warning' ]; break;
+                                        }
                                     }
-                                }
-                                // IRRDB: (ASN, 1001, status)
-                                if( $lc[1] == 1001 ) {
-                                    switch( (int)$lc[2] ) {
-                                        case 0: $irrdb = $irrdb ?? [ 'INVALID', 'info' ]; break;
-                                        case 1: $irrdb = [ 'VALID', 'success' ]; break;
-                                        case 2: $irrdb = $irrdb ?? [ 'NOT CHECKED', 'warning' ]; break;
-                                        case 3: $irrdb = $irrdb ?? [ 'MORE SPECIFIC', 'info' ]; break;
+                                    // IRRDB: (ASN, 1001, status)
+                                    if( $lc[1] == 1001 ) {
+                                        switch( (int)$lc[2] ) {
+                                            case 0: $irrdb = $irrdb ?? [ 'INVALID', 'info' ]; break;
+                                            case 1: $irrdb = [ 'VALID', 'success' ]; break;
+                                            case 2: $irrdb = $irrdb ?? [ 'NOT CHECKED', 'warning' ]; break;
+                                            case 3: $irrdb = $irrdb ?? [ 'MORE SPECIFIC', 'info' ]; break;
+                                        }
+                                    }
+                                    // No-announce: (ASN, 0, peer_asn) or (ASN, 0, 0)
+                                    if( (int)$lc[1] === 0 ) {
+                                        $target = (int)$lc[2] === 0 ? 'all peers' : 'AS' . $lc[2];
+                                        $actionCommunities[] = [ 'NO ANNOUNCE TO ' . $target, 'danger' ];
+                                    }
+                                    // Announce: (ASN, 1, peer_asn) or (ASN, 1, 0)
+                                    if( (int)$lc[1] === 1 ) {
+                                        $target = (int)$lc[2] === 0 ? 'all peers' : 'AS' . $lc[2];
+                                        $actionCommunities[] = [ 'ANNOUNCE TO ' . $target, 'success' ];
+                                    }
+                                    // Prepend: (ASN, 101/102/103, peer_asn)
+                                    if( in_array( (int)$lc[1], [ 101, 102, 103 ] ) ) {
+                                        $times = (int)$lc[1] - 100;
+                                        $target = (int)$lc[2] === 0 ? 'all peers' : 'AS' . $lc[2];
+                                        $actionCommunities[] = [ 'PREPEND x' . $times . ' TO ' . $target, 'info' ];
                                     }
                                 }
                             }
                         }
+
+                        // Parse standard communities for no-announce/announce
+                        if( isset( $r->bgp->communities ) ) {
+                            foreach( $r->bgp->communities as $sc ) {
+                                if( !is_array( $sc ) || count( $sc ) < 2 ) continue;
+                                $a = (int)$sc[0]; $b = (int)$sc[1];
+
+                                // No-announce: (0, peer_asn) or (0, RS_ASN)
+                                if( $a === 0 && $b !== 0 ) {
+                                    $target = $b === $rsAsn ? 'all peers' : 'AS' . $b;
+                                    $actionCommunities[] = [ 'NO ANNOUNCE TO ' . $target, 'danger' ];
+                                }
+                                // Announce: (RS_ASN, peer_asn) or (RS_ASN, RS_ASN)
+                                if( $a === $rsAsn ) {
+                                    $target = $b === $rsAsn ? 'all peers' : 'AS' . $b;
+                                    $actionCommunities[] = [ 'ANNOUNCE TO ' . $target, 'success' ];
+                                }
+                            }
+                        }
+
+                        // Deduplicate action communities
+                        $actionCommunities = array_unique( $actionCommunities, SORT_REGULAR );
                     ?>
 
                     <tr>
@@ -206,11 +249,20 @@
 
                                 <?= !$blocked ? '' : '<i class="fa fa-exclamation-triangle"></i>' ?>
                             <?php endif; ?>
+
+                            <?php if( !$isFiltered && !$isNotExported ): ?>
+                                <?php foreach( $actionCommunities as $ac ): ?>
+                                    <br><span class="badge badge-<?= $ac[1] ?>" style="font-size: 9px;"><?= $ac[0] ?></span>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </td>
-                        <?php if( $isFiltered ): ?>
+                        <?php if( $isFiltered || $isNotExported ): ?>
                             <td>
                                 <?php foreach( $filterReasons as $reason ): ?>
                                     <span class="badge badge-<?= $reason[1] ?>" style="font-size: 10px;"><?= $reason[0] ?></span>
+                                <?php endforeach; ?>
+                                <?php foreach( $actionCommunities as $ac ): ?>
+                                    <span class="badge badge-<?= $ac[1] ?>" style="font-size: 10px;"><?= $ac[0] ?></span>
                                 <?php endforeach; ?>
                             </td>
                         <?php endif; ?>
