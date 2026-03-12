@@ -14,8 +14,8 @@
         $isExport       = $t->source === 'export to protocol';
         $isTable        = $t->source === 'table';
 
-        // Only show tabs when viewing protocol-based routes (not table views)
-        $showTabs = $isProtocol || $isFiltered || $isNotExported || $isExport;
+        // Only show tabs when viewing protocol-based routes (not table or export views)
+        $showTabs = $isProtocol || $isFiltered || $isNotExported;
 
         // Determine the protocol name for tab links
         $protocolName = $t->name;
@@ -30,12 +30,6 @@
                 <a class="nav-link <?= $isProtocol ? 'active' : '' ?>"
                    href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/protocol/<?= urlencode( $protocolName ) ?>">
                     Accepted
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $isExport ? 'active' : '' ?>"
-                   href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/export/<?= urlencode( $protocolName ) ?>">
-                    Exported
                 </a>
             </li>
             <li class="nav-item">
@@ -123,11 +117,7 @@
             </tr>
         </thead>
         <tbody>
-            <?php if( !count( $t->content->routes ) ): ?>
-                <tr>
-                  <td colspan="<?= $isFiltered ? 10 : 9 ?>">No routes found</td>
-                </tr>
-            <?php else: ?>
+            <?php if( count( $t->content->routes ) ): ?>
                 <?php foreach( $t->content->routes as $r ): ?>
                     <?php
                         // Check for blocked routes and extract RPKI/IRRDB status from large communities
@@ -287,7 +277,10 @@
                     { type: 'string', targets: 5 },
                     { type: 'string', targets: 6 },
                     { orderable: false, targets: -1 },
-                ]
+                ],
+                language: {
+                    emptyTable: 'No routes found'
+                }
             });
 
             // Redraw table when filters change

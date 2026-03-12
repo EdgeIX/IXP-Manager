@@ -120,12 +120,17 @@
                         <?php endif; ?>
                     </td>
                     <td class="text-right pr-4" data-order="<?= $p->state !== 'up' ? -1 : ( $p->routes->filtered ?? 0 ) ?>">
-                        <?php if( $p->state === 'up' && isset( $p->routes->filtered ) && $p->routes->filtered > 0 ): ?>
-                            <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= $name ?>">
-                                <span class="badge badge-danger"><?= $p->routes->filtered ?></span>
-                            </a>
-                        <?php elseif( $p->state === 'up' ): ?>
-                            0
+                        <?php if( $p->state === 'up' ): ?>
+                            <?php if( isset( $p->routes->filtered ) && $p->routes->filtered > 0 ): ?>
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= $name ?>">
+                                    <span class="badge badge-danger"><?= $p->routes->filtered ?></span>
+                                </a>
+                            <?php else: ?>
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= $name ?>"
+                                   class="text-muted" title="View filtered routes">
+                                    <i class="fa fa-search fa-sm"></i>
+                                </a>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </td>
                     <td class="text-right pr-4" data-order="<?= $p->state === 'up' ? $p->routes->exported : -1 ?>">
