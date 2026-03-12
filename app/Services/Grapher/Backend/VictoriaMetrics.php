@@ -45,6 +45,7 @@ use IXP\Models\{
 
 use IXP\Exceptions\Services\Grapher\CannotHandleRequestException;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -744,6 +745,19 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      */
     public function domData( PhysicalInterfaceModel $pi, string $period = Graph::PERIOD_DAY ): array
     {
+        $cacheKey = "grapher::vm-dom-{$pi->id}-{$period}";
+
+        return Cache::store( config( 'grapher.cache.store' ) )->remember(
+            $cacheKey,
+            config( 'grapher.cache.lifetime', 5 ) * 60,
+            function() use ( $pi, $period ) {
+                return $this->domDataUncached( $pi, $period );
+            }
+        );
+    }
+
+    private function domDataUncached( PhysicalInterfaceModel $pi, string $period ): array
+    {
         $device        = $pi->switchPort->switcher->name;
         $interfaceName = $pi->switchPort->name;
         $timing        = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
@@ -840,12 +854,20 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      */
     public function statusData( PhysicalInterfaceModel $pi, string $period = Graph::PERIOD_DAY ): array
     {
-        $label  = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
-        $timing = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+        $cacheKey = "grapher::vm-status-{$pi->id}-{$period}";
 
-        $query = "openconfig_interfaces_oper_status{device_interface=\"{$label}\"}";
+        return Cache::store( config( 'grapher.cache.store' ) )->remember(
+            $cacheKey,
+            config( 'grapher.cache.lifetime', 5 ) * 60,
+            function() use ( $pi, $period ) {
+                $label  = $pi->switchPort->switcher->name . ':' . $pi->switchPort->name;
+                $timing = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
 
-        return $this->queryRange( $query, $timing['range'], $timing['step'] );
+                $query = "openconfig_interfaces_oper_status{device_interface=\"{$label}\"}";
+
+                return $this->queryRange( $query, $timing['range'], $timing['step'] );
+            }
+        );
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -861,6 +883,19 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
      * @return array  [ [ 'device_interface' => 'pe1syd3:Ethernet9/2', 'rate_bps' => 45000000000.0 ], ... ]
      */
     public function topInterfaces( int $limit = 20, string $direction = 'in' ): array
+    {
+        $cacheKey = "grapher::vm-top-{$limit}-{$direction}";
+
+        return Cache::store( config( 'grapher.cache.store' ) )->remember(
+            $cacheKey,
+            config( 'grapher.cache.lifetime', 5 ) * 60,
+            function() use ( $limit, $direction ) {
+                return $this->topInterfacesUncached( $limit, $direction );
+            }
+        );
+    }
+
+    private function topInterfacesUncached( int $limit, string $direction ): array
     {
         $metric = $this->metricName( Graph::CATEGORY_BITS, $direction === 'out' ? 'tx' : 'rx' );
 
