@@ -456,7 +456,7 @@ class Grapher
     public function remember( string $key, Closure $fn )
     {
         if( $this->cacheEnabled() ) {
-            return $this->cacheRepository()->remember( $key, $this->cacheLifetime(), $fn );
+            return $this->cacheRepository()->remember( $key, $this->cacheLifetime() * 60, $fn );
         }
         return $fn();
     }
