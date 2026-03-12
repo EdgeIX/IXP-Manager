@@ -276,7 +276,8 @@ app/
 └── Console/
     └── Commands/
         └── Grapher/
-            └── UploadDailyP2pAkvorado.php  # Daily P2P stats cron command
+            ├── UploadDailyP2pAkvorado.php  # Daily P2P stats cron command
+            └── AkvoradoCheckMacs.php        # Rogue MAC detection command
 
 config/
 └── grapher.php                          # Backend registration + Akvorado config
@@ -301,6 +302,93 @@ resources/skins/<your-skin>/
 | `aggregateTraffic()` | Per-VLAN/exchange aggregate traffic |
 | `resolveVlan()` | VLI → VLAN tag for Akvorado filter |
 | `resolveMACs()` | VLI → configured MAC addresses |
+
+---
+
+## MAC Anomaly Detection
+
+The `akvorado:check-macs` command detects rogue or unknown MAC addresses by comparing MACs seen in Akvorado sFlow data against IXP-Manager's configured MAC addresses (`l2address` table).
+
+### How It Works
+
+1. Loads all configured MACs from the `l2address` table (and optionally learned MACs from `macaddress`)
+2. For each public VLAN, queries Akvorado: `SrcVlan = <vlan> AND InIfBoundary = external` grouped by `SrcMAC`
+3. Any MAC seen in sFlow but not in IXP-Manager is flagged as unknown
+4. Results sorted by traffic volume — noisiest rogues first
+
+### Usage
+
+```bash
+# Basic check (last 6 hours, all public VLANs)
+php artisan akvorado:check-macs
+
+# Custom lookback period
+php artisan akvorado:check-macs --period=24h
+
+# Check a specific VLAN only
+php artisan akvorado:check-macs --vlan=42
+
+# Include learned MACs (macaddress table) as "known" — reduces false positives
+php artisan akvorado:check-macs --include-learned
+
+# JSON output for automation/alerting pipelines
+php artisan akvorado:check-macs --json
+```
+
+### Output
+
+Console output shows unknown MACs grouped by VLAN with traffic rates:
+
+```
+Checking for unknown MACs (period: 6h, known MACs: 342)
+
+Sydney Peering LAN: 2 unknown MAC(s)
++-------------------+------+----------+----------+
+| MAC Address       | VLAN | Avg Rate | Max Rate |
++-------------------+------+----------+----------+
+| aa:bb:cc:dd:ee:ff | 200  | 1.23 Gbps| 3.45 Gbps|
+| 11:22:33:44:55:66 | 200  | 45.6 Kbps| 120 Kbps |
++-------------------+------+----------+----------+
+
+Total: 2 unknown MAC(s) detected across 1 VLAN(s)
+```
+
+JSON output (`--json`) returns the same data structured for parsing:
+
+```json
+{
+  "Sydney Peering LAN": [
+    { "mac": "aa:bb:cc:dd:ee:ff", "vlan": 200, "avg_bps": 1230000000, "max_bps": 3450000000 },
+    { "mac": "11:22:33:44:55:66", "vlan": 200, "avg_bps": 45600, "max_bps": 120000 }
+  ]
+}
+```
+
+### Exit Codes
+
+- `0` — No unknown MACs detected (clean)
+- `1` — Unknown MACs found
+
+This makes it easy to use in monitoring/alerting:
+
+```bash
+# Alert via email when rogues detected
+php artisan akvorado:check-macs || php artisan akvorado:check-macs | mail -s "IXP MAC Alert" noc@example.com
+```
+
+### Cron Schedule
+
+```bash
+# /etc/cron.d/ixpmanager-mac-check
+*/15 * * * * www-data cd /srv/ixpmanager && php artisan akvorado:check-macs >> /var/log/ixp-mac-check.log 2>&1
+```
+
+### Notes
+
+- The `InIfBoundary = external` filter ensures only customer-facing ports are checked — internal/core links are excluded
+- The `--include-learned` flag adds MACs from the `macaddress` table (populated by `sflow-detect-ixp-bgp-sessions` or SNMP polling). This reduces false positives from legitimate MACs that haven't been manually configured yet.
+- The `limit` is set to 1000 per VLAN query. If you have more than ~990 unique source MACs on a single VLAN, increase this in the command source.
+- Low-traffic unknown MACs (e.g. spanning-tree BPDUs, LLDP) may appear — filter by `avg_bps` if needed.
 
 ---
 
