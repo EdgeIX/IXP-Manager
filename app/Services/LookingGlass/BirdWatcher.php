@@ -198,6 +198,40 @@ class BirdWatcher implements LookingGlassContract
             }
         }
 
+        // Normalize protocol data: Birdwatcher returns uppercase state ("UP"/"DOWN"),
+        // templates expect lowercase ("up"/"down"). Also ensure routes sub-fields exist.
+        if( isset( $data['protocols'] ) && is_array( $data['protocols'] ) ) {
+            foreach( $data['protocols'] as &$proto ) {
+                // Lowercase state: "UP" → "up", "DOWN" → "down"
+                if( isset( $proto['state'] ) ) {
+                    $proto['state'] = strtolower( $proto['state'] );
+                }
+
+                // Ensure routes has expected sub-fields
+                if( !isset( $proto['routes'] ) || !is_array( $proto['routes'] ) || empty( $proto['routes'] ) ) {
+                    $proto['routes'] = [ 'imported' => 0, 'exported' => 0, 'preferred' => 0, 'filtered' => 0 ];
+                } else {
+                    $proto['routes'] = array_merge(
+                        [ 'imported' => 0, 'exported' => 0, 'preferred' => 0, 'filtered' => 0 ],
+                        $proto['routes']
+                    );
+                }
+
+                // Ensure route_limit_at exists if import_limit is set
+                if( isset( $proto['import_limit'] ) && !isset( $proto['route_limit_at'] ) ) {
+                    $proto['route_limit_at'] = $proto['routes']['imported'];
+                }
+            }
+            unset( $proto );
+        }
+
+        // Also normalize single protocol (from bgpNeighbourSummary)
+        if( isset( $data['protocol'] ) && is_array( $data['protocol'] ) ) {
+            if( isset( $data['protocol']['state'] ) ) {
+                $data['protocol']['state'] = strtolower( $data['protocol']['state'] );
+            }
+        }
+
         return json_encode( $data );
     }
 
