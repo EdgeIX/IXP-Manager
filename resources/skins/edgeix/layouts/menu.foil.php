@@ -1,25 +1,24 @@
-<nav id="side-navbar" class="col-md-3 col-xl-2 d-none d-md-block sidebar border-r border-grey bg-grey-lightest text">
+<nav id="side-navbar" class="col-md-3 col-xl-2 d-none d-md-block sidebar">
     <div class="sidebar-sticky">
-        <ul class="nav d-inline ">
-            <form class="bd-search d-flex align-items-center tw-border-grey-lighter tw-border-r-4 tw-py-4" method="get" action="<?= route( 'search' ) ?>">
-                <div class="input-group tw-pr-4">
-                    <input type="text" class="form-control" placeholder="Search for..." name="search">
+        <ul class="nav d-inline">
+            <form class="sidebar-search" method="get" action="<?= route( 'search' ) ?>">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search..." name="search">
                     <div class="input-group-append">
                         <button class="btn btn-light input-group-text" type="button" id="searchHelp" data-toggle="modal" data-target="#searchHelpModal">
-                            <i class="fa fa-question-circle"></i>
+                            <i class="fa fa-search"></i>
                         </button>
                     </div>
                 </div>
             </form>
 
-            <hr class="w-100 tw-my-0" style="margin-left: -10px ">
-
             <h6>
-                <span>IXP <?= strtoupper( config( 'ixp_fe.lang.customer.one' ) ) ?> ACTIONS</span>
+                <span><?= strtoupper( config( 'ixp_fe.lang.customer.one' ) ) ?>S</span>
             </h6>
 
             <li class="<?= request()->is( 'customer/*' ) ? 'active' : '' ?>">
                 <a class="nav-link" href="<?= route( 'customer@list' ) ?>">
+                    <i class="fa fa-building"></i>
                     <?= ucfirst( config( 'ixp_fe.lang.customer.many' ) ) ?>
                 </a>
             </li>
@@ -44,6 +43,7 @@
 
             <li class="<?= !request()->is( 'interfaces/virtual*' ) ?: 'active' ?>">
                 <a class="nav-link" href="<?= route( 'virtual-interface@list' ) ?>" >
+                    <i class="fa fa-plug"></i>
                     Interfaces / Ports
                 </a>
             </li>
@@ -78,6 +78,7 @@
 
             <li class="<?= !request()->is( 'patch-panel/*' ) ?: 'active' ?>">
                 <a class="nav-link" href="<?= route('patch-panel@list' ) ?>">
+                    <i class="fa fa-th"></i>
                     Patch Panels
                 </a>
             </li>
@@ -94,12 +95,14 @@
 
             <li class="<?= !request()->is( 'user/*' ) ?: 'active' ?>">
                 <a class="nav-link" href="<?= route('user@list') ?>">
+                    <i class="fa fa-users"></i>
                     Users
                 </a>
             </li>
 
             <li class="<?= !request()->is( 'contact/*' ) ?: 'active' ?>">
                 <a class="nav-link" href="<?= route( 'contact@list' ) ?>">
+                    <i class="fa fa-address-book"></i>
                     Contacts
                 </a>
             </li>
@@ -117,18 +120,20 @@
             <?php if( !config( 'ixp_fe.frontend.disabled.cust-kit', false ) ): ?>
                 <li class="<?= !request()->is( 'cust-kit/*' ) ?: 'active' ?>">
                     <a class="nav-link" href="<?= route( 'cust-kit@list' ) ?>">
+                        <i class="fa fa-server"></i>
                         Colocated Equipment
                     </a>
                 </li>
             <?php endif; ?>
 
             <h6>
-                <span>IXP ADMIN ACTIONS</span>
+                <span>NETWORK</span>
             </h6>
 
             <?php if( !config( 'ixp_fe.frontend.disabled.console-server-connection' ) ): ?>
                 <li class="<?= !request()->is( 'console-server/*' ) ?: 'active' ?>">
                     <a href="<?= route('console-server@list' ) ?>" class="nav-link">
+                        <i class="fa fa-terminal"></i>
                         Console Servers
                     </a>
                 </li>
@@ -148,184 +153,14 @@
 
             <li class="<?= !request()->is( 'interfaces/core-bundle/*' ) ?: 'active' ?>" >
                 <a href="<?= route('core-bundle@list' ) ?>" class="nav-link">
+                    <i class="fa fa-link"></i>
                     Core Bundles
                 </a>
             </li>
 
-
-            <?php /**************************************** DOCSTORE ****************************************/ ?>
-
-            <?php if( !config( 'ixp_fe.frontend.disabled.docstore' ) ): ?>
-                <li class="<?= !request()->is( 'docstorec*' ) && request()->is( 'docstore*' ) && !request()->is( 'docstore-*' ) ? 'active' : '' ?>" >
-                    <a href="<?= route('docstore-dir@list' ) ?>" class="nav-link">
-                        Document Store
-                    </a>
-                </li>
-
-                <?php if( !config( 'ixp_fe.frontend.disabled.docstore_customer' ) && request()->is( 'docstore*' ) ): ?>
-                    <li class="nav-sub-menu-item <?= request()->is( 'docstorec*' ) ? 'active' : '' ?>" >
-                        <a href="<?= route('docstore-c-dir@customers' ) ?>" class="nav-link">
-                            <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Documents
-                        </a>
-                    </li>
-                <?php endif; ?>
-            <?php elseif( !config( 'ixp_fe.frontend.disabled.docstore_customer' ) ): ?>
-                <li class="<?= request()->is( 'docstorec*' ) ? 'active' : '' ?>" >
-                    <a href="<?= route('docstore-c-dir@customers' ) ?>" class="nav-link">
-                        <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Document Store
-                    </a>
-                </li>
-            <?php endif; ?>
-
-            <?php /**************************************** DOCSTORE ****************************************/ ?>
-
-            <?php if( !config( 'ixp_fe.frontend.disabled.ripe-atlas' ) ): ?>
-                <li class="<?= !request()->is( 'ripe-atlas/runs*' ) ?: 'active' ?>" >
-                    <a href="<?= route('ripe-atlas/runs@list' ) ?>" class="nav-link">
-                        Ripe Atlas
-                    </a>
-                </li>
-
-                <?php if( request()->is( 'ripe-atlas/*' ) ): ?>
-                    <ul>
-                        <li class="nav-sub-menu-item <?= !request()->is( 'ripe-atlas/measurements/*' ) ?: 'active' ?>">
-                            <a class="nav-link" href="<?= route('ripe-atlas/measurements@list' ) ?>">
-                                Measurements
-                            </a>
-                        </li>
-                    </ul>
-                <?php endif; ?>
-
-                <?php if( request()->is( 'ripe-atlas/*' ) ): ?>
-                    <ul>
-                        <li class="nav-sub-menu-item <?= !request()->is( 'ripe-atlas/probes/*' ) ?: 'active' ?>">
-                            <a class="nav-link" href="<?= route('ripe-atlas/probes@list' ) ?>">
-                                Probes
-                            </a>
-                        </li>
-                    </ul>
-                <?php endif; ?>
-
-            <?php endif; ?>
-
-            <li class="<?= !request()->is( 'facility/*' ) ?: 'active' ?>">
-                <a class="nav-link" href="<?= route( 'facility@list' ) ?>">
-                    Facilities
-                </a>
-            </li>
-
-            <li class="<?= !request()->is( 'infrastructure/*' ) ?: 'active' ?>">
-                <a class="nav-link" href="<?= route('infrastructure@list') ?>">
-                    Infrastructures
-                </a>
-            </li>
-
-            <li>
-                <a href="<?= route('ip-address@list', [ 'protocol' => 4 ] ) ?>" class="nav-link">
-                    IP Addresses
-                </a>
-            </li>
-            <?php if( request()->is( 'ip-address/*' ) ): ?>
-                <ul>
-                    <li class="nav-sub-menu-item <?= (int)request()->route()->parameter('protocol') === 4 ? 'active' : '' ?>">
-                        <a href="<?= route('ip-address@list', [ 'protocol' => 4 ] ) ?>" class="nav-link">
-                            &nbsp;&nbsp;&nbsp;&nbsp;IPv4 Addresses
-                        </a>
-                    </li>
-
-                    <li class="nav-sub-menu-item <?= (int)request()->route()->parameter('protocol') === 6 ? 'active' : '' ?>">
-                        <a href="<?= route('ip-address@list', [ 'protocol' => 6 ] ) ?>" class="nav-link">
-                            &nbsp;&nbsp;&nbsp;&nbsp;IPv6 Addresses
-                        </a>
-                    </li>
-                </ul>
-            <?php endif; ?>
-
-
-            <li class="<?= request()->is( 'irrdb/summary*' ) ? 'active' : '' ?>">
-                <a href="<?= route( 'irrdb@summary' ) ?>" class="nav-link">
-                    IRRDB Summary
-                </a>
-            </li>
-
-            <?php if( request()->is( 'irrdb*' ) ): ?>
-                <ul>
-                    <li class="nav-sub-menu-item <?= request()->is( 'irrdb-config/*' ) ? 'active' : '' ?>">
-                        <a href="<?= route( 'irrdb-config@list' ) ?>" class="nav-link">
-                            IRRDB Configuration
-                       </a>
-                    </li>
-                </ul>
-            <?php endif; ?>
-
-
-
-            <li>
-                <a href="<?= route( 'layer2-address@list' ) ?>" class="nav-link">
-                    MAC Addresses
-                </a>
-            </li>
-
-            <?php if( request()->is( 'mac-address/*' ) || request()->is( 'layer2-address/*' ) ): ?>
-                <ul>
-                    <li class="nav-sub-menu-item <?= !request()->is( 'layer2-address/*' ) ?: 'active' ?>">
-                        <a href="<?= route( 'layer2-address@list' ) ?>" class="nav-link">
-                            Configured Addresses
-                        </a>
-                    </li>
-
-                    <?php if( !config( 'ixp_fe.frontend.disabled.mac-address', false ) ): ?>
-                        <li class="nav-sub-menu-item <?= !request()->is( 'mac-address/*' ) ?: 'active' ?>">
-                            <a href="<?= route('mac-address@list') ?>" class="nav-link">
-                                Discovered Addresses
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            <?php endif; ?>
-
-            <li class="<?= !request()->is( 'rack/*' ) ?: 'active' ?>">
-                <a class="nav-link" href="<?= route('rack@list') ?>">
-                    Racks
-                </a>
-            </li>
-
-            <?php if( !config( 'ixp_fe.frontend.disabled.rs-prefixes', false ) ): ?>
-                <li class="<?= !request()->is( 'rs-prefixes/*' ) ?: 'active' ?>">
-                    <a href="<?= route( 'rs-prefixes@list' ) ?>" class="nav-link">
-                        Route Server Prefixes
-                    </a>
-                </li>
-            <?php endif; ?>
-
-            <li class="<?= request()->is( 'router/*' ) && !request()->is( 'router/status' ) ? 'active' : '' ?>" >
-                <a href="<?= route('router@list' ) ?>" class="nav-link" >
-                    Routers
-                </a>
-            </li>
-
-            <?php if( request()->is( 'router/*' ) || request()->is( 'rs-filters/list-customers' ) ): ?>
-                <ul>
-                    <li class="nav-sub-menu-item <?= request()->is( 'router/status' ) ? 'active' : '' ?>" >
-                        <a href="<?= route('router@status' ) ?>" class="nav-link" >
-                            Live Status
-                        </a>
-                    </li>
-
-                    <?php if( !config( 'ixp_fe.frontend.disabled.rs-filters') ): ?>
-                        <li class="nav-sub-menu-item <?= request()->is( 'rs-filters/list-customers' ) ? 'active' : '' ?>" >
-                            <a href="<?= route('rs-filters@list-customers' ) ?>" class="nav-link" >
-                                Customers with Filters
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            <?php endif;?>
-
-
-
             <li class="<?= !request()->is( 'switch/*' ) ?: 'active' ?>" >
                 <a id="lhs-menu-switches" class="nav-link" href="<?= route('switch@list') ?>">
+                    <i class="fa fa-random"></i>
                     Switches
                 </a>
             </li>
@@ -350,14 +185,88 @@
                 </ul>
             <?php endif; ?>
 
+            <li class="<?= !request()->is( 'infrastructure/*' ) ?: 'active' ?>">
+                <a class="nav-link" href="<?= route('infrastructure@list') ?>">
+                    <i class="fa fa-sitemap"></i>
+                    Infrastructures
+                </a>
+            </li>
+
+            <li class="<?= !request()->is( 'facility/*' ) ?: 'active' ?>">
+                <a class="nav-link" href="<?= route( 'facility@list' ) ?>">
+                    <i class="fa fa-industry"></i>
+                    Facilities
+                </a>
+            </li>
+
+            <li class="<?= !request()->is( 'rack/*' ) ?: 'active' ?>">
+                <a class="nav-link" href="<?= route('rack@list') ?>">
+                    <i class="fa fa-hdd-o"></i>
+                    Racks
+                </a>
+            </li>
+
             <li class="<?= !request()->is( 'vendor/*' ) ?: 'active' ?>" >
                 <a href="<?= route('vendor@list' ) ?>" class="nav-link">
+                    <i class="fa fa-truck"></i>
                     Vendors
                 </a>
             </li>
 
+            <li class="<?= request()->is( 'router/*' ) && !request()->is( 'router/status' ) ? 'active' : '' ?>" >
+                <a href="<?= route('router@list' ) ?>" class="nav-link" >
+                    <i class="fa fa-exchange"></i>
+                    Routers
+                </a>
+            </li>
+
+            <?php if( request()->is( 'router/*' ) || request()->is( 'rs-filters/list-customers' ) ): ?>
+                <ul>
+                    <li class="nav-sub-menu-item <?= request()->is( 'router/status' ) ? 'active' : '' ?>" >
+                        <a href="<?= route('router@status' ) ?>" class="nav-link" >
+                            Live Status
+                        </a>
+                    </li>
+
+                    <?php if( !config( 'ixp_fe.frontend.disabled.rs-filters') ): ?>
+                        <li class="nav-sub-menu-item <?= request()->is( 'rs-filters/list-customers' ) ? 'active' : '' ?>" >
+                            <a href="<?= route('rs-filters@list-customers' ) ?>" class="nav-link" >
+                                Customers with Filters
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            <?php endif;?>
+
+            <h6>
+                <span>IP &amp; ROUTING</span>
+            </h6>
+
+            <li>
+                <a href="<?= route('ip-address@list', [ 'protocol' => 4 ] ) ?>" class="nav-link">
+                    <i class="fa fa-globe"></i>
+                    IP Addresses
+                </a>
+            </li>
+            <?php if( request()->is( 'ip-address/*' ) ): ?>
+                <ul>
+                    <li class="nav-sub-menu-item <?= (int)request()->route()->parameter('protocol') === 4 ? 'active' : '' ?>">
+                        <a href="<?= route('ip-address@list', [ 'protocol' => 4 ] ) ?>" class="nav-link">
+                            IPv4 Addresses
+                        </a>
+                    </li>
+
+                    <li class="nav-sub-menu-item <?= (int)request()->route()->parameter('protocol') === 6 ? 'active' : '' ?>">
+                        <a href="<?= route('ip-address@list', [ 'protocol' => 6 ] ) ?>" class="nav-link">
+                            IPv6 Addresses
+                        </a>
+                    </li>
+                </ul>
+            <?php endif; ?>
+
             <li class="<?= request()->is( 'vlan/*' ) && !request()->is( 'vlan/private' ) ? 'active' : '' ?>">
                 <a href="<?= route('vlan@list' ) ?>" class="nav-link">
+                    <i class="fa fa-tag"></i>
                     VLANs
                 </a>
             </li>
@@ -378,15 +287,119 @@
                 </ul>
             <?php endif; ?>
 
+            <li class="<?= request()->is( 'irrdb/summary*' ) ? 'active' : '' ?>">
+                <a href="<?= route( 'irrdb@summary' ) ?>" class="nav-link">
+                    <i class="fa fa-database"></i>
+                    IRRDB Summary
+                </a>
+            </li>
+
+            <?php if( request()->is( 'irrdb*' ) ): ?>
+                <ul>
+                    <li class="nav-sub-menu-item <?= request()->is( 'irrdb-config/*' ) ? 'active' : '' ?>">
+                        <a href="<?= route( 'irrdb-config@list' ) ?>" class="nav-link">
+                            IRRDB Configuration
+                       </a>
+                    </li>
+                </ul>
+            <?php endif; ?>
+
+            <li>
+                <a href="<?= route( 'layer2-address@list' ) ?>" class="nav-link">
+                    <i class="fa fa-barcode"></i>
+                    MAC Addresses
+                </a>
+            </li>
+
+            <?php if( request()->is( 'mac-address/*' ) || request()->is( 'layer2-address/*' ) ): ?>
+                <ul>
+                    <li class="nav-sub-menu-item <?= !request()->is( 'layer2-address/*' ) ?: 'active' ?>">
+                        <a href="<?= route( 'layer2-address@list' ) ?>" class="nav-link">
+                            Configured Addresses
+                        </a>
+                    </li>
+
+                    <?php if( !config( 'ixp_fe.frontend.disabled.mac-address', false ) ): ?>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'mac-address/*' ) ?: 'active' ?>">
+                            <a href="<?= route('mac-address@list') ?>" class="nav-link">
+                                Discovered Addresses
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            <?php endif; ?>
+
+            <?php if( !config( 'ixp_fe.frontend.disabled.rs-prefixes', false ) ): ?>
+                <li class="<?= !request()->is( 'rs-prefixes/*' ) ?: 'active' ?>">
+                    <a href="<?= route( 'rs-prefixes@list' ) ?>" class="nav-link">
+                        <i class="fa fa-filter"></i>
+                        Route Server Prefixes
+                    </a>
+                </li>
+            <?php endif; ?>
+
+            <?php /**************************************** DOCSTORE ****************************************/ ?>
+
+            <?php if( !config( 'ixp_fe.frontend.disabled.docstore' ) ): ?>
+                <li class="<?= !request()->is( 'docstorec*' ) && request()->is( 'docstore*' ) && !request()->is( 'docstore-*' ) ? 'active' : '' ?>" >
+                    <a href="<?= route('docstore-dir@list' ) ?>" class="nav-link">
+                        <i class="fa fa-folder-open"></i>
+                        Document Store
+                    </a>
+                </li>
+
+                <?php if( !config( 'ixp_fe.frontend.disabled.docstore_customer' ) && request()->is( 'docstore*' ) ): ?>
+                    <li class="nav-sub-menu-item <?= request()->is( 'docstorec*' ) ? 'active' : '' ?>" >
+                        <a href="<?= route('docstore-c-dir@customers' ) ?>" class="nav-link">
+                            <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Documents
+                        </a>
+                    </li>
+                <?php endif; ?>
+            <?php elseif( !config( 'ixp_fe.frontend.disabled.docstore_customer' ) ): ?>
+                <li class="<?= request()->is( 'docstorec*' ) ? 'active' : '' ?>" >
+                    <a href="<?= route('docstore-c-dir@customers' ) ?>" class="nav-link">
+                        <i class="fa fa-folder-open"></i>
+                        <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Document Store
+                    </a>
+                </li>
+            <?php endif; ?>
+
+            <?php /**************************************** DOCSTORE ****************************************/ ?>
+
+            <?php if( !config( 'ixp_fe.frontend.disabled.ripe-atlas' ) ): ?>
+                <li class="<?= !request()->is( 'ripe-atlas/runs*' ) ?: 'active' ?>" >
+                    <a href="<?= route('ripe-atlas/runs@list' ) ?>" class="nav-link">
+                        <i class="fa fa-map-marker"></i>
+                        Ripe Atlas
+                    </a>
+                </li>
+
+                <?php if( request()->is( 'ripe-atlas/*' ) ): ?>
+                    <ul>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'ripe-atlas/measurements/*' ) ?: 'active' ?>">
+                            <a class="nav-link" href="<?= route('ripe-atlas/measurements@list' ) ?>">
+                                Measurements
+                            </a>
+                        </li>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'ripe-atlas/probes/*' ) ?: 'active' ?>">
+                            <a class="nav-link" href="<?= route('ripe-atlas/probes@list' ) ?>">
+                                Probes
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif; ?>
+            <?php endif; ?>
+
             <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) ): ?>
                 <h6>
-                    <span>EDGEIX MODULES</span>
+                    <span>EDGEIX</span>
                 </h6>
             <?php endif; ?>
 
             <?php if( Route::has( 'pw-admin@dashboard' ) ): ?>
                 <li class="<?= !request()->is( 'pseudowire/admin*' ) ?: 'active' ?>">
                     <a href="<?= route( 'pw-admin@dashboard' ) ?>" class="nav-link">
+                        <i class="fa fa-arrows-h"></i>
                         Pseudowires
                     </a>
                 </li>
@@ -410,6 +423,7 @@
             <?php if( Route::has( 'xero.auth.success' ) ): ?>
                 <li class="<?= !request()->is( 'admin/xero*' ) ?: 'active' ?>">
                     <a href="<?= route( 'xero.auth.success' ) ?>" class="nav-link">
+                        <i class="fa fa-file-text-o"></i>
                         Xero Billing
                     </a>
                 </li>
@@ -431,17 +445,19 @@
             <?php endif; ?>
 
             <h6>
-                <span>IXP STATISTICS</span>
+                <span>STATISTICS</span>
             </h6>
 
             <li class="<?= !request()->is( 'statistics/members' ) ?: 'active' ?>" >
                 <a href="<?= route( 'statistics@members' ) ?>" class="nav-link">
+                    <i class="fa fa-bar-chart"></i>
                     <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Statistics
                 </a>
             </li>
 
             <li class="<?= !request()->is( 'statistics/utilisation' ) ?: 'active' ?>">
                 <a href="<?= route( 'statistics@utilisation' ) ?>" class="nav-link">
+                    <i class="fa fa-tachometer"></i>
                     Port Utilisation
                 </a>
             </li>
@@ -449,6 +465,7 @@
             <?php if( config('grapher.backends.sflow.enabled') ) : ?>
                 <li class="<?= !request()->is( 'statistics/p2p-table' ) ?: 'active' ?>">
                     <a href="<?= route( 'statistics@p2p-table' ) ?>" class="nav-link">
+                        <i class="fa fa-table"></i>
                         P2P Table
                     </a>
                 </li>
@@ -456,17 +473,19 @@
 
             <li class="<?= !request()->is( 'statistics/league-table' ) ?: 'active' ?>">
                 <a href="<?= route( 'statistics@league-table' ) ?>" class="nav-link">
+                    <i class="fa fa-trophy"></i>
                     League Table
                 </a>
             </li>
 
             <h6>
-                IXP UTILITIES
+                <span>SYSTEM</span>
             </h6>
 
             <?php if( !config( 'ixp_fe.frontend.disabled.settings' ) ): ?>
                 <li class="<?= !request()->is( 'settings*' ) ?: 'active' ?>">
                     <a href="<?= route( 'settings@index' ) ?>" class="nav-link">
+                        <i class="fa fa-cog"></i>
                         Settings
                     </a>
                 </li>
@@ -475,6 +494,7 @@
             <?php if( Gate::allows( 'viewHorizon' ) && config( 'queue.default' ) === 'redis' ): ?>
                 <li>
                     <a href="<?= route( 'horizon.index' ) ?>" class="nav-link" target="_ixpm_horizon">
+                        <i class="fa fa-tasks"></i>
                         Laravel Horizon
                         <?php if( \IXP\Utils\Horizon::status() === \IXP\Utils\Horizon::STATUS_INACTIVE ): ?>
                             <span class="tw-text-red-500"><i class="fa fa-exclamation-triangle"></i></span>
@@ -488,6 +508,7 @@
             <?php if( Gate::allows( 'viewTelescope' ) && config( 'telescope.enabled' ) ): ?>
                 <li>
                     <a href="<?= route( 'telescope' ) ?>" class="nav-link" target="_ixpm_telescope">
+                        <i class="fa fa-binoculars"></i>
                         Laravel Telescope
                     </a>
                 </li>
@@ -495,18 +516,21 @@
 
             <li class="<?= !request()->is( 'utils/phpinfo' ) ?: 'active' ?>">
                 <a href="<?= route( 'utils/phpinfo' ) ?>" class="nav-link">
+                    <i class="fa fa-info-circle"></i>
                     PHP Info
                 </a>
             </li>
 
             <li class="<?= !request()->is( 'utils/ixf-compare' ) ?: 'active' ?>">
                 <a href="<?= route( 'utils/ixf-compare' ) ?>" class="nav-link">
+                    <i class="fa fa-compress"></i>
                     IX-F Compare
                 </a>
             </li>
 
             <li class="<?= !request()->is( 'login-history/*' ) ?: 'active' ?>">
                 <a href="<?= route( 'login-history@list' ) ?>" class="nav-link">
+                    <i class="fa fa-clock-o"></i>
                     Last Logins
                 </a>
             </li>
@@ -514,6 +538,7 @@
             <?php if( !config( 'ixp_fe.frontend.disabled.logs', false ) ): ?>
                 <li class="<?= !request()->is( 'log/*' ) ?: 'active' ?>">
                     <a href="<?= route( 'log@list' ) ?>" class="nav-link">
+                        <i class="fa fa-list-alt"></i>
                         Logs
                     </a>
                 </li>

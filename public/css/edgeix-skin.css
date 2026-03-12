@@ -1,53 +1,63 @@
 /**
- * EdgeIX Skin — Global Theme Override
+ * EdgeIX Skin — Modern Portal Theme
  *
- * Loaded after ixp-pack.css to apply brand-consistent styling.
- * All colors are defined as CSS variables for easy tuning.
+ * Dark sidebar, clean white content, orange brand accents.
+ * Inspired by Megaport portal design language.
  */
-
-/* ═══════════════════════════════════════════════════════════════
-   1. CSS Custom Properties
-   ═══════════════════════════════════════════════════════════════ */
 
 :root {
     --eix-orange: #CC7A2F;
     --eix-orange-dark: #A8621F;
     --eix-orange-light: #E8A35C;
-    --eix-orange-lightest: #FDF3E8;
-    --eix-bg: #EFEAE5;
+    --eix-orange-lightest: #FEF7F0;
+
+    /* Sidebar - dark navy */
+    --eix-sidebar: #1B2A3D;
+    --eix-sidebar-hover: #243549;
+    --eix-sidebar-active: #2C4058;
+    --eix-sidebar-text: #94A3B8;
+    --eix-sidebar-text-active: #FFFFFF;
+    --eix-sidebar-heading: #64748B;
+    --eix-sidebar-border: #2C3E50;
+
+    /* Page */
+    --eix-bg: #F1F5F9;
     --eix-card: #FFFFFF;
-    --eix-sidebar: #FFFFFF;
-    --eix-navbar: #2D2A26;
-    --eix-footer-bg: #2D2A26;
-    --eix-text-dark: #2D2A26;
-    --eix-text-muted: #6B6560;
-    --eix-section-heading-bg: #F0EBE6;
-    --eix-border: #DDD6CE;
-    --eix-border-light: #E8E2DB;
-    --eix-transition: 0.15s ease-in-out;
+    --eix-navbar: #1B2A3D;
+    --eix-footer-bg: #1B2A3D;
+    --eix-text: #334155;
+    --eix-text-muted: #64748B;
+    --eix-border: #E2E8F0;
+    --eix-border-light: #F1F5F9;
+    --eix-transition: 0.15s ease;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   2. Page Background — slightly warm, gives cards contrast
+   PAGE
    ═══════════════════════════════════════════════════════════════ */
 
 body {
     background-color: var(--eix-bg) !important;
+    color: var(--eix-text);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   3. Top Navbar
+   TOP NAVBAR
    ═══════════════════════════════════════════════════════════════ */
 
 .navbar.navbar-dark.bg-dark,
 #navbar-header.navbar.navbar-dark.bg-dark {
     background-color: var(--eix-navbar) !important;
-    border-bottom: 3px solid var(--eix-orange);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-bottom: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
 }
 
 .navbar-dark .navbar-brand {
     color: #FFFFFF;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     transition: color var(--eix-transition);
 }
 
@@ -55,22 +65,43 @@ body {
     color: var(--eix-orange-light);
 }
 
-.navbar-dark .navbar-nav .nav-link:hover {
-    color: var(--eix-orange-light) !important;
+.navbar-dark .navbar-nav .nav-link {
+    color: #CBD5E1 !important;
+    font-size: 0.85rem;
+    font-weight: 500;
     transition: color var(--eix-transition);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: #FFFFFF !important;
 }
 
 .navbar-dark .navbar-nav .nav-link.active,
 .navbar-dark .navbar-nav .show > .nav-link {
-    color: #FFFFFF;
+    color: #FFFFFF !important;
 }
 
 /* Navbar dropdown menus */
 .navbar .dropdown-menu {
-    border: 1px solid var(--eix-border);
-    border-top: 2px solid var(--eix-orange);
-    border-radius: 0 0 4px 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+}
+
+.navbar .dropdown-item {
+    font-size: 0.85rem;
+    padding: 0.45rem 1.25rem;
+    color: var(--eix-text);
+    transition: all var(--eix-transition);
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+    background-color: var(--eix-bg);
+    color: var(--eix-text);
 }
 
 .navbar .dropdown-item.active,
@@ -79,157 +110,253 @@ body {
     color: #FFFFFF !important;
 }
 
-.navbar .dropdown-item:hover,
-.navbar .dropdown-item:focus {
-    background-color: var(--eix-orange-lightest);
-    color: var(--eix-text-dark);
-}
-
 /* ═══════════════════════════════════════════════════════════════
-   4. Sidebar — clean white, orange accent on active
+   DARK SIDEBAR
    ═══════════════════════════════════════════════════════════════ */
 
 #side-navbar {
     background-color: var(--eix-sidebar) !important;
-    border-right: 1px solid var(--eix-border) !important;
+    border-right: none !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1) !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+}
+
+/* Search bar */
+#side-navbar .sidebar-search {
+    padding: 1rem;
+    border-bottom: 1px solid var(--eix-sidebar-border);
+}
+
+#side-navbar .sidebar-search .form-control {
+    background-color: var(--eix-sidebar-hover) !important;
+    border: 1px solid var(--eix-sidebar-border) !important;
+    color: #E2E8F0 !important;
+    font-size: 0.8rem;
     box-shadow: none !important;
 }
 
-/* Section headings — subtle dividers */
+#side-navbar .sidebar-search .form-control::placeholder {
+    color: var(--eix-sidebar-heading);
+}
+
+#side-navbar .sidebar-search .form-control:focus {
+    border-color: var(--eix-orange) !important;
+    box-shadow: 0 0 0 2px rgba(204, 122, 47, 0.2) !important;
+}
+
+#side-navbar .sidebar-search .btn,
+#side-navbar .sidebar-search .input-group-text {
+    background-color: var(--eix-sidebar-hover) !important;
+    border: 1px solid var(--eix-sidebar-border) !important;
+    color: var(--eix-sidebar-text) !important;
+    box-shadow: none !important;
+}
+
+/* Section headings */
 #side-navbar h6 {
-    background-color: var(--eix-section-heading-bg) !important;
-    border-right-color: var(--eix-border) !important;
-    color: var(--eix-text-muted) !important;
-    font-size: 0.68rem !important;
-    letter-spacing: 0.06em;
+    background-color: transparent !important;
+    border-right: none !important;
+    color: var(--eix-sidebar-heading) !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1rem 1rem 0.4rem 1rem !important;
+    margin: 0 !important;
 }
 
+/* Sidebar items */
 #side-navbar li {
-    border-right-color: transparent !important;
-    transition: border-right-color var(--eix-transition), background-color var(--eix-transition);
-}
-
-#side-navbar li.active {
-    border-right-color: var(--eix-orange) !important;
-    background-color: var(--eix-orange-lightest) !important;
-}
-
-#side-navbar li:hover {
-    border-right-color: var(--eix-orange-light) !important;
-    background-color: #FBF8F5 !important;
+    border-right: none !important;
+    margin: 1px 0;
 }
 
 #side-navbar .nav-link {
-    color: var(--eix-text-dark);
-    transition: color var(--eix-transition);
+    color: var(--eix-sidebar-text) !important;
+    font-size: 0.82rem;
+    font-weight: 400;
+    padding: 0.45rem 1rem !important;
+    border-left: 3px solid transparent;
+    transition: all var(--eix-transition);
+    text-decoration: none !important;
 }
 
-#side-navbar li.active .nav-link {
-    color: var(--eix-orange-dark);
+#side-navbar .nav-link:hover {
+    color: var(--eix-sidebar-text-active) !important;
+    text-decoration: none !important;
 }
 
-#side-navbar .form-control:focus {
-    border-color: var(--eix-orange-light);
-    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2);
+#side-navbar .nav-link i.fa {
+    width: 1.25rem;
+    text-align: center;
+    margin-right: 0.5rem;
+    font-size: 0.85rem;
+    opacity: 0.7;
 }
 
+#side-navbar li:hover {
+    background-color: var(--eix-sidebar-hover) !important;
+    border-right: none !important;
+}
+
+#side-navbar li.active {
+    background-color: var(--eix-sidebar-active) !important;
+    border-right: none !important;
+}
+
+#side-navbar li.active > .nav-link {
+    color: var(--eix-sidebar-text-active) !important;
+    border-left-color: var(--eix-orange);
+    font-weight: 600;
+}
+
+#side-navbar li.active > .nav-link i.fa {
+    color: var(--eix-orange-light);
+    opacity: 1;
+}
+
+/* Sub-menu items */
+#side-navbar .nav-sub-menu-item {
+    margin-left: 0 !important;
+}
+
+#side-navbar .nav-sub-menu-item .nav-link {
+    padding-left: 2.75rem !important;
+    font-size: 0.78rem;
+}
+
+/* Sidebar scrollbar */
 #side-navbar::-webkit-scrollbar {
     width: 4px;
 }
 
 #side-navbar::-webkit-scrollbar-thumb {
-    background-color: var(--eix-border);
+    background-color: var(--eix-sidebar-border);
     border-radius: 4px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   5. Page Header
+   PAGE HEADER
    ═══════════════════════════════════════════════════════════════ */
 
 #main-div > .d-flex.border-bottom {
-    border-bottom: 2px solid var(--eix-border) !important;
+    border-bottom: 1px solid var(--eix-border) !important;
     padding-bottom: 0.75rem !important;
-    margin-bottom: 1.5rem !important;
+    margin-bottom: 1.25rem !important;
 }
 
 #main-div > .d-flex.border-bottom h3 {
-    color: var(--eix-text-dark);
-    font-weight: 400;
+    color: var(--eix-text);
+    font-weight: 600;
+    font-size: 1.4rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   6. Cards — white on warm bg = clear separation
+   CARDS
    ═══════════════════════════════════════════════════════════════ */
 
 .card {
     background-color: var(--eix-card);
-    border: 1px solid var(--eix-border-light) !important;
-    border-radius: 6px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid var(--eix-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
     transition: box-shadow var(--eix-transition);
 }
 
 .card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
 }
 
 .card .card-header {
-    background-color: #FAFAF9;
-    border-bottom: 1px solid var(--eix-border-light);
-    border-radius: 6px 6px 0 0 !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   7. Tables — keep them clean, don't over-style
-   ═══════════════════════════════════════════════════════════════ */
-
-.table thead th {
-    background-color: #F7F5F3;
-    border-bottom: 2px solid var(--eix-border);
-    color: var(--eix-text-muted);
+    background-color: var(--eix-card);
+    border-bottom: 1px solid var(--eix-border);
+    border-radius: 8px 8px 0 0 !important;
     font-weight: 600;
 }
 
-.table td, .table th {
-    border-color: var(--eix-border-light);
+/* ═══════════════════════════════════════════════════════════════
+   TABLES — clean, borderless-feel
+   ═══════════════════════════════════════════════════════════════ */
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: var(--eix-bg);
+    border-bottom: 2px solid var(--eix-border) !important;
+    border-top: none !important;
+    color: var(--eix-text-muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 0.75rem;
+}
+
+.table td {
+    border-top: 1px solid var(--eix-border) !important;
+    border-bottom: none !important;
+    padding: 0.6rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.table th {
+    border-color: var(--eix-border) !important;
 }
 
 .table-light td,
 .table-light thead th {
-    border-color: var(--eix-border-light) !important;
+    border-color: var(--eix-border) !important;
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: #FAFAF9;
+    background-color: #F8FAFC;
 }
 
 .table-hover tbody tr:hover {
     background-color: var(--eix-orange-lightest);
 }
 
-/* DataTables pagination — orange brand accent */
+/* DataTables pagination */
 .dataTables_wrapper .dataTables_paginate .paginate_button.current,
 .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
     background: var(--eix-orange) !important;
     color: #FFFFFF !important;
-    border-color: var(--eix-orange-dark) !important;
-    border-radius: 4px;
+    border: 1px solid var(--eix-orange) !important;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: 6px !important;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
     background: var(--eix-orange-lightest) !important;
-    border-color: var(--eix-border) !important;
+    border-color: var(--eix-orange-light) !important;
     color: var(--eix-orange-dark) !important;
 }
 
+/* DataTables info + length */
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_length label {
+    font-size: 0.8rem;
+    color: var(--eix-text-muted);
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   8. Badges
+   BADGES
    ═══════════════════════════════════════════════════════════════ */
 
 .badge {
-    font-size: 0.75em;
-    letter-spacing: 0.02em;
-    padding: 0.3em 0.75em !important;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.35em 0.75em !important;
+    border-radius: 4px !important;
 }
 
 .badge-warning {
@@ -238,63 +365,100 @@ body {
 }
 
 .badge-info {
-    background-color: #2B8A94 !important;
+    background-color: #0891B2 !important;
 }
 
 .badge-success {
-    background-color: #2F9461 !important;
+    background-color: #059669 !important;
+}
+
+.badge-danger {
+    background-color: #DC2626 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   9. Buttons
+   BUTTONS
    ═══════════════════════════════════════════════════════════════ */
 
 .btn {
-    border-radius: 4px !important;
+    border-radius: 6px !important;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.4rem 1rem;
     transition: all var(--eix-transition);
 }
 
 .btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .btn:active {
     transform: translateY(0);
+    box-shadow: none;
+}
+
+.btn-sm {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+}
+
+.btn-primary {
+    background-color: #2563EB !important;
+    border-color: #2563EB !important;
+}
+
+.btn-primary:hover {
+    background-color: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
 }
 
 .btn-warning {
     background-color: var(--eix-orange) !important;
-    border-color: var(--eix-orange-dark) !important;
+    border-color: var(--eix-orange) !important;
     color: #FFFFFF !important;
 }
 
 .btn-warning:hover {
     background-color: var(--eix-orange-dark) !important;
     border-color: var(--eix-orange-dark) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-white {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--eix-border) !important;
+    color: var(--eix-text) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.btn-white:hover {
+    background-color: var(--eix-bg) !important;
+    border-color: #CBD5E1 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   10. Footer
+   FOOTER
    ═══════════════════════════════════════════════════════════════ */
 
 footer.footer.bg-dark {
     background-color: var(--eix-footer-bg) !important;
-    border-top: 3px solid var(--eix-orange);
+    border-top: none;
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
 }
 
 footer.footer a {
-    color: var(--eix-orange-light) !important;
+    color: var(--eix-sidebar-text) !important;
     transition: color var(--eix-transition);
 }
 
 footer.footer a:hover {
-    color: var(--eix-orange) !important;
+    color: var(--eix-orange-light) !important;
     text-decoration: none !important;
 }
 
 footer .fa-inverse {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--eix-sidebar-text) !important;
     transition: color var(--eix-transition);
 }
 
@@ -303,30 +467,48 @@ footer a:hover .fa-inverse {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   11. Form Inputs — orange focus ring
+   FORM INPUTS
    ═══════════════════════════════════════════════════════════════ */
+
+input.form-control,
+select.form-control,
+textarea.form-control {
+    border-radius: 6px !important;
+    border-color: var(--eix-border) !important;
+    font-size: 0.875rem;
+}
 
 input.form-control:focus,
 select.form-control:focus,
 textarea.form-control:focus {
-    border-color: var(--eix-orange-light) !important;
-    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2) !important;
+    border-color: var(--eix-orange) !important;
+    box-shadow: 0 0 0 3px rgba(204, 122, 47, 0.15) !important;
+}
+
+.select2-container--default .select2-selection {
+    border-radius: 6px !important;
 }
 
 .select2-container--default.select2-container--focus .select2-selection,
 .select2-container--default.select2-container--open .select2-selection {
-    border-color: var(--eix-orange-light) !important;
-    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2) !important;
+    border-color: var(--eix-orange) !important;
+    box-shadow: 0 0 0 3px rgba(204, 122, 47, 0.15) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   12. Tab Panels
+   TAB PANELS
    ═══════════════════════════════════════════════════════════════ */
+
+.tabButton {
+    border-radius: 6px 6px 0 0;
+    font-weight: 500;
+}
 
 .tabButton.active {
     color: var(--eix-orange-dark) !important;
     border-bottom: 2px solid var(--eix-orange) !important;
     background-color: var(--eix-card);
+    font-weight: 600;
 }
 
 .tabButton:hover {
@@ -334,46 +516,83 @@ textarea.form-control:focus {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   13. Modals
+   MODALS
    ═══════════════════════════════════════════════════════════════ */
 
-.modal-header {
-    border-bottom: 2px solid var(--eix-orange);
+.modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
-.modal-content {
-    border-radius: 6px;
-    border: none;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+.modal-header {
+    border-bottom: 1px solid var(--eix-border);
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--eix-border);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   14. Misc Polish
+   FILTER BARS / OPTION BARS
+   ═══════════════════════════════════════════════════════════════ */
+
+.navbar.navbar-light.bg-light {
+    background-color: var(--eix-card) !important;
+    border: 1px solid var(--eix-border) !important;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ALERTS
+   ═══════════════════════════════════════════════════════════════ */
+
+.alert {
+    border-radius: 8px;
+    border: none;
+    font-size: 0.875rem;
+}
+
+.alert-info {
+    background-color: #EFF6FF;
+    color: #1E40AF;
+}
+
+.alert-warning {
+    background-color: var(--eix-orange-lightest);
+    color: var(--eix-orange-dark);
+}
+
+.alert-success {
+    background-color: #ECFDF5;
+    color: #065F46;
+}
+
+.alert-danger {
+    background-color: #FEF2F2;
+    color: #991B1B;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MISC
    ═══════════════════════════════════════════════════════════════ */
 
 a {
     transition: color var(--eix-transition);
 }
 
-/* Filter/option bars (graph options, etc.) */
-.navbar.navbar-light.bg-light {
-    background-color: #FFFFFF !important;
-    border: 1px solid var(--eix-border-light);
-    border-radius: 6px;
+/* Main content wrapper */
+#main-div {
+    padding-top: 0.5rem;
 }
 
-/* Alert info — warm tint */
-.alert-info {
-    background-color: var(--eix-orange-lightest);
-    border-color: var(--eix-orange-light);
-    color: var(--eix-orange-dark);
-}
-
-/* Main content area on warm bg — give it a white card feel */
-#main-div > .container-fluid {
-    background-color: var(--eix-card);
-    border-radius: 6px;
-    padding: 1.25rem !important;
-    border: 1px solid var(--eix-border-light);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+/* Scroll-to-top smoothness */
+html {
+    scroll-behavior: smooth;
 }
