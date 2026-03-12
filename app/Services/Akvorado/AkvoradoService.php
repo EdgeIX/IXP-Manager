@@ -559,4 +559,180 @@ class AkvoradoService
 
         return $result;
     }
+
+    /**
+     * Query Akvorado for a specific date range (e.g. one calendar day).
+     *
+     * Unlike queryTimeSeries() which uses rolling windows from "now",
+     * this method queries an explicit start/end range. No caching — intended
+     * for batch/cron use.
+     *
+     * @param  string $filter      Akvorado filter expression
+     * @param  string $start       ISO 8601 start datetime
+     * @param  string $end         ISO 8601 end datetime
+     * @param  string $units       Akvorado units (l3bps, pps, etc.)
+     * @param  array  $dimensions  Dimensions to group by
+     * @param  int    $limit       Max dimension rows
+     * @param  int    $points      Number of data points
+     *
+     * @return array  Raw API response decoded from JSON
+     */
+    public function queryDateRange(
+        string $filter,
+        string $start,
+        string $end,
+        string $units      = 'l3bps',
+        array  $dimensions = [],
+        int    $limit      = 500,
+        int    $points     = 288
+    ): array {
+        $payload = [
+            'start'  => $start,
+            'end'    => $end,
+            'filter' => $filter,
+            'units'  => $units,
+            'points' => $points,
+            'limit'  => $limit,
+        ];
+
+        if( !empty( $dimensions ) ) {
+            $payload['dimensions'] = $dimensions;
+        }
+
+        Log::debug( "[Akvorado] queryDateRange: {$filter} ({$start} → {$end})" );
+
+        try {
+            $http = Http::timeout( $this->timeout );
+
+            if( $this->authUser && $this->authPass ) {
+                $http = $http->withBasicAuth( $this->authUser, $this->authPass );
+            }
+
+            $response = $http->post( "{$this->url}/api/v0/console/graph/line", $payload );
+
+            if( !$response->successful() ) {
+                Log::warning( "[Akvorado] API error: HTTP {$response->status()}", [
+                    'body' => substr( $response->body(), 0, 500 ),
+                ] );
+                return [];
+            }
+
+            return $response->json() ?? [];
+        } catch( \Exception $e ) {
+            Log::warning( "[Akvorado] API request failed: {$e->getMessage()}" );
+            return [];
+        }
+    }
+
+    /**
+     * Collect daily P2P stats for a customer on a VLAN using batch dimension queries.
+     *
+     * Makes 2 API calls per protocol (OUT grouped by DstMAC, IN grouped by SrcMAC)
+     * instead of 2 per peer. Returns stats keyed by peer customer ID.
+     *
+     * @param  VlanInterfaceModel $svli      Source VlanInterface
+     * @param  iterable          $dstVlis    All destination VlanInterfaces on same VLAN
+     * @param  string            $day        Date in YYYY-MM-DD format
+     * @param  string            $protocol   IPv4/IPv6 constant
+     *
+     * @return array  [ peer_cust_id => [ 'total_in' => int, 'total_out' => int, 'max_in' => int, 'max_out' => int ], ... ]
+     */
+    public function p2pDailyStats(
+        VlanInterfaceModel $svli,
+        iterable $dstVlis,
+        string $day,
+        string $protocol = Graph::PROTOCOL_IPV4
+    ): array {
+        $srcMacs = $this->resolveMACs( $svli );
+
+        if( empty( $srcMacs ) ) {
+            return [];
+        }
+
+        $srcVlan     = $this->resolveVlan( $svli );
+        $etypeFilter = $this->buildEtypeFilter( $protocol );
+
+        // Build MAC → peer customer ID mapping
+        $macToCust = [];
+        foreach( $dstVlis as $dvli ) {
+            $custId = $dvli->virtualInterface->custid;
+            foreach( $this->resolveMACs( $dvli ) as $mac ) {
+                $macToCust[ $mac ] = $custId;
+            }
+        }
+
+        if( empty( $macToCust ) ) {
+            return [];
+        }
+
+        $limit = count( $macToCust ) + 10;
+        $start = $day . 'T00:00:00Z';
+        $end   = $day . 'T23:59:59Z';
+
+        // OUT: traffic FROM source TO all peers (grouped by DstMAC)
+        $outFilter = $this->buildMacFilter( 'SrcMAC', $srcMacs )
+            . " AND SrcVlan = {$srcVlan}"
+            . $etypeFilter;
+
+        $outData = $this->queryDateRange( $outFilter, $start, $end, 'l3bps', [ 'DstMAC' ], $limit );
+
+        // IN: traffic FROM all peers TO source (grouped by SrcMAC)
+        $inFilter = $this->buildMacFilter( 'DstMAC', $srcMacs )
+            . $etypeFilter;
+
+        $inData = $this->queryDateRange( $inFilter, $start, $end, 'l3bps', [ 'SrcMAC' ], $limit );
+
+        // Extract per-peer stats from response
+        // Response keys: rows (numeric arrays), average (per row), max (per row)
+        $result = [];
+
+        // OUT direction → total_out and max_out per peer
+        foreach( ( $outData['rows'] ?? [] ) as $i => $row ) {
+            $mac    = strtolower( $row[0] ?? '' );
+            $custId = $macToCust[ $mac ] ?? null;
+
+            if( $custId === null ) {
+                continue;
+            }
+
+            $avgBps = (float) ( $outData['average'][$i] ?? 0 );
+            $maxBps = (float) ( $outData['max'][$i]     ?? 0 );
+
+            // Convert average bps over 24h to total bytes: avg_bps * 86400 / 8
+            $totalBytes = (int) ( $avgBps * 86400 / 8 );
+            $maxRate    = (int) $maxBps;
+
+            if( !isset( $result[ $custId ] ) ) {
+                $result[ $custId ] = [ 'total_in' => 0, 'total_out' => 0, 'max_in' => 0, 'max_out' => 0 ];
+            }
+
+            $result[ $custId ]['total_out'] += $totalBytes;
+            $result[ $custId ]['max_out']    = max( $result[ $custId ]['max_out'], $maxRate );
+        }
+
+        // IN direction → total_in and max_in per peer
+        foreach( ( $inData['rows'] ?? [] ) as $i => $row ) {
+            $mac    = strtolower( $row[0] ?? '' );
+            $custId = $macToCust[ $mac ] ?? null;
+
+            if( $custId === null ) {
+                continue;
+            }
+
+            $avgBps = (float) ( $inData['average'][$i] ?? 0 );
+            $maxBps = (float) ( $inData['max'][$i]     ?? 0 );
+
+            $totalBytes = (int) ( $avgBps * 86400 / 8 );
+            $maxRate    = (int) $maxBps;
+
+            if( !isset( $result[ $custId ] ) ) {
+                $result[ $custId ] = [ 'total_in' => 0, 'total_out' => 0, 'max_in' => 0, 'max_out' => 0 ];
+            }
+
+            $result[ $custId ]['total_in'] += $totalBytes;
+            $result[ $custId ]['max_in']    = max( $result[ $custId ]['max_in'], $maxRate );
+        }
+
+        return $result;
+    }
 }
