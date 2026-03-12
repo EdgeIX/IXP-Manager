@@ -497,6 +497,7 @@ class LookingGlass extends Controller
     {
         $lg = $this->lg();
         $rsAsn = $lg->router()->asn;
+        $router = $lg->router();
 
         // Get the peer ASN from BGP summary
         $peerAsn = $this->peerAsn( $protocol );
@@ -504,8 +505,14 @@ class LookingGlass extends Controller
             return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
         }
 
-        // Fetch all routes for this protocol
-        $allRoutes = $lg->routesForProtocol( $protocol );
+        // Fetch ALL routes from the master table — not just the peer's protocol.
+        // Routes tagged with (0, peer_asn) are sent by OTHER peers, so we need
+        // to search the entire routing table.
+        $masterTable = 'master';
+        if( (int)$router->software === Router::SOFTWARE_BIRD2 || (int)$router->software === Router::SOFTWARE_BIRD3 ) {
+            $masterTable = 'master' . substr( $router->protocol(), -1 );
+        }
+        $allRoutes = $lg->routesForTable( $masterTable );
 
         if( empty( $allRoutes ) ) {
             return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
