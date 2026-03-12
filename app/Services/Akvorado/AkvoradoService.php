@@ -298,7 +298,8 @@ class AkvoradoService
             return [];
         }
 
-        $limit = max( $numPeers + 5, 10 );
+        // Limit must exceed unique MAC count to avoid "Other" bucket swallowing peers
+        $limit = max( count( $macToVli ) + 10, $numPeers + 10 );
 
         // OUT batch: traffic FROM source TO all peers (grouped by DstMAC)
         $outFilter = $this->buildMacFilter( 'SrcMAC', $srcMacs )
@@ -314,22 +315,12 @@ class AkvoradoService
 
         $inData = $this->queryTimeSeries( $inFilter, $period, $units, [ 'SrcMAC' ], $limit );
 
-        // Debug: log the response structure to identify MAC format
-        Log::debug( "[Akvorado] p2pBatch macToVli mapping", [
-            'macToVli_keys' => array_keys( $macToVli ),
-            'outData_rows'  => array_slice( $outData['rows'] ?? [], 0, 5 ),
-            'inData_rows'   => array_slice( $inData['rows'] ?? [], 0, 5 ),
-            'outData_keys'  => array_keys( $outData ),
-            'inData_keys'   => array_keys( $inData ),
-        ] );
-
         // Map dimension rows back to VLI IDs
+        // Akvorado returns rows as numeric arrays, e.g. ["88:E0:F3:B7:0F:CF"]
         $outByVli = [];
         foreach( ( $outData['rows'] ?? [] ) as $i => $row ) {
-            $mac   = strtolower( $row['DstMAC'] ?? '' );
+            $mac   = strtolower( $row[0] ?? '' );
             $vliId = $macToVli[ $mac ] ?? null;
-
-            Log::debug( "[Akvorado] OUT row {$i}: row=" . json_encode( $row ) . " mac={$mac} vliId=" . ( $vliId ?? 'null' ) );
 
             if( $vliId === null ) {
                 continue;
@@ -343,7 +334,7 @@ class AkvoradoService
 
         $inByVli = [];
         foreach( ( $inData['rows'] ?? [] ) as $i => $row ) {
-            $mac   = strtolower( $row['SrcMAC'] ?? '' );
+            $mac   = strtolower( $row[0] ?? '' );
             $vliId = $macToVli[ $mac ] ?? null;
 
             if( $vliId === null ) {
