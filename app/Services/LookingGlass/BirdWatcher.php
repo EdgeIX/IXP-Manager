@@ -129,7 +129,76 @@ class BirdWatcher implements LookingGlassContract
 
         $ret = @file_get_contents( $url );
 
-        return $ret ?: "";
+        if( !$ret ) {
+            return "";
+        }
+
+        return $this->normalizeResponse( $ret );
+    }
+
+    /**
+     * Normalize Birdwatcher API response to match Birdseye format expected by templates.
+     *
+     * Key differences:
+     *   - api.Version (capital V) → api.version
+     *   - api.result_from_cache → api.from_cache
+     *   - Dates: "Y-m-d H:i:s" → ISO 8601 "Y-m-d\TH:i:sO"
+     *   - ttl as timestamp → api.ttl_mins
+     *
+     * @param string $response Raw JSON from Birdwatcher
+     * @return string Normalized JSON
+     */
+    private function normalizeResponse( string $response ): string
+    {
+        $data = json_decode( $response, true );
+
+        if( !$data ) {
+            return $response;
+        }
+
+        // Normalize api section
+        if( isset( $data['api'] ) ) {
+            // Version → version
+            if( isset( $data['api']['Version'] ) && !isset( $data['api']['version'] ) ) {
+                $data['api']['version'] = $data['api']['Version'];
+                unset( $data['api']['Version'] );
+            }
+
+            // result_from_cache → from_cache
+            if( isset( $data['api']['result_from_cache'] ) ) {
+                $data['api']['from_cache'] = $data['api']['result_from_cache'];
+            }
+
+            // Calculate ttl_mins from ttl and cached_at timestamps
+            if( isset( $data['ttl'] ) && isset( $data['cached_at'] ) ) {
+                try {
+                    $ttl = new \DateTime( $data['ttl'] );
+                    $cached = new \DateTime( $data['cached_at'] );
+                    $data['api']['ttl_mins'] = max( 1, (int)round( ( $ttl->getTimestamp() - $cached->getTimestamp() ) / 60 ) );
+                } catch( \Exception $e ) {
+                    $data['api']['ttl_mins'] = 5;
+                }
+            }
+
+            // Ensure max_routes exists (used by bgp-summary template for link display)
+            if( !isset( $data['api']['max_routes'] ) ) {
+                $data['api']['max_routes'] = 1000;
+            }
+        }
+
+        // Normalize status section date formats: "Y-m-d H:i:s" → ISO 8601
+        if( isset( $data['status'] ) ) {
+            foreach( [ 'last_reboot', 'last_reconfig', 'current_server' ] as $field ) {
+                if( isset( $data['status'][ $field ] ) && !str_contains( $data['status'][ $field ], 'T' ) ) {
+                    $dt = \DateTime::createFromFormat( 'Y-m-d H:i:s', $data['status'][ $field ] );
+                    if( $dt ) {
+                        $data['status'][ $field ] = $dt->format( 'Y-m-d\TH:i:sO' );
+                    }
+                }
+            }
+        }
+
+        return json_encode( $data );
     }
 
     /**
