@@ -39,7 +39,7 @@ use PragmaRX\Google2FALaravel\Support\Authenticator as GoogleAuthenticator;
             </li>
 
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle <?= !request()->is( 'customer/*' , 'switch/configuration', 'docstore/*' ) ?: 'active' ?>" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <a class="nav-link dropdown-toggle <?= !request()->is( 'customer/*' , 'docstore/*' ) ?: 'active' ?>" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <?= ucfirst( config( 'ixp_fe.lang.customer.one' ) ) ?> Information
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -49,10 +49,6 @@ use PragmaRX\Google2FALaravel\Support\Authenticator as GoogleAuthenticator;
 
                     <a class="dropdown-item <?= !request()->is( 'customer/associates' ) ?: 'active' ?>" href="<?= route( "customer@associates" ) ?>">
                         Associate <?= ucfirst( config( 'ixp_fe.lang.customer.many' ) ) ?>
-                    </a>
-
-                    <a class="dropdown-item <?= !request()->is( 'switch/configuration' ) ?: 'active' ?>" href="<?= route('switch@configuration') ?>">
-                        Switch Configuration
                     </a>
 
                     <?php if( !config( 'ixp_fe.frontend.disabled.docstore' ) && \IXP\Models\DocstoreDirectory::getHierarchyForUserClass( \IXP\Models\User::AUTH_CUSTADMIN ) ): ?>
