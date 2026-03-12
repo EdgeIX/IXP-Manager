@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r Route.*grapher /Users/joe/git/edgeix/ixpmanager/IXP-Manager/routes/)"
+    ]
+  }
+}

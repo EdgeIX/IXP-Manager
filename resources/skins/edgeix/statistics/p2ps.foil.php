@@ -222,7 +222,7 @@
                                 . '&period='   . $t->period
                                 . '&protocol=' . $t->protocol
                             ?>">
-                                <img class="img-fluid" src="<?= $t->graph->setDestinationVlanInterface( $dvli, false )->setType('png')->url() ?>">
+                                <?= $t->graph->setDestinationVlanInterface( $dvli, false )->setPeriod( $t->period )->renderer()->boxUplot() ?>
                             </a>
                         </div>
                     </div>

@@ -331,8 +331,8 @@ class AkvoradoService
      */
     private function mergeDirectionalData( array $inData, array $outData ): array
     {
-        $inTimestamps  = $inData['t']  ?? [];
-        $outTimestamps = $outData['t'] ?? [];
+        $inTimestamps  = $this->toUnixTimestamps( $inData['t']  ?? [] );
+        $outTimestamps = $this->toUnixTimestamps( $outData['t'] ?? [] );
 
         // Sum all rows for each direction (in case multiple MACs/dimensions)
         $inValues  = $this->sumPoints( $inData['points']  ?? [] );
@@ -372,7 +372,7 @@ class AkvoradoService
      */
     private function singleDirectionToData( array $data ): array
     {
-        $timestamps = $data['t'] ?? [];
+        $timestamps = $this->toUnixTimestamps( $data['t'] ?? [] );
         $values     = $this->sumPoints( $data['points'] ?? [] );
 
         $result = [];
@@ -382,6 +382,25 @@ class AkvoradoService
         }
 
         return $result;
+    }
+
+    /**
+     * Convert Akvorado ISO 8601 timestamps to Unix timestamps (seconds).
+     *
+     * Akvorado returns timestamps as ISO 8601 strings (e.g. "2026-03-12T10:00:00Z").
+     * The grapher framework expects Unix timestamps (integers).
+     *
+     * @param  array $timestamps Array of ISO 8601 strings or already-numeric values
+     * @return array Array of integer Unix timestamps
+     */
+    private function toUnixTimestamps( array $timestamps ): array
+    {
+        return array_map( function( $ts ) {
+            if( is_numeric( $ts ) ) {
+                return (int) $ts;
+            }
+            return strtotime( $ts ) ?: 0;
+        }, $timestamps );
     }
 
     /**
