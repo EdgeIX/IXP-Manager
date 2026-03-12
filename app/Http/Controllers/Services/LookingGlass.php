@@ -437,6 +437,9 @@ class LookingGlass extends Controller
                 }
             }
 
+            \Log::info( "Community search: community={$community} isLarge=" . ($isLarge ? 'yes' : 'no')
+                . " totalRoutes=" . count( $data['routes'] ) . " matched=" . count( $matched ) );
+
             $data['routes'] = $matched;
 
             $view = view( 'services/lg/routes' )->with([

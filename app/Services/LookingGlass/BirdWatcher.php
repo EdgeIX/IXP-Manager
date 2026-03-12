@@ -242,6 +242,16 @@ class BirdWatcher implements LookingGlassContract
             }
         }
 
+        // Normalize symbols: BIRD2 may return different key casing
+        // e.g. "Routing table" instead of "routing table"
+        if( isset( $data['symbols'] ) && is_array( $data['symbols'] ) ) {
+            $normalized = [];
+            foreach( $data['symbols'] as $key => $val ) {
+                $normalized[ strtolower( $key ) ] = $val;
+            }
+            $data['symbols'] = $normalized;
+        }
+
         return json_encode( $data );
     }
 
