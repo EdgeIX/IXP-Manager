@@ -222,7 +222,7 @@
                                 . '&period='   . $t->period
                                 . '&protocol=' . $t->protocol
                             ?>">
-                                <?= $t->graph->setDestinationVlanInterface( $dvli, false )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                                <?= $t->graph->setDestinationVlanInterface( $dvli )->setPeriod( $t->period )->renderer()->boxUplot() ?>
                             </a>
                         </div>
                     </div>
