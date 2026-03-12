@@ -112,10 +112,10 @@ class AkvoradoService
     private function buildMacFilter( string $field, array $macs ): string
     {
         if( count( $macs ) === 1 ) {
-            return "{$field} = '{$macs[0]}'";
+            return "{$field} = {$macs[0]}";
         }
 
-        $parts = array_map( fn( $mac ) => "{$field} = '{$mac}'", $macs );
+        $parts = array_map( fn( $mac ) => "{$field} = {$mac}", $macs );
         return '(' . implode( ' OR ', $parts ) . ')';
     }
 
