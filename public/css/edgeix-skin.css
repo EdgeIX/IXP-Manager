@@ -1,0 +1,371 @@
+/**
+ * EdgeIX Skin — Global Theme Override
+ *
+ * Loaded after ixp-pack.css to apply brand-consistent styling.
+ * All colors are defined as CSS variables for easy tuning.
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   1. CSS Custom Properties
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    --eix-orange: #CC7A2F;
+    --eix-orange-dark: #A8621F;
+    --eix-orange-light: #E8A35C;
+    --eix-orange-lightest: #FDF3E8;
+    --eix-warm-bg: #F5F0EB;
+    --eix-warm-card: #FFFFFF;
+    --eix-warm-sidebar: #FAF7F4;
+    --eix-navbar: #2D2A26;
+    --eix-footer-bg: #2D2A26;
+    --eix-text-dark: #2D2A26;
+    --eix-section-heading-bg: #F0E9E1;
+    --eix-border-warm: #E0D6CC;
+    --eix-transition: 0.15s ease-in-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. Page Background
+   ═══════════════════════════════════════════════════════════════ */
+
+body {
+    background-color: var(--eix-warm-bg) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. Top Navbar
+   ═══════════════════════════════════════════════════════════════ */
+
+.navbar.navbar-dark.bg-dark,
+#navbar-header.navbar.navbar-dark.bg-dark {
+    background-color: var(--eix-navbar) !important;
+    border-bottom: 3px solid var(--eix-orange);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-dark .navbar-brand {
+    color: #FFFFFF;
+    transition: color var(--eix-transition);
+}
+
+.navbar-dark .navbar-brand:hover {
+    color: var(--eix-orange-light);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--eix-orange-light) !important;
+    transition: color var(--eix-transition);
+}
+
+.navbar-dark .navbar-nav .nav-link.active,
+.navbar-dark .navbar-nav .show > .nav-link {
+    color: #FFFFFF;
+}
+
+/* Navbar dropdown menus */
+.navbar .dropdown-menu {
+    border: 1px solid var(--eix-border-warm);
+    border-top: 2px solid var(--eix-orange);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.navbar .dropdown-item.active,
+.navbar .dropdown-item:active {
+    background-color: var(--eix-orange) !important;
+    color: #FFFFFF !important;
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+    background-color: var(--eix-orange-lightest);
+    color: var(--eix-text-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. Sidebar
+   ═══════════════════════════════════════════════════════════════ */
+
+#side-navbar {
+    background-color: var(--eix-warm-sidebar) !important;
+    border-right: 1px solid var(--eix-border-warm) !important;
+    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+#side-navbar h6 {
+    background-color: var(--eix-section-heading-bg) !important;
+    border-right-color: var(--eix-border-warm) !important;
+    color: var(--eix-text-dark) !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.05em;
+}
+
+#side-navbar li {
+    border-right-color: transparent !important;
+    transition: border-right-color var(--eix-transition), background-color var(--eix-transition);
+}
+
+#side-navbar li.active {
+    border-right-color: var(--eix-orange) !important;
+    background-color: var(--eix-orange-lightest) !important;
+}
+
+#side-navbar li:hover {
+    border-right-color: var(--eix-orange-light) !important;
+    background-color: var(--eix-orange-lightest) !important;
+}
+
+#side-navbar .nav-link {
+    color: var(--eix-text-dark);
+    transition: color var(--eix-transition);
+}
+
+#side-navbar li.active .nav-link {
+    color: var(--eix-orange-dark);
+}
+
+#side-navbar .form-control:focus {
+    border-color: var(--eix-orange-light);
+    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2);
+}
+
+#side-navbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+#side-navbar::-webkit-scrollbar-thumb {
+    background-color: var(--eix-border-warm);
+    border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5. Page Header
+   ═══════════════════════════════════════════════════════════════ */
+
+#main-div > .d-flex.border-bottom {
+    border-bottom: 2px solid var(--eix-border-warm) !important;
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+#main-div > .d-flex.border-bottom h3 {
+    color: var(--eix-text-dark);
+    font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6. Cards
+   ═══════════════════════════════════════════════════════════════ */
+
+.card {
+    background-color: var(--eix-warm-card);
+    border: 1px solid var(--eix-border-warm) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    transition: box-shadow var(--eix-transition);
+}
+
+.card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.card .card-header {
+    background-color: #FDFBF9;
+    border-bottom: 1px solid var(--eix-border-warm);
+    border-radius: 6px 6px 0 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7. Tables
+   ═══════════════════════════════════════════════════════════════ */
+
+.table thead th {
+    background-color: #FAF7F4;
+    border-bottom: 2px solid var(--eix-border-warm);
+    color: var(--eix-text-dark);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.table td, .table th {
+    border-color: #EDE6DE;
+}
+
+.table-light td,
+.table-light thead th {
+    border-color: #EDE6DE !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(204, 122, 47, 0.03);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--eix-orange-lightest);
+}
+
+/* DataTables pagination */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--eix-orange) !important;
+    color: #FFFFFF !important;
+    border-color: var(--eix-orange-dark) !important;
+    border-radius: 4px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: var(--eix-orange-lightest) !important;
+    border-color: var(--eix-border-warm) !important;
+    color: var(--eix-orange-dark) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8. Badges
+   ═══════════════════════════════════════════════════════════════ */
+
+.badge {
+    font-size: 0.75em;
+    letter-spacing: 0.02em;
+    padding: 0.3em 0.75em !important;
+}
+
+.badge-warning {
+    background-color: var(--eix-orange) !important;
+    color: #FFFFFF !important;
+}
+
+.badge-info {
+    background-color: #2B8A94 !important;
+}
+
+.badge-success {
+    background-color: #2F9461 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9. Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn {
+    border-radius: 4px !important;
+    transition: all var(--eix-transition);
+    font-weight: 600;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-warning {
+    background-color: var(--eix-orange) !important;
+    border-color: var(--eix-orange-dark) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-warning:hover {
+    background-color: var(--eix-orange-dark) !important;
+    border-color: var(--eix-orange-dark) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10. Footer
+   ═══════════════════════════════════════════════════════════════ */
+
+footer.footer.bg-dark {
+    background-color: var(--eix-footer-bg) !important;
+    border-top: 3px solid var(--eix-orange);
+}
+
+footer.footer a {
+    color: var(--eix-orange-light) !important;
+    transition: color var(--eix-transition);
+}
+
+footer.footer a:hover {
+    color: var(--eix-orange) !important;
+    text-decoration: none !important;
+}
+
+footer .fa-inverse {
+    color: rgba(255, 255, 255, 0.6) !important;
+    transition: color var(--eix-transition);
+}
+
+footer a:hover .fa-inverse {
+    color: var(--eix-orange-light) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   11. Form Inputs
+   ═══════════════════════════════════════════════════════════════ */
+
+input.form-control:focus,
+select.form-control:focus,
+textarea.form-control:focus {
+    border-color: var(--eix-orange-light) !important;
+    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2) !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection,
+.select2-container--default.select2-container--open .select2-selection {
+    border-color: var(--eix-orange-light) !important;
+    box-shadow: 0 0 0 0.15rem rgba(204, 122, 47, 0.2) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   12. Tab Panels
+   ═══════════════════════════════════════════════════════════════ */
+
+.tabButton.active {
+    color: var(--eix-orange-dark) !important;
+    border-bottom: 2px solid var(--eix-orange) !important;
+    background-color: var(--eix-warm-card);
+}
+
+.tabButton:hover {
+    color: var(--eix-orange);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13. Modals
+   ═══════════════════════════════════════════════════════════════ */
+
+.modal-header {
+    border-bottom: 2px solid var(--eix-orange);
+}
+
+.modal-content {
+    border-radius: 6px;
+    border: none;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   14. Misc Polish
+   ═══════════════════════════════════════════════════════════════ */
+
+a {
+    transition: color var(--eix-transition);
+}
+
+/* Filter/option bars (graph options, etc.) */
+.navbar.navbar-light.bg-light {
+    background-color: #FAF7F4 !important;
+    border: 1px solid var(--eix-border-warm);
+    border-radius: 6px;
+}
+
+/* Alert styling warmup */
+.alert-info {
+    background-color: var(--eix-orange-lightest);
+    border-color: var(--eix-orange-light);
+    color: var(--eix-orange-dark);
+}

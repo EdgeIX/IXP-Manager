@@ -18,6 +18,7 @@
         <meta name="csrf-token" content="<?=  csrf_token() ?>">
 
         <link rel="stylesheet" type="text/css" href="<?= url ('') . mix('css/ixp-pack.css') ?>" />
+        <link rel="stylesheet" type="text/css" href="<?= url('') ?>/css/edgeix-skin.css" />
 
         <link rel="shortcut icon" type="image/ico" href="<?= file_exists( base_path( 'public/favicon.ico' ) ) ? asset( "favicon.ico" ) : asset( "favicon.ico.dist" ) ?>" />
 

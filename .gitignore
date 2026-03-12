@@ -9,6 +9,7 @@
 /.settings/
 /.phpunit.cache/
 .env*.local
+.claude/
 
 /vendor/
 /public/.htaccess
