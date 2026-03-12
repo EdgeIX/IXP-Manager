@@ -380,7 +380,12 @@ class BirdWatcher implements LookingGlassContract
     #[\Override]
     public function protocolRoute( string $protocol, string $network, int $mask ): string
     {
-        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/master' );
+        // Birdwatcher doesn't have a single-route lookup endpoint.
+        // Fetch all routes from the protocol and filter to the requested prefix.
+        return $this->filterRoutesToPrefix(
+            $this->apiCall( 'routes/protocol/' . urlencode( $protocol ) ),
+            $network, $mask
+        );
     }
 
     /**
@@ -395,7 +400,12 @@ class BirdWatcher implements LookingGlassContract
     #[\Override]
     public function protocolTable( string $table, string $network, int $mask ): string
     {
-        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/' . urlencode( $table ) );
+        // Birdwatcher doesn't have a single-route lookup endpoint.
+        // Fetch all routes from the table and filter to the requested prefix.
+        return $this->filterRoutesToPrefix(
+            $this->apiCall( 'routes/table/' . urlencode( $table ) ),
+            $network, $mask
+        );
     }
 
     /**
@@ -411,15 +421,39 @@ class BirdWatcher implements LookingGlassContract
     public function exportRoute( string $protocol, string $network, int $mask ): string
     {
         // Birdwatcher doesn't have a /routes/export/ endpoint.
-        // Look up the route in the protocol's table instead.
+        // Look up the protocol's table and filter to the requested prefix.
         $allProtocols = $this->apiCall( 'protocols/bgp' );
         $data = json_decode( $allProtocols, true );
 
-        if( $data && isset( $data['protocols'][ $protocol ]['table'] ) ) {
-            return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/' . urlencode( $data['protocols'][ $protocol ]['table'] ) );
+        $table = $data['protocols'][ $protocol ]['table'] ?? 'master';
+        return $this->filterRoutesToPrefix(
+            $this->apiCall( 'routes/table/' . urlencode( $table ) ),
+            $network, $mask
+        );
+    }
+
+    /**
+     * Filter a routes response to only include routes matching a specific prefix.
+     *
+     * @param string $routesJson JSON response containing a 'routes' array
+     * @param string $network    Network address (e.g. "119.252.92.0")
+     * @param int    $mask       Prefix length (e.g. 23)
+     * @return string Filtered JSON with only matching routes
+     */
+    private function filterRoutesToPrefix( string $routesJson, string $network, int $mask ): string
+    {
+        $data = json_decode( $routesJson, true );
+
+        if( !$data || !isset( $data['routes'] ) || !is_array( $data['routes'] ) ) {
+            return $routesJson;
         }
 
-        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/master' );
+        $prefix = $network . '/' . $mask;
+        $data['routes'] = array_values( array_filter( $data['routes'], function( $route ) use ( $prefix ) {
+            return isset( $route['network'] ) && $route['network'] === $prefix;
+        }));
+
+        return json_encode( $data );
     }
 
     /**
