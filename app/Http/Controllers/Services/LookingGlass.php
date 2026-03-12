@@ -394,53 +394,45 @@ class LookingGlass extends Controller
                 return redirect( route( 'lg::route-search', [ 'handle' => $handle ] ) );
             }
 
+            $isLarge = count( $parts ) === 3;
+
+            // First search the master table
             $masterTable = 'master';
             if( (int)$router->software === Router::SOFTWARE_BIRD2 || (int)$router->software === Router::SOFTWARE_BIRD3 ) {
                 $masterTable = 'master' . substr( $router->protocol(), -1 );
             }
 
-            $allRoutes = $lg->routesForTable( $masterTable );
+            $matched = $this->searchRoutesForCommunity( $lg->routesForTable( $masterTable ), $parts, $isLarge );
 
-            if( empty( $allRoutes ) ) {
-                $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
-                \Log::info( "Community search: routesForTable({$masterTable}) returned empty" );
-            } else {
-                $data = json_decode( $allRoutes, true );
-                if( !$data || !isset( $data['routes'] ) ) {
-                    \Log::info( "Community search: routesForTable({$masterTable}) returned non-route data, length=" . strlen( $allRoutes ) );
-                    $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
-                } else {
-                    \Log::info( "Community search: got " . count( $data['routes'] ) . " routes from {$masterTable}" );
+            // If no results from master table, search across all BGP protocol routes.
+            // Routes tagged with filtering communities (e.g. 1101) may be accepted by BIRD
+            // but not installed in the master table, so they only appear in protocol routes.
+            if( empty( $matched ) ) {
+                $summary = json_decode( $lg->bgpSummary(), true );
+                if( $summary && isset( $summary['protocols'] ) ) {
+                    foreach( $summary['protocols'] as $protoName => $proto ) {
+                        if( ( $proto['state'] ?? '' ) !== 'up' ) continue;
+                        try {
+                            $protoRoutes = $lg->routesForProtocol( $protoName );
+                            $protoMatched = $this->searchRoutesForCommunity( $protoRoutes, $parts, $isLarge );
+                            $matched = array_merge( $matched, $protoMatched );
+                        } catch( \Exception $e ) {
+                            continue;
+                        }
+                    }
+                    // Deduplicate by network
+                    $seen = [];
+                    $matched = array_filter( $matched, function( $route ) use ( &$seen ) {
+                        $key = $route['network'] ?? '';
+                        if( isset( $seen[ $key ] ) ) return false;
+                        $seen[ $key ] = true;
+                        return true;
+                    });
+                    $matched = array_values( $matched );
                 }
             }
 
-            $isLarge = count( $parts ) === 3;
-            $matched = [];
-
-            foreach( $data['routes'] as $route ) {
-                if( $isLarge ) {
-                    foreach( $route['bgp']['large_communities'] ?? [] as $lc ) {
-                        if( is_array( $lc ) && count( $lc ) >= 3
-                            && (int)$lc[0] === $parts[0] && (int)$lc[1] === $parts[1] && (int)$lc[2] === $parts[2] ) {
-                            $matched[] = $route;
-                            break;
-                        }
-                    }
-                } else {
-                    foreach( $route['bgp']['communities'] ?? [] as $c ) {
-                        if( is_array( $c ) && count( $c ) >= 2
-                            && (int)$c[0] === $parts[0] && (int)$c[1] === $parts[1] ) {
-                            $matched[] = $route;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            \Log::info( "Community search: community={$community} isLarge=" . ($isLarge ? 'yes' : 'no')
-                . " totalRoutes=" . count( $data['routes'] ) . " matched=" . count( $matched ) );
-
-            $data['routes'] = $matched;
+            $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => $matched ];
 
             $view = view( 'services/lg/routes' )->with([
                 'content'  => json_decode( json_encode( $data ), false ),
@@ -524,6 +516,73 @@ class LookingGlass extends Controller
         } catch( \Exception $e ) {
             return response()->json( [ 'routes' => [], 'error' => 'Could not retrieve not-exported routes' ], 200 );
         }
+    }
+
+    /**
+     * Search a JSON routes response for routes matching a community.
+     *
+     * @param string $routesJson  Raw JSON from routesForTable/routesForProtocol
+     * @param array  $parts       Community parts as integers [x,y] or [x,y,z]
+     * @param bool   $isLarge     Whether this is a large community (3 parts)
+     * @return array  Matched route arrays
+     */
+    private function searchRoutesForCommunity( string $routesJson, array $parts, bool $isLarge ): array
+    {
+        if( empty( $routesJson ) ) {
+            return [];
+        }
+
+        $data = json_decode( $routesJson, true );
+        if( !$data || !isset( $data['routes'] ) ) {
+            return [];
+        }
+
+        // Build string representation for matching against string-format communities
+        // Birdwatcher may return communities as arrays ([24224,1101,10]) or strings ("24224:1101:10")
+        $communityStr = implode( ':', $parts );
+
+        $matched = [];
+        foreach( $data['routes'] as $route ) {
+            if( $isLarge ) {
+                foreach( $route['bgp']['large_communities'] ?? [] as $lc ) {
+                    // Handle array format: [24224, 1101, 10]
+                    if( is_array( $lc ) && count( $lc ) >= 3
+                        && (int)$lc[0] === $parts[0] && (int)$lc[1] === $parts[1] && (int)$lc[2] === $parts[2] ) {
+                        $matched[] = $route;
+                        break;
+                    }
+                    // Handle string format: "24224:1101:10" or "(24224, 1101, 10)"
+                    if( is_string( $lc ) ) {
+                        $normalized = str_replace( [ '(', ')', ' ' ], '', $lc );
+                        $normalized = str_replace( ',', ':', $normalized );
+                        if( $normalized === $communityStr ) {
+                            $matched[] = $route;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                foreach( $route['bgp']['communities'] ?? [] as $c ) {
+                    // Handle array format: [0, 4826]
+                    if( is_array( $c ) && count( $c ) >= 2
+                        && (int)$c[0] === $parts[0] && (int)$c[1] === $parts[1] ) {
+                        $matched[] = $route;
+                        break;
+                    }
+                    // Handle string format: "0:4826" or "(0, 4826)"
+                    if( is_string( $c ) ) {
+                        $normalized = str_replace( [ '(', ')', ' ' ], '', $c );
+                        $normalized = str_replace( ',', ':', $normalized );
+                        if( $normalized === $communityStr ) {
+                            $matched[] = $route;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $matched;
     }
 
     /**
