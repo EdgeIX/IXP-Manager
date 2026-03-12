@@ -235,11 +235,29 @@
         };
     }
 
+    function getWidth() {
+        var el = document.getElementById(graphId);
+        if (!el) return 800;
+        // Walk up to find a parent with a real width (card-body, col, etc.)
+        var node = el;
+        while (node && node.clientWidth <= 0) {
+            node = node.parentElement;
+        }
+        var w = node ? node.clientWidth : 800;
+        // Account for padding on the immediate parent (card-body)
+        if (node && node !== el) {
+            var cs = getComputedStyle(node);
+            w -= parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0);
+        }
+        return Math.floor(w);
+    }
+
     function renderGraph() {
         var el = document.getElementById(graphId);
         if (!el || typeof uPlot === 'undefined') return;
 
-        var width = el.clientWidth || el.parentElement.clientWidth || 800;
+        var width = getWidth();
+        if (width <= 0) return;
 
         var opts = {
             width: width,
@@ -320,14 +338,32 @@
         renderGraph();
     }
 
-    // Debounced resize
+    // Re-render on container resize (handles initial layout + window resize)
     var resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            if (typeof uPlot !== 'undefined') renderGraph();
-        }, 200);
-    });
+    var lastWidth = 0;
+    if (typeof ResizeObserver !== 'undefined') {
+        var el = document.getElementById(graphId);
+        var observed = el ? (el.parentElement || el) : null;
+        if (observed) {
+            new ResizeObserver(function() {
+                var w = getWidth();
+                if (w > 0 && w !== lastWidth) {
+                    lastWidth = w;
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(function() {
+                        if (typeof uPlot !== 'undefined') renderGraph();
+                    }, 150);
+                }
+            }).observe(observed);
+        }
+    } else {
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (typeof uPlot !== 'undefined') renderGraph();
+            }, 200);
+        });
+    }
 })();
 </script>
 
