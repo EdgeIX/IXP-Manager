@@ -127,11 +127,19 @@ class BirdWatcher implements LookingGlassContract
             $url .= ( str_contains( $url, '?' ) ? '&' : '?' ) . 'uncached=true';
         }
 
-        $ctx = stream_context_create( [ 'http' => [ 'timeout' => 15 ] ] );
+        $ctx = stream_context_create( [ 'http' => [ 'timeout' => 15, 'ignore_errors' => true ] ] );
         $ret = @file_get_contents( $url, false, $ctx );
 
-        if( !$ret ) {
-            return "";
+        // Check for empty response, HTTP errors, or non-JSON responses
+        if( !$ret || !str_starts_with( trim( $ret ), '{' ) ) {
+            // Return valid JSON so controllers using JSON_THROW_ON_ERROR don't 500
+            return json_encode( [
+                'api'       => [ 'version' => 'birdwatcher', 'from_cache' => false, 'max_routes' => 0 ],
+                'status'    => [ 'version' => 'unavailable', 'message' => 'Birdwatcher API unreachable', 'router_id' => '',
+                                 'last_reboot' => '1970-01-01T00:00:00+0000', 'last_reconfig' => '1970-01-01T00:00:00+0000' ],
+                'protocols' => (object)[],
+                'routes'    => [],
+            ] );
         }
 
         return $this->normalizeResponse( $ret );
@@ -336,6 +344,9 @@ class BirdWatcher implements LookingGlassContract
     /**
      * Get routes exported to named protocol (e.g. BGP session)
      *
+     * Birdwatcher doesn't have a /routes/export/ endpoint.
+     * Use /routes/table/ for the protocol's table as the closest equivalent.
+     *
      * @param string $protocol Protocol name
      *
      * @return string
@@ -343,7 +354,17 @@ class BirdWatcher implements LookingGlassContract
     #[\Override]
     public function routesForExport( string $protocol ): string
     {
-        return $this->apiCall( 'routes/export/' . urlencode( $protocol ) );
+        // Birdwatcher has no export route list — fetch from the protocol's table instead.
+        // First get the protocol info to find its table name.
+        $allProtocols = $this->apiCall( 'protocols/bgp' );
+        $data = json_decode( $allProtocols, true );
+
+        if( $data && isset( $data['protocols'][ $protocol ]['table'] ) ) {
+            return $this->apiCall( 'routes/table/' . urlencode( $data['protocols'][ $protocol ]['table'] ) );
+        }
+
+        // Fallback — return the protocol's own routes
+        return $this->apiCall( 'routes/protocol/' . urlencode( $protocol ) );
     }
 
     /**
