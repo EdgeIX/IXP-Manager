@@ -375,6 +375,79 @@ class LookingGlass extends Controller
     }
 
     /**
+     * Search routes by standard or large community.
+     *
+     * Accepts communities as colon-separated strings:
+     *   Standard: "0:4826"
+     *   Large:    "24224:0:4826"
+     */
+    public function routesByCommunity( string $handle, string $community ): RedirectResponse|View
+    {
+        try {
+            $lg = $this->lg();
+            $router = $lg->router();
+            $parts = array_map( 'intval', explode( ':', $community ) );
+
+            if( count( $parts ) < 2 || count( $parts ) > 3 ) {
+                AlertContainer::push( 'Invalid community format. Use x:y for standard or x:y:z for large communities.', Alert::DANGER );
+                return redirect( route( 'lg::route-search', [ 'handle' => $handle ] ) );
+            }
+
+            $masterTable = 'master';
+            if( (int)$router->software === Router::SOFTWARE_BIRD2 || (int)$router->software === Router::SOFTWARE_BIRD3 ) {
+                $masterTable = 'master' . substr( $router->protocol(), -1 );
+            }
+
+            $allRoutes = $lg->routesForTable( $masterTable );
+
+            if( empty( $allRoutes ) ) {
+                $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
+            } else {
+                $data = json_decode( $allRoutes, true );
+                if( !$data || !isset( $data['routes'] ) ) {
+                    $data = [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ];
+                }
+            }
+
+            $isLarge = count( $parts ) === 3;
+            $matched = [];
+
+            foreach( $data['routes'] as $route ) {
+                if( $isLarge ) {
+                    foreach( $route['bgp']['large_communities'] ?? [] as $lc ) {
+                        if( is_array( $lc ) && count( $lc ) >= 3
+                            && (int)$lc[0] === $parts[0] && (int)$lc[1] === $parts[1] && (int)$lc[2] === $parts[2] ) {
+                            $matched[] = $route;
+                            break;
+                        }
+                    }
+                } else {
+                    foreach( $route['bgp']['communities'] ?? [] as $c ) {
+                        if( is_array( $c ) && count( $c ) >= 2
+                            && (int)$c[0] === $parts[0] && (int)$c[1] === $parts[1] ) {
+                            $matched[] = $route;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            $data['routes'] = $matched;
+
+            $view = view( 'services/lg/routes' )->with([
+                'content'  => json_decode( json_encode( $data ), false ),
+                'source'   => 'community search',
+                'name'     => $community,
+                'peerName' => null,
+            ]);
+            return $this->addCommonParams( $view );
+        } catch( \Exception $e ) {
+            AlertContainer::push( 'Could not search routes by community: ' . $e->getMessage(), Alert::DANGER );
+            return redirect( route( 'lg::route-search', [ 'handle' => $handle ] ) );
+        }
+    }
+
+    /**
      * Get filtered/rejected routes for a protocol.
      *
      * Birdwatcher: uses /routes/filtered/ endpoint
