@@ -97,7 +97,7 @@ class Akvorado extends GrapherBackend implements GrapherBackendContract
                     Graph::CATEGORY_PACKETS => Graph::CATEGORY_PACKETS,
                 ],
                 'periods'    => Graph::PERIODS,
-                'types'      => [ Graph::TYPE_JSON => Graph::TYPE_JSON, Graph::TYPE_LOG => Graph::TYPE_LOG ],
+                'types'      => Graph::TYPES,
             ],
             'vlaninterface' => [
                 'protocols'  => $graphProtocols,
@@ -106,7 +106,7 @@ class Akvorado extends GrapherBackend implements GrapherBackendContract
                     Graph::CATEGORY_PACKETS => Graph::CATEGORY_PACKETS,
                 ],
                 'periods'    => Graph::PERIODS,
-                'types'      => [ Graph::TYPE_JSON => Graph::TYPE_JSON, Graph::TYPE_LOG => Graph::TYPE_LOG ],
+                'types'      => Graph::TYPES,
             ],
             'p2p' => [
                 'protocols'  => $graphProtocols,
@@ -115,7 +115,7 @@ class Akvorado extends GrapherBackend implements GrapherBackendContract
                     Graph::CATEGORY_PACKETS => Graph::CATEGORY_PACKETS,
                 ],
                 'periods'    => Graph::PERIODS_EXTENDED,
-                'types'      => [ Graph::TYPE_JSON => Graph::TYPE_JSON, Graph::TYPE_LOG => Graph::TYPE_LOG ],
+                'types'      => Graph::TYPES,
             ],
         ];
     }
