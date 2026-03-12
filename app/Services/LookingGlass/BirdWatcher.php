@@ -448,9 +448,29 @@ class BirdWatcher implements LookingGlassContract
             return $routesJson;
         }
 
-        $prefix = $network . '/' . $mask;
-        $data['routes'] = array_values( array_filter( $data['routes'], function( $route ) use ( $prefix ) {
-            return isset( $route['network'] ) && $route['network'] === $prefix;
+        // Normalize the target network address for comparison (handles IPv6 representation differences)
+        $targetBin = @inet_pton( $network );
+
+        $data['routes'] = array_values( array_filter( $data['routes'], function( $route ) use ( $network, $mask, $targetBin ) {
+            if( !isset( $route['network'] ) ) {
+                return false;
+            }
+
+            // Try exact string match first
+            $prefix = $network . '/' . $mask;
+            if( $route['network'] === $prefix ) {
+                return true;
+            }
+
+            // Parse route's network and compare normalized addresses
+            if( preg_match( '#^(.+)/(\d+)$#', $route['network'], $m ) ) {
+                $routeBin = @inet_pton( $m[1] );
+                if( $routeBin !== false && $targetBin !== false && $routeBin === $targetBin && (int)$m[2] === $mask ) {
+                    return true;
+                }
+            }
+
+            return false;
         }));
 
         return json_encode( $data );
