@@ -264,8 +264,9 @@ class LookingGlass extends Controller
         try{
             // get bgp protocol summary
             $view = view('services/lg/routes' )->with([
-                'content' => json_decode( $this->lg()->routesForProtocol( $protocol ), false, 512, JSON_THROW_ON_ERROR),
-                'source' => 'protocol', 'name' => $protocol
+                'content'  => json_decode( $this->lg()->routesForProtocol( $protocol ), false, 512, JSON_THROW_ON_ERROR),
+                'source'   => 'protocol', 'name' => $protocol,
+                'peerName' => $this->peerName( $protocol ),
             ]);
             return $this->addCommonParams( $view );
         } catch( \Exception $e ){
@@ -288,7 +289,8 @@ class LookingGlass extends Controller
         $view = view('services/lg/routes' )->with([
             'content'   => json_decode( $this->lg()->routesForExport( $protocol ), false, 512, JSON_THROW_ON_ERROR),
             'source'    => 'export to protocol',
-            'name'      => $protocol
+            'name'      => $protocol,
+            'peerName'  => $this->peerName( $protocol ),
         ]);
         return $this->addCommonParams( $view );
     }
@@ -383,9 +385,10 @@ class LookingGlass extends Controller
         try {
             $routes = $this->getFilteredRoutes( $protocol );
             $view = view('services/lg/routes' )->with([
-                'content' => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
-                'source'  => 'filtered from protocol',
-                'name'    => $protocol,
+                'content'  => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'source'   => 'filtered from protocol',
+                'name'     => $protocol,
+                'peerName' => $this->peerName( $protocol ),
             ]);
             return $this->addCommonParams( $view );
         } catch( \Exception $e ) {
@@ -402,9 +405,10 @@ class LookingGlass extends Controller
         try {
             $routes = $this->getNotExportedRoutes( $protocol );
             $view = view('services/lg/routes' )->with([
-                'content' => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
-                'source'  => 'not exported to protocol',
-                'name'    => $protocol,
+                'content'  => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'source'   => 'not exported to protocol',
+                'name'     => $protocol,
+                'peerName' => $this->peerName( $protocol ),
             ]);
             return $this->addCommonParams( $view );
         } catch( \Exception $e ) {
@@ -439,6 +443,23 @@ class LookingGlass extends Controller
         } catch( \Exception $e ) {
             return response()->json( [ 'routes' => [], 'error' => 'Could not retrieve not-exported routes' ], 200 );
         }
+    }
+
+    /**
+     * Look up the peer description for a protocol name from BGP summary.
+     */
+    private function peerName( string $protocol ): ?string
+    {
+        try {
+            $summary = json_decode( $this->lg()->bgpSummary(), false );
+            if( isset( $summary->protocols->$protocol ) ) {
+                $p = $summary->protocols->$protocol;
+                return $p->description_short ?? $p->description ?? null;
+            }
+        } catch( \Exception $e ) {
+            // Non-critical — just return null
+        }
+        return null;
     }
 
     /**

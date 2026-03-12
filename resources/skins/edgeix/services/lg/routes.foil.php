@@ -1,7 +1,7 @@
 <?php $this->layout('services/lg/layout') ?>
 
 <?php $this->section('title') ?>
-    <small>Routes for <?= ucwords( $t->source ) ?> <code><?= $t->name ?></code></small>
+    <small>Routes for <?= ucwords( $t->source ) ?> <code><?= $t->name ?></code><?php if( $t->peerName ?? null ): ?> — <?= $t->ee( $t->peerName ) ?><?php endif; ?></small>
 <?php $this->append() ?>
 
 <?php $this->section('content') ?>
@@ -52,7 +52,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <?php if( $t->source ?? false ): ?>
-                <b>Routes <?= $t->source === 'export to protocol' ? 'exported to protocol' : ( $t->source === 'filtered from protocol' ? 'filtered/rejected from protocol' : ( $t->source === 'not exported to protocol' ? 'not exported to protocol' : 'from ' . $t->source ) ) ?>: <code><?= $t->name ?></code>.</b>
+                <b>Routes <?= $t->source === 'export to protocol' ? 'exported to protocol' : ( $t->source === 'filtered from protocol' ? 'filtered/rejected from protocol' : ( $t->source === 'not exported to protocol' ? 'not exported to protocol' : 'from ' . $t->source ) ) ?>: <code><?= $t->name ?></code><?php if( $t->peerName ?? null ): ?> — <?= $t->ee( $t->peerName ) ?><?php endif; ?>.</b>
             <?php endif; ?>
 
             <b>Key:</b> <span class="badge badge-success">P</span>
