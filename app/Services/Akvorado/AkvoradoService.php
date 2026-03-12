@@ -38,8 +38,8 @@ class AkvoradoService
      * Map IXP-Manager protocol constants to Akvorado EType filters.
      */
     private const ETYPE_MAP = [
-        Graph::PROTOCOL_IPV4 => '2048',   // 0x0800
-        Graph::PROTOCOL_IPV6 => '34525',  // 0x86DD
+        Graph::PROTOCOL_IPV4 => 'IPv4',
+        Graph::PROTOCOL_IPV6 => 'IPv6',
     ];
 
     /**
