@@ -156,24 +156,25 @@
 
 
     <?php if( !$t->showGraphs ): ?>
-        <div class="row">
 
-            <?php if( $t->orderBy === 'traffic' ): ?>
-                <div class="alert alert-info mt-4 ml-4" role="alert">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-4 text-center">
-                            <i class="fa fa-info-circle fa-2x"></i>
-                        </div>
-                        <div>
-                            <p>
-                                Is available, the volume of traffic shown below is yesterday's total across all possible peering sessions and protocols in both directions.
-                            </p>
+        <?php if( $t->orderBy === 'traffic' ): ?>
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info mt-2 mb-3" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="mr-3 text-center">
+                                <i class="fa fa-info-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                The volume of traffic shown below is yesterday's total across all possible peering sessions and protocols in both directions.
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        <?php endif; ?>
 
-            <?php endif; ?>
-
+        <div class="row">
             <div class="col-md-6">
                 <ol>
                     <?php
