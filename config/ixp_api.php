@@ -151,4 +151,18 @@ return [
     |
     */
     'atlas_measurement_key' => env( 'ATLAS_MEASUREMENT_KEY', '' ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Looking Glass / Birdwatcher
+    |--------------------------------------------------------------------------
+    |
+    | max_routes: Maximum number of routes the looking glass will link to for
+    |             detailed view. Routes above this count won't be clickable.
+    |             Set high for birdwatcher as it has no built-in limit.
+    |
+    */
+    'looking_glass' => [
+        'birdwatcher_max_routes' => env( 'IXP_API_LOOKING_GLASS_BIRDWATCHER_MAX_ROUTES', 1000000 ),
+    ],
 ];

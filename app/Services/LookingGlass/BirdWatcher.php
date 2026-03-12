@@ -189,9 +189,10 @@ class BirdWatcher implements LookingGlassContract
                 }
             }
 
-            // Ensure max_routes exists (used by bgp-summary template for link display)
+            // Ensure max_routes exists (used by bgp-summary template for link display).
+            // Configurable via IXP_API_LOOKING_GLASS_BIRDWATCHER_MAX_ROUTES in .env
             if( !isset( $data['api']['max_routes'] ) ) {
-                $data['api']['max_routes'] = 1000;
+                $data['api']['max_routes'] = (int)config( 'ixp_api.looking_glass.birdwatcher_max_routes', 1000000 );
             }
         }
 
@@ -409,9 +410,16 @@ class BirdWatcher implements LookingGlassContract
     #[\Override]
     public function exportRoute( string $protocol, string $network, int $mask ): string
     {
-        // Birdwatcher doesn't have a direct route/export lookup like Birdseye.
-        // Use the export routes endpoint and let the caller filter.
-        return $this->apiCall( 'routes/export/' . urlencode( $protocol ) );
+        // Birdwatcher doesn't have a /routes/export/ endpoint.
+        // Look up the route in the protocol's table instead.
+        $allProtocols = $this->apiCall( 'protocols/bgp' );
+        $data = json_decode( $allProtocols, true );
+
+        if( $data && isset( $data['protocols'][ $protocol ]['table'] ) ) {
+            return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/' . urlencode( $data['protocols'][ $protocol ]['table'] ) );
+        }
+
+        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/master' );
     }
 
     /**
