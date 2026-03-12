@@ -207,8 +207,41 @@
         </div>
 
     <?php else: /* if( !$t->showGraphs ) */ ?>
+        <?php
+            // Batch-fetch all P2P data in 2 API calls (instead of 2 per peer)
+            $batchData = [];
+            try {
+                $akvorado  = app( \IXP\Services\Akvorado\AkvoradoService::class );
+                $batchData = $akvorado->p2pBatchTraffic(
+                    $t->srcVli, $dstVlis, $t->period, $t->protocol, $t->category
+                );
+            } catch( \Throwable $e ) {
+                // Silently fall back to empty data
+            }
+
+            $isBits     = $t->category === 'bits';
+            $unitSuffix = $isBits ? 'bps' : 'pps';
+        ?>
+
         <div class="row">
             <?php foreach( $dstVlis as $dvli ): ?>
+                <?php
+                    $peerData = $batchData[ $dvli->id ] ?? [];
+                    $chartId  = 'p2p-batch-' . $dvli->id;
+
+                    // Extract arrays for chart
+                    $ts = array_column( $peerData, 0 );
+                    $rx = array_column( $peerData, 1 );
+                    $tx = array_column( $peerData, 2 );
+
+                    // Stats
+                    $maxRx = !empty( $rx ) ? max( $rx ) : 0;
+                    $avgRx = !empty( $rx ) ? array_sum( $rx ) / count( $rx ) : 0;
+                    $curRx = !empty( $rx ) ? end( $rx ) : 0;
+                    $maxTx = !empty( $tx ) ? max( $tx ) : 0;
+                    $avgTx = !empty( $tx ) ? array_sum( $tx ) / count( $tx ) : 0;
+                    $curTx = !empty( $tx ) ? end( $tx ) : 0;
+                ?>
                 <div class="col-md-12 col-lg-6">
                     <div class="card mb-4">
                         <div class="card-header">
@@ -222,7 +255,33 @@
                                 . '&period='   . $t->period
                                 . '&protocol=' . $t->protocol
                             ?>">
-                                <?= $t->graph->setDestinationVlanInterface( $dvli )->setPeriod( $t->period )->renderer()->boxUplot() ?>
+                                <?php if( empty( $peerData ) ): ?>
+                                    <div class="alert alert-info mb-0">No data available for this graph.</div>
+                                <?php else: ?>
+                                    <div id="<?= $chartId ?>" class="p2p-batch-chart"
+                                         data-ts='<?= json_encode( $ts ) ?>'
+                                         data-rx='<?= json_encode( $rx ) ?>'
+                                         data-tx='<?= json_encode( $tx ) ?>'
+                                         style="width: 100%; min-width: 0;"></div>
+
+                                    <table class="table table-sm table-borderless mt-1 mb-0" style="font-size: 0.8rem; max-width: 400px;">
+                                        <thead><tr><th></th><th class="text-right">Max</th><th class="text-right">Average</th><th class="text-right">Current</th></tr></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><span style="color: #22c55e; font-weight: bold;">RX (In)</span></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $maxRx, $t->category ) ?></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $avgRx, $t->category ) ?></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $curRx, $t->category ) ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td><span style="color: #3b82f6; font-weight: bold;">TX (Out)</span></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $maxTx, $t->category ) ?></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $avgTx, $t->category ) ?></td>
+                                                <td class="text-right"><?= $this->grapher()->scale( $curTx, $t->category ) ?></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                <?php endif; ?>
                             </a>
                         </div>
                     </div>
@@ -234,4 +293,82 @@
 
 <?php $this->section( 'scripts' ) ?>
     <?= $t->insert( 'statistics/js/p2p' ); ?>
+
+    <?php if( $t->showGraphs ): ?>
+    <script>
+    (function() {
+        var unitSuffix = <?= json_encode( $unitSuffix ) ?>;
+
+        function fmtSI(val, suffix) {
+            if (val == null || isNaN(val)) return '';
+            var neg = val < 0 ? '-' : '';
+            var abs = Math.abs(val);
+            if (abs >= 1e12) return neg + (abs / 1e12).toFixed(1) + ' T' + suffix;
+            if (abs >= 1e9)  return neg + (abs / 1e9).toFixed(1)  + ' G' + suffix;
+            if (abs >= 1e6)  return neg + (abs / 1e6).toFixed(1)  + ' M' + suffix;
+            if (abs >= 1e3)  return neg + (abs / 1e3).toFixed(1)  + ' K' + suffix;
+            if (abs > 0)     return neg + abs.toFixed(0) + ' ' + suffix;
+            return '0';
+        }
+
+        function renderBatchCharts() {
+            document.querySelectorAll('.p2p-batch-chart').forEach(function(el) {
+                if (el.dataset.rendered) return;
+
+                var ts = JSON.parse(el.dataset.ts);
+                var rx = JSON.parse(el.dataset.rx);
+                var tx = JSON.parse(el.dataset.tx);
+                var width = el.clientWidth || el.parentElement.clientWidth || 400;
+
+                new uPlot({
+                    width: width,
+                    height: 200,
+                    cursor: { drag: { x: true, y: false } },
+                    legend: { show: false },
+                    scales: {
+                        x: { time: true },
+                        y: { range: function(u, dmin, dmax) { return [0, (dmax || 1) * 1.15]; } }
+                    },
+                    axes: [
+                        { stroke: '#888', grid: { stroke: 'rgba(0,0,0,0.07)', width: 1 }, ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 } },
+                        { stroke: '#888', grid: { stroke: 'rgba(0,0,0,0.07)', width: 1 }, ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
+                          size: 70, values: function(u, splits) { return splits.map(function(v) { return fmtSI(v, unitSuffix); }); } }
+                    ],
+                    series: [
+                        {},
+                        { label: 'RX (In)',  stroke: '#22c55e', fill: 'rgba(34, 197, 94, 0.25)',  width: 1.5 },
+                        { label: 'TX (Out)', stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.25)', width: 1.5 }
+                    ]
+                }, [ts, rx, tx], el);
+
+                el.dataset.rendered = 'true';
+            });
+        }
+
+        // Load uPlot + render all charts
+        if (typeof uPlot === 'undefined') {
+            if (!document.querySelector('link[href*="uPlot"]')) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/vendor/uplot/uPlot.min.css';
+                document.head.appendChild(link);
+            }
+            window._uplotQueue = window._uplotQueue || [];
+            window._uplotQueue.push(renderBatchCharts);
+            if (!window._uplotLoading) {
+                window._uplotLoading = true;
+                var script = document.createElement('script');
+                script.src = '/vendor/uplot/uPlot.min.js';
+                script.onload = function() {
+                    window._uplotQueue.forEach(function(fn) { fn(); });
+                    window._uplotQueue = [];
+                };
+                document.head.appendChild(script);
+            }
+        } else {
+            renderBatchCharts();
+        }
+    })();
+    </script>
+    <?php endif; ?>
 <?php $this->append() ?>

@@ -13,7 +13,7 @@ namespace IXP\Services\Akvorado;
 
 use Log;
 
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\{Cache, Http};
 
 use IXP\Models\{
     Vlan,
@@ -133,9 +133,20 @@ class AkvoradoService
         string $filter,
         string $period = Graph::PERIOD_DAY,
         string $units  = 'l3bps',
-        array  $dimensions = []
+        array  $dimensions = [],
+        int    $limit  = 5
     ): array {
         $timing = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+
+        // Cache key based on filter + period + units (rounded to 5-min windows)
+        $cacheWindow = (int) floor( time() / 300 );
+        $cacheKey    = 'akvorado:' . md5( $filter . $period . $units . json_encode( $dimensions ) . $cacheWindow );
+
+        $cached = Cache::get( $cacheKey );
+        if( $cached !== null ) {
+            Log::debug( "[Akvorado] Cache hit: {$filter} ({$period})" );
+            return $cached;
+        }
 
         $now   = new \DateTime( 'now', new \DateTimeZone( 'UTC' ) );
         $start = clone $now;
@@ -151,7 +162,7 @@ class AkvoradoService
             'filter'     => $filter,
             'units'      => $units,
             'points'     => $timing['points'],
-            'limit'      => 5,
+            'limit'      => $limit,
         ];
 
         if( !empty( $dimensions ) ) {
@@ -178,7 +189,12 @@ class AkvoradoService
                 return [];
             }
 
-            return $response->json() ?? [];
+            $result = $response->json() ?? [];
+
+            // Cache for 5 minutes
+            Cache::put( $cacheKey, $result, 300 );
+
+            return $result;
         } catch( \Exception $e ) {
             Log::warning( "[Akvorado] API request failed: {$e->getMessage()}" );
             return [];
@@ -233,6 +249,113 @@ class AkvoradoService
         $inData  = $this->queryTimeSeries( $inFilter,  $period, $units );
 
         return $this->mergeDirectionalData( $inData, $outData );
+    }
+
+    /**
+     * Batch-fetch P2P traffic for a source VLI against all destination VLIs.
+     *
+     * Uses Akvorado's dimension grouping to fetch all peer traffic in just
+     * 2 API calls (OUT with DstMAC dimension, IN with SrcMAC dimension)
+     * instead of 2 calls per peer.
+     *
+     * @param  VlanInterfaceModel   $svli     Source VlanInterface
+     * @param  iterable             $dstVlis  Collection of destination VlanInterfaces
+     * @param  string               $period   Graph period
+     * @param  string               $protocol IPv4/IPv6
+     * @param  string               $category bits/packets
+     *
+     * @return array  Keyed by dvli_id => [[timestamp, avg_in, avg_out, max_in, max_out], ...]
+     */
+    public function p2pBatchTraffic(
+        VlanInterfaceModel $svli,
+        iterable $dstVlis,
+        string $period   = Graph::PERIOD_DAY,
+        string $protocol = Graph::PROTOCOL_IPV4,
+        string $category = Graph::CATEGORY_BITS
+    ): array {
+        $srcMacs = $this->resolveMACs( $svli );
+
+        if( empty( $srcMacs ) ) {
+            return [];
+        }
+
+        $srcVlan     = $this->resolveVlan( $svli );
+        $units       = $this->categoryToUnits( $category );
+        $etypeFilter = $this->buildEtypeFilter( $protocol );
+
+        // Build MAC → dvli_id mapping
+        $macToVli = [];
+        $numPeers = 0;
+
+        foreach( $dstVlis as $dvli ) {
+            $numPeers++;
+            foreach( $this->resolveMACs( $dvli ) as $mac ) {
+                $macToVli[ $mac ] = $dvli->id;
+            }
+        }
+
+        if( empty( $macToVli ) ) {
+            return [];
+        }
+
+        $limit = max( $numPeers + 5, 10 );
+
+        // OUT batch: traffic FROM source TO all peers (grouped by DstMAC)
+        $outFilter = $this->buildMacFilter( 'SrcMAC', $srcMacs )
+            . " AND SrcVlan = {$srcVlan}"
+            . $etypeFilter;
+
+        $outData = $this->queryTimeSeries( $outFilter, $period, $units, [ 'DstMAC' ], $limit );
+
+        // IN batch: traffic FROM all peers TO source (grouped by SrcMAC)
+        // No SrcVlan filter — each peer has a different ingress VLAN
+        $inFilter = $this->buildMacFilter( 'DstMAC', $srcMacs )
+            . $etypeFilter;
+
+        $inData = $this->queryTimeSeries( $inFilter, $period, $units, [ 'SrcMAC' ], $limit );
+
+        // Map dimension rows back to VLI IDs
+        $outByVli = [];
+        foreach( ( $outData['rows'] ?? [] ) as $i => $row ) {
+            $mac   = strtolower( $row['DstMAC'] ?? '' );
+            $vliId = $macToVli[ $mac ] ?? null;
+
+            if( $vliId === null ) {
+                continue;
+            }
+
+            $outByVli[ $vliId ] = [
+                't'      => $outData['t'] ?? [],
+                'points' => [ $outData['points'][ $i ] ?? [] ],
+            ];
+        }
+
+        $inByVli = [];
+        foreach( ( $inData['rows'] ?? [] ) as $i => $row ) {
+            $mac   = strtolower( $row['SrcMAC'] ?? '' );
+            $vliId = $macToVli[ $mac ] ?? null;
+
+            if( $vliId === null ) {
+                continue;
+            }
+
+            $inByVli[ $vliId ] = [
+                't'      => $inData['t'] ?? [],
+                'points' => [ $inData['points'][ $i ] ?? [] ],
+            ];
+        }
+
+        // Merge IN + OUT into standard grapher format per VLI
+        $result = [];
+        $allVliIds = array_unique( array_merge( array_keys( $outByVli ), array_keys( $inByVli ) ) );
+
+        foreach( $allVliIds as $vliId ) {
+            $in  = $inByVli[ $vliId ]  ?? [ 't' => [], 'points' => [] ];
+            $out = $outByVli[ $vliId ] ?? [ 't' => [], 'points' => [] ];
+            $result[ $vliId ] = $this->mergeDirectionalData( $in, $out );
+        }
+
+        return $result;
     }
 
     /**
