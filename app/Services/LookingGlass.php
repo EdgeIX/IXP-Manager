@@ -51,7 +51,7 @@ class LookingGlass
      *
      * @throws
      */
-    public function forRouter( Router $router ): BirdseyeLookingGlass
+    public function forRouter( Router $router ): LookingGlassContract
     {
         switch( $router->apiType() ) {
             case Router::API_TYPE_BIRDSEYE:

@@ -28,8 +28,14 @@ use IXP\Contracts\LookingGlass as LookingGlassContract;
 use IXP\Models\Router;
 
 /**
- * LookingGlass Backend -> Birdwatcher
+ * LookingGlass Backend -> Birdwatcher (alice-lg/birdwatcher)
  *
+ * Birdwatcher is a Go-based HTTP/JSON API for the BIRD routing daemon.
+ * Key differences from Birdseye:
+ *   - No /api prefix (endpoints at root)
+ *   - Cache bypass via ?uncached=true (not ?use_cache=0)
+ *   - No single-protocol endpoint; use /protocols/bgp and filter client-side
+ *   - Additional endpoints: /routes/filtered, /routes/noexport, /routes/peer
  */
 class BirdWatcher implements LookingGlassContract
 {
@@ -59,11 +65,11 @@ class BirdWatcher implements LookingGlassContract
     /**
      * Enable / disable caching
      *
-     * @param bool
+     * @param bool $b
      *
-     * @return BirdWatcher
+     * @return static
      */
-    public function setCacheEnabled( bool $b ): Birdwatcher
+    public function setCacheEnabled( bool $b ): static
     {
         $this->cacheEnabled = $b;
         return $this;
@@ -84,8 +90,9 @@ class BirdWatcher implements LookingGlassContract
      *
      * @param Router $r
      *
-     * @return BirdWatcher For fluent interfaces
+     * @return LookingGlassContract For fluent interfaces
      */
+    #[\Override]
     public function setRouter( Router $r ): LookingGlassContract
     {
         $this->router = $r;
@@ -97,13 +104,16 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return Router
      */
+    #[\Override]
     public function router(): Router
     {
         return $this->router;
     }
 
     /**
-     * Make the API call
+     * Make the API call to Birdwatcher
+     *
+     * Birdwatcher uses ?uncached=true to bypass cache (unlike Birdseye's ?use_cache=0)
      *
      * @param string $cmd
      *
@@ -111,7 +121,13 @@ class BirdWatcher implements LookingGlassContract
      */
     private function apiCall( string $cmd ): string
     {
-        $ret = @file_get_contents( $this->router()->api . '/' . $cmd . ( $this->cacheEnabled ? '' : '?use_cache=0' ) );
+        $url = rtrim( $this->router()->api, '/' ) . '/' . $cmd;
+
+        if( !$this->cacheEnabled ) {
+            $url .= ( str_contains( $url, '?' ) ? '&' : '?' ) . 'uncached=true';
+        }
+
+        $ret = @file_get_contents( $url );
 
         return $ret ?: "";
     }
@@ -121,9 +137,48 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function bgpSummary(): string
     {
         return $this->apiCall( 'protocols/bgp' );
+    }
+
+    /**
+     * Get BGP neighbour information as JSON
+     *
+     * Birdwatcher doesn't have a single-protocol endpoint like Birdseye's /protocol/{name}.
+     * Instead, we fetch all BGP protocols and filter to the requested one, returning
+     * a response structure compatible with what IXP Manager expects.
+     *
+     * @param string $protocol Protocol name
+     * @return string
+     */
+    #[\Override]
+    public function bgpNeighbourSummary( string $protocol ): string
+    {
+        $allProtocols = $this->apiCall( 'protocols/bgp' );
+
+        if( empty( $allProtocols ) ) {
+            return "";
+        }
+
+        $data = json_decode( $allProtocols, true );
+
+        if( !$data || !isset( $data['protocols'] ) ) {
+            return "";
+        }
+
+        // Filter to just the requested protocol
+        if( isset( $data['protocols'][ $protocol ] ) ) {
+            $data['protocol'] = $data['protocols'][ $protocol ];
+            $data['protocol']['name'] = $protocol;
+        } else {
+            $data['protocol'] = [];
+        }
+
+        unset( $data['protocols'] );
+
+        return json_encode( $data );
     }
 
     /**
@@ -131,6 +186,7 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function status(): string
     {
         return $this->apiCall( 'status' );
@@ -143,6 +199,7 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function symbols(): string
     {
         return $this->apiCall( 'symbols' );
@@ -153,6 +210,7 @@ class BirdWatcher implements LookingGlassContract
      * @param string $table Table name
      * @return string
      */
+    #[\Override]
     public function routesForTable( string $table ): string
     {
         return $this->apiCall( 'routes/table/' . urlencode( $table ) );
@@ -165,6 +223,7 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function routesForProtocol( string $protocol ): string
     {
         return $this->apiCall( 'routes/protocol/' . urlencode( $protocol ) );
@@ -177,7 +236,8 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
-    public function routesForExport(string $protocol): string
+    #[\Override]
+    public function routesForExport( string $protocol ): string
     {
         return $this->apiCall( 'routes/export/' . urlencode( $protocol ) );
     }
@@ -191,9 +251,10 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
-    public function protocolRoute( string $protocol,string $network,int $mask ): string
+    #[\Override]
+    public function protocolRoute( string $protocol, string $network, int $mask ): string
     {
-        return $this->apiCall( 'route/' . urlencode($network . '/' . $mask ) . '/protocol/' . urlencode( $protocol ) );
+        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/master' );
     }
 
     /**
@@ -205,9 +266,10 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
-    public function protocolTable( string $table,string $network,int $mask ): string
+    #[\Override]
+    public function protocolTable( string $table, string $network, int $mask ): string
     {
-        return $this->apiCall( 'route/' . urlencode($network . '/' . $mask ) . '/table/' . urlencode( $table ) );
+        return $this->apiCall( 'route/net/' . urlencode( $network ) . '/mask/' . $mask . '/table/' . urlencode( $table ) );
     }
 
     /**
@@ -219,13 +281,24 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function exportRoute( string $protocol, string $network, int $mask ): string
     {
-        return $this->apiCall( 'route/' . urlencode($network . '/' . $mask ) . '/export/' . urlencode( $protocol ) );
+        // Birdwatcher doesn't have a direct route/export lookup like Birdseye.
+        // Use the export routes endpoint and let the caller filter.
+        return $this->apiCall( 'routes/export/' . urlencode( $protocol ) );
     }
 
     /**
      * Get wildcard large communities in protocol table of form ( x, y, * )
+     *
+     * Birdwatcher doesn't have Birdseye's lc-zwild endpoint. However, when
+     * y=1101 (filtering reasons), we can use Birdwatcher's /routes/filtered/
+     * endpoint which returns the same rejected routes — they will still carry
+     * the (ASN, 1101, reason) large communities that the caller parses.
+     *
+     * For other y values, we fall back to fetching all routes for the protocol
+     * and filtering client-side by large community.
      *
      * @param string    $protocol Protocol name
      * @param int       $x
@@ -233,8 +306,140 @@ class BirdWatcher implements LookingGlassContract
      *
      * @return string
      */
+    #[\Override]
     public function routesProtocolLargeCommunityWildXYRoutes( string $protocol, int $x, int $y ): string
     {
-        return $this->apiCall( 'routes/lc-zwild/protocol/' . urlencode( $protocol ) . '/' . $x . '/' . $y );
+        if( $y === 1101 ) {
+            // Filtered/rejected routes — use Birdwatcher's native filtered endpoint
+            return $this->apiCall( 'routes/filtered/' . urlencode( $protocol ) );
+        }
+
+        // For other community queries (e.g. 1000=RPKI, 1001=IRRDB info),
+        // fetch all routes and filter client-side by large community
+        $allRoutes = $this->apiCall( 'routes/protocol/' . urlencode( $protocol ) );
+
+        if( empty( $allRoutes ) ) {
+            return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
+        }
+
+        $data = json_decode( $allRoutes, true );
+
+        if( !$data || !isset( $data['routes'] ) ) {
+            return json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
+        }
+
+        // Filter routes that have a large community matching (x, y, *)
+        $filtered = [];
+        foreach( $data['routes'] as $route ) {
+            $lcs = $route['bgp']['large_communities'] ?? [];
+            foreach( $lcs as $lc ) {
+                if( is_array( $lc ) && count( $lc ) >= 3 && (int)$lc[0] === $x && (int)$lc[1] === $y ) {
+                    $filtered[] = $route;
+                    break;
+                }
+            }
+        }
+
+        $data['routes'] = $filtered;
+        return json_encode( $data );
+    }
+
+    // =========================================================================
+    // Birdwatcher-specific endpoints (not in Birdseye)
+    // =========================================================================
+
+    /**
+     * Get filtered (rejected) routes for a protocol
+     *
+     * This is a Birdwatcher-only feature. Shows routes that were rejected by
+     * filters, which is very useful for debugging why a member's routes aren't
+     * being accepted by the route server.
+     *
+     * @param string $protocol Protocol name
+     * @return string
+     */
+    public function routesFiltered( string $protocol ): string
+    {
+        return $this->apiCall( 'routes/filtered/' . urlencode( $protocol ) );
+    }
+
+    /**
+     * Get non-exported routes for a protocol
+     *
+     * Shows routes that exist but are not being exported to a peer.
+     *
+     * @param string $protocol Protocol name
+     * @return string
+     */
+    public function routesNoExport( string $protocol ): string
+    {
+        return $this->apiCall( 'routes/noexport/' . urlencode( $protocol ) );
+    }
+
+    /**
+     * Get routes by peer IP address
+     *
+     * @param string $peer Peer IP address
+     * @return string
+     */
+    public function routesForPeer( string $peer ): string
+    {
+        return $this->apiCall( 'routes/peer/' . urlencode( $peer ) );
+    }
+
+    /**
+     * Get route count for a protocol
+     *
+     * @param string $protocol Protocol name
+     * @return string
+     */
+    public function routeCountForProtocol( string $protocol ): string
+    {
+        return $this->apiCall( 'routes/count/protocol/' . urlencode( $protocol ) );
+    }
+
+    /**
+     * Get primary route count for a protocol
+     *
+     * @param string $protocol Protocol name
+     * @return string
+     */
+    public function routeCountPrimaryForProtocol( string $protocol ): string
+    {
+        return $this->apiCall( 'routes/count/primary/' . urlencode( $protocol ) );
+    }
+
+    /**
+     * Search routes by prefix
+     *
+     * @param string $prefix The prefix to search for
+     * @return string
+     */
+    public function routesByPrefix( string $prefix ): string
+    {
+        return $this->apiCall( 'routes/prefix?prefix=' . urlencode( $prefix ) );
+    }
+
+    /**
+     * Get filtered routes in a table
+     *
+     * @param string $table Table name
+     * @return string
+     */
+    public function routesFilteredForTable( string $table ): string
+    {
+        return $this->apiCall( 'routes/table/' . urlencode( $table ) . '/filtered' );
+    }
+
+    /**
+     * Get routes in a table filtered by peer
+     *
+     * @param string $table Table name
+     * @param string $peer Peer IP address
+     * @return string
+     */
+    public function routesForTableAndPeer( string $table, string $peer ): string
+    {
+        return $this->apiCall( 'routes/table/' . urlencode( $table ) . '/peer/' . urlencode( $peer ) );
     }
 }
