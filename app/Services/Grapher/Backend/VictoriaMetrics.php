@@ -748,24 +748,57 @@ class VictoriaMetrics extends GrapherBackend implements GrapherBackendContract
         $interfaceName = $pi->switchPort->name;
         $timing        = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
 
-        $rxQuery = self::DOM_METRICS['rx'] . "{device=\"{$device}\",interface_name=\"{$interfaceName}\"}";
-        $txQuery = self::DOM_METRICS['tx'] . "{device=\"{$device}\",interface_name=\"{$interfaceName}\"}";
+        // For multi-lane optics (100G LR4, etc.), the recording rule maps
+        // each channel to a separate interface_name (EthernetN/1 through /4).
+        // Detect non-breakout ports by checking for sibling SwitchPorts on
+        // the same switch — if only one exists, query all lanes via regex.
+        $queryName = $interfaceName;
+        if( preg_match( '/^(.+)\/\d+$/', $interfaceName, $m ) ) {
+            $baseName     = $m[1];
+            $siblingCount = \IXP\Models\SwitchPort::where( 'switchid', $pi->switchPort->switchid )
+                ->where( 'name', 'like', $baseName . '/%' )
+                ->count();
+
+            if( $siblingCount <= 1 ) {
+                // Non-breakout: query all lanes of this QSFP slot
+                $queryName = $baseName . '/.*';
+            }
+        }
+
+        $isRegex   = $queryName !== $interfaceName;
+        $nameOp    = $isRegex ? '=~' : '=';
+        $rxQuery   = self::DOM_METRICS['rx'] . "{device=\"{$device}\",interface_name{$nameOp}\"{$queryName}\"}";
+        $txQuery   = self::DOM_METRICS['tx'] . "{device=\"{$device}\",interface_name{$nameOp}\"{$queryName}\"}";
 
         $rxResults = $this->queryRangeMulti( $rxQuery, $timing['range'], $timing['step'] );
         $txResults = $this->queryRangeMulti( $txQuery, $timing['range'], $timing['step'] );
 
-        // Index TX results by channel_index for merging
+        // When querying multiple lanes via regex, use the interface_name
+        // suffix (/1, /2, etc.) as the channel key — this is the actual lane.
+        // For exact queries, fall back to channel_index from the metric.
+        $channelKey = function( array $series ) use ( $isRegex ) {
+            if( $isRegex ) {
+                $name = $series['metric']['interface_name'] ?? '';
+                if( preg_match( '/\/(\d+)$/', $name, $m ) ) {
+                    return $m[1];
+                }
+            }
+            return $series['metric']['channel_index'] ?? '0';
+        };
+
+        // Index TX results by channel key for merging
         $txByChannel = [];
         foreach( $txResults as $series ) {
-            $ch = $series['metric']['channel_index'] ?? '0';
-            $txByChannel[ $ch ] = $series['values'] ?? [];
+            $ch = $channelKey( $series );
+            if( !isset( $txByChannel[ $ch ] ) ) {
+                $txByChannel[ $ch ] = $series['values'] ?? [];
+            }
         }
 
-        // Index by channel_index to deduplicate (VM may return multiple
-        // series with the same channel_index from different label combos)
+        // Index by channel key to deduplicate
         $channels = [];
         foreach( $rxResults as $series ) {
-            $ch = $series['metric']['channel_index'] ?? '0';
+            $ch = $channelKey( $series );
             if( !isset( $channels[ $ch ] ) ) {
                 $channels[ $ch ] = [
                     'channel_index' => $ch,
