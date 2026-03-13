@@ -19,6 +19,7 @@
         $isNotExported  = $t->source === 'not exported to protocol';
         $isExport       = $t->source === 'export to protocol';
         $isTable        = $t->source === 'table';
+        $isCommunitySearch = $t->source === 'community search';
 
         // Only show tabs when viewing protocol-based routes (not table or export views)
         $showTabs = $isProtocol || $isFiltered || $isNotExported;
@@ -111,9 +112,9 @@
                 <th>
                     Communities?&nbsp;
                 </th>
-                <?php if( $isFiltered || $isNotExported ): ?>
+                <?php if( $isFiltered || $isNotExported || $isCommunitySearch ): ?>
                     <th>
-                        Reason
+                        <?= $isCommunitySearch ? 'Info' : 'Reason' ?>
                     </th>
                 <?php endif; ?>
                 <th>
@@ -256,13 +257,13 @@
                                 <?= !$blocked ? '' : '<i class="fa fa-exclamation-triangle"></i>' ?>
                             <?php endif; ?>
 
-                            <?php if( !$isFiltered && !$isNotExported ): ?>
+                            <?php if( !$isFiltered && !$isNotExported && !$isCommunitySearch ): ?>
                                 <?php foreach( $actionCommunities as $ac ): ?>
                                     <br><span class="badge badge-<?= $ac[1] ?>" style="font-size: 9px;"><?= $ac[0] ?></span>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </td>
-                        <?php if( $isFiltered || $isNotExported ): ?>
+                        <?php if( $isFiltered || $isNotExported || $isCommunitySearch ): ?>
                             <td>
                                 <?php foreach( $filterReasons as $reason ): ?>
                                     <span class="badge badge-<?= $reason[1] ?>" style="font-size: 10px;"><?= $reason[0] ?></span>
@@ -280,8 +281,27 @@
                             <?php endif; ?>
                         </td>
                         <td>
+                            <?php
+                                list( $detailIp, $detailMask ) = explode( '/', $r->network );
+                                if( $isCommunitySearch ) {
+                                    // Community search: link to protocol the route came from
+                                    $detailType = 'protocol';
+                                    $detailName = $r->from_protocol ?? $r->protocol ?? '';
+                                    if( empty( $detailName ) ) {
+                                        // Fallback to master table lookup
+                                        $detailType = 'table';
+                                        $detailName = 'master' . ( (int)$t->lg->router()->software === \IXP\Models\Router::SOFTWARE_BIRD2 ? $t->lg->router()->protocol()[-1] : '' );
+                                    }
+                                } elseif( in_array( $t->source, [ 'export to protocol', 'not exported to protocol' ] ) ) {
+                                    $detailType = 'export';
+                                    $detailName = $t->name;
+                                } else {
+                                    $detailType = 'protocol';
+                                    $detailName = $t->name;
+                                }
+                            ?>
                             <a class="btn btn-white btn-sm" style="font-size: 14px;" data-toggle="modal"
-                                href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/route/<?= urlencode( explode('/',$r->network)[0] ) ?>/<?= explode('/',$r->network)[1] ?>/<?= in_array( $t->source, [ 'export to protocol', 'not exported to protocol' ] ) ? 'export' : 'protocol' ?>/<?= $t->name ?>"
+                                href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/route/<?= urlencode( $detailIp ) ?>/<?= $detailMask ?>/<?= $detailType ?>/<?= urlencode( $detailName ) ?>"
                                 data-target="#route-modal">Details</a>
                         </td>
                     </tr>
