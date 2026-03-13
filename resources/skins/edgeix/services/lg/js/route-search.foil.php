@@ -2,8 +2,6 @@
     const dd_source   = $( '#source' );
     const btn_submit  = $( '#submit' );
 
-    // DEBUG RAW: <?php try { echo $t->debugSymbols; } catch( \RuntimeException $e ) { echo 'N/A'; } ?>
-
     let tables    = <?= json_encode( $t->content->symbols->{'routing table'} ) ?>.sort();
     let protocols = <?= json_encode( $t->content->symbols->protocol ) ?>.sort();
     let source    = 'table';

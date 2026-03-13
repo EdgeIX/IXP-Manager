@@ -369,8 +369,7 @@ class LookingGlass extends Controller
      */
     public function routeSearch( string $handle ): View
     {
-        $raw = $this->lg()->symbols();
-        $content = json_decode( $raw, false );
+        $content = json_decode( $this->lg()->symbols(), false );
 
         // Normalize symbols: birdseye wraps in ->symbols, birdwatcher may not
         $symbols = $content->symbols ?? $content;
@@ -379,6 +378,19 @@ class LookingGlass extends Controller
         $tables = $symbols->{'routing table'} ?? $symbols->{'Routing table'} ?? [];
         $protocols = $symbols->protocol ?? $symbols->Protocol ?? [];
 
+        // Birdwatcher doesn't have a /symbols endpoint — derive from BGP summary
+        if( empty( $tables ) || empty( $protocols ) ) {
+            $summary = json_decode( $this->lg()->bgpSummary(), true );
+            if( isset( $summary['protocols'] ) && is_array( $summary['protocols'] ) ) {
+                $protocols = array_keys( $summary['protocols'] );
+            }
+            // Build table list: master4/master6 based on router protocol
+            if( empty( $tables ) ) {
+                $proto = $this->lg()->router()->protocol;
+                $tables = [ 'master' . $proto ];
+            }
+        }
+
         // Build a clean object for the template
         $normalized = new \stdClass();
         $normalized->symbols = new \stdClass();
@@ -386,8 +398,7 @@ class LookingGlass extends Controller
         $normalized->symbols->protocol = $protocols;
 
         $view = view('services/lg/route-search' )->with( [
-            'content'      => $normalized,
-            'debugSymbols' => $raw,
+            'content' => $normalized,
         ]);
         return $this->addCommonParams( $view );
     }
