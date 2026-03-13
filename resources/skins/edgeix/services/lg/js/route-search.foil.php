@@ -15,7 +15,7 @@
             return;
         }
         $( "#net" ).removeClass('is-invalid');
-        btn_submit.prop('disabled', true);
+        btn_submit.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Searching...');
 
         if( net.indexOf('/') !== -1 ) {
             masklen = net.substring( net.indexOf('/') + 1);
@@ -26,12 +26,17 @@
 
         $.get('<?= url('lg/' . $t->lg->router()->handle  . '/route') ?>/' + encodeURIComponent( net ) + '/' +
             encodeURIComponent( masklen ) + '/' +
-            source + '/' + encodeURIComponent( dd_source.val() ), function( html ) {
+            source + '/' + encodeURIComponent( dd_source.val() ))
+            .done(function( html ) {
                 $( '#route-modal .modal-content' ).html( html );
                 $( '#route-modal' ).modal( 'show', { backdrop: 'static' } );
+            })
+            .fail(function() {
+                alert('Route lookup failed. Please try again.');
+            })
+            .always(function() {
+                btn_submit.prop('disabled', false).html('Search');
             });
-
-            btn_submit.prop('disabled', false);
         });
 
     $( 'input:radio[name="source_selector"]' ).change( function(){
