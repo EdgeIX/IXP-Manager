@@ -103,6 +103,17 @@
             </div>
         </div>
     <?php else: ?>
+        <?php if( $incomingCount > 0 ): ?>
+            <div class="alert alert-warning d-flex align-items-center mb-3">
+                <i class="fa fa-exclamation-triangle fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong>You have <?= $incomingCount ?> incoming pseudowire <?= $incomingCount === 1 ? 'request' : 'requests' ?> awaiting your approval.</strong>
+                </div>
+                <a href="<?= route( 'pw@dashboard', [ 'tab' => 'incoming' ] ) ?>" class="btn btn-warning ml-3">
+                    <i class="fa fa-inbox"></i> Review Incoming Requests
+                </a>
+            </div>
+        <?php endif; ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
@@ -112,12 +123,6 @@
                     <a href="<?= route( 'pw@dashboard', [ 'tab' => 'pending' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
                         <i class="fa fa-clock"></i> Pending
                         <span class="badge badge-warning"><?= $pendingCount ?></span>
-                    </a>
-                <?php endif; ?>
-                <?php if( $incomingCount > 0 ): ?>
-                    <a href="<?= route( 'pw@dashboard', [ 'tab' => 'incoming' ] ) ?>" class="btn btn-sm btn-info mr-1">
-                        <i class="fa fa-inbox"></i> Incoming Requests
-                        <span class="badge badge-light"><?= $incomingCount ?></span>
                     </a>
                 <?php endif; ?>
             </div>
