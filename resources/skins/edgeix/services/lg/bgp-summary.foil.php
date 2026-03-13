@@ -70,17 +70,17 @@
                 ?>
                 <tr <?= $p->state === 'up' ? '' : 'class="warning"' ?>>
                     <td class="pr-4">
-                        <?=$p->neighbor_address?>
+                        <?= $t->ee( $p->neighbor_address ) ?>
                     </td>
                     <td class="pr-4">
                         <?= ( $p->description_short ?? false ) ? $t->ee( $p->description_short ) : $t->ee( $p->description ?? "" ) ?>
                     </td>
-                    <td class="text-right pr-4" data-order="<?= $p->neighbor_as ?>">
+                    <td class="text-right pr-4" data-order="<?= (int)$p->neighbor_as ?>">
                         <?= $t->asNumber( $p->neighbor_as, false ) ?>
                     </td>
                     <td>
-                        <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/table/<?= $p->table ?>">
-                            <?= $p->table ?>
+                        <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/table/<?= urlencode( $p->table ) ?>">
+                            <?= $t->ee( $p->table ) ?>
                         </a>
                     </td>
                     <?php if( isset($p->import_limit) and isset( $p->route_limit_at ) and $p->import_limit ): ?>
@@ -102,7 +102,7 @@
                         <?php if( $p->state === 'up' ): ?>
                             <span class="badge badge-success">up</span>
                         <?php else: ?>
-                            <span class="badge badge-warning"><?= $p->bgp_state ?? 'down' ?></span>
+                            <span class="badge badge-warning"><?= $t->ee( $p->bgp_state ?? 'down' ) ?></span>
                         <?php endif; ?>
                     </td>
                     <td data-order="<?= isset( $p->state_changed ) ? strtotime( $p->state_changed ) : 0 ?>">
@@ -111,7 +111,7 @@
                     <td class="text-right pr-4" data-order="<?= $p->state !== 'up' ? "-1" : $p->routes->imported ?>">
                         <?php if( $p->state === 'up' ): ?>
                             <?php if( is_int( $p->routes->imported ) && is_int( $t->content->api->max_routes ) && $p->routes->imported < $t->content->api->max_routes ): ?>
-                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/protocol/<?= $name ?>">
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/protocol/<?= urlencode( $name ) ?>">
                             <?php endif; ?>
                             <?= $p->routes->imported ?>
                             <?php if( is_int( $p->routes->imported ) && is_int( $t->content->api->max_routes ) && $p->routes->imported < $t->content->api->max_routes ): ?>
@@ -122,11 +122,11 @@
                     <td class="text-right pr-4" data-order="<?= $p->state !== 'up' ? -1 : ( $p->routes->filtered ?? 0 ) ?>">
                         <?php if( $p->state === 'up' ): ?>
                             <?php if( isset( $p->routes->filtered ) && $p->routes->filtered > 0 ): ?>
-                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= $name ?>">
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= urlencode( $name ) ?>">
                                     <span class="badge badge-danger"><?= $p->routes->filtered ?></span>
                                 </a>
                             <?php else: ?>
-                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= $name ?>"
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/filtered/<?= urlencode( $name ) ?>"
                                    class="text-muted" title="View filtered routes">
                                     <i class="fa fa-search fa-sm"></i>
                                 </a>
@@ -136,7 +136,7 @@
                     <td class="text-right pr-4" data-order="<?= $p->state === 'up' ? $p->routes->exported : -1 ?>">
                         <?php if( $p->state === 'up' ): ?>
                             <?php if( is_int( $p->routes->exported ) && is_int( $t->content->api->max_routes ) && $p->routes->exported < $t->content->api->max_routes ): ?>
-                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/export/<?= $name ?>">
+                                <a href="<?= url('/lg') . '/' . $t->lg->router()->handle ?>/routes/export/<?= urlencode( $name ) ?>">
                             <?php endif; ?>
                             <?= $p->routes->exported ?>
                             <?php if( is_int( $p->routes->exported ) && is_int( $t->content->api->max_routes ) && $p->routes->exported < $t->content->api->max_routes ): ?>
@@ -145,8 +145,8 @@
                         <?php endif; ?>
                     </td>
                     <td class="text-reset">
-                        <a class="btn btn-white btn-sm" style="font-size: 14px;" id="protocol_details-<?= $name ?>"
-                            data-protocol="<?= $name ?>" title="<?= $t->ee( $p->description ) ?? "" ?>">
+                        <a class="btn btn-white btn-sm" style="font-size: 14px;" id="protocol_details-<?= $t->ee( $name ) ?>"
+                            data-protocol="<?= $t->ee( $name ) ?>" title="<?= $t->ee( $p->description ?? '' ) ?>">
                             Details
                         </a>
                     </td>
