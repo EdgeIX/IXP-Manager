@@ -78,19 +78,35 @@
 ?>
 
 <?php if( $isEligible ): ?>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <a href="<?= route( 'pw@dashboard' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
-                <i class="fa fa-tachometer-alt"></i> Pseudowire Dashboard
-            </a>
-            <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+    <?php if( $ordered->isEmpty() && $received->isEmpty() ): ?>
+        <div class="card border mb-3">
+            <div class="card-body text-center py-5">
+                <i class="fa fa-exchange-alt fa-3x text-muted mb-3"></i>
+                <h5>Pseudowire Services</h5>
+                <p class="text-muted mb-4" style="max-width: 500px; margin: 0 auto;">
+                    Create private point-to-point circuits between your port and another peer on the exchange.
+                    Start by enabling opt-in on your ports, then request a new pseudowire.
+                </p>
+                <div>
+                    <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-outline-primary mr-2">
+                        <i class="fa fa-cog"></i> Configure Port Settings
+                    </a>
+                    <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-success">
+                        <i class="fa fa-plus"></i> Request New Pseudowire
+                    </a>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary">
                 <i class="fa fa-cog"></i> Port Settings
             </a>
+            <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
+                <i class="fa fa-plus"></i> Request New Pseudowire
+            </a>
         </div>
-        <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
-            <i class="fa fa-plus"></i> Request New Pseudowire
-        </a>
-    </div>
+    <?php endif; ?>
 <?php else: ?>
     <div class="alert alert-info mb-3">
         <i class="fa fa-info-circle"></i>
@@ -100,7 +116,9 @@
 <?php endif; ?>
 
 <?php if( $ordered->isEmpty() && $received->isEmpty() ): ?>
-    <p class="text-muted">No pseudowire circuits found for this account.</p>
+    <?php if( !$isEligible ): ?>
+        <p class="text-muted">No pseudowire circuits found for this account.</p>
+    <?php endif; ?>
 <?php else: ?>
 
     <?php if( $ordered->count() > 0 ): ?>
