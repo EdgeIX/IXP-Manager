@@ -13,15 +13,10 @@
     $c = $t->c; /** @var $c \IXP\Models\Customer */
     $isSuperUser = Auth::getUser()->isSuperUser();
 
-    // Check if pseudowire tables exist and customer has any circuits
-    $hasPseudowires = false;
+    // Check if pseudowire module is installed (show tab for all customers so they can discover self-service)
+    $hasPseudowireModule = false;
     try {
-        if( \Illuminate\Support\Facades\Schema::hasTable( 'pw_circuits' ) ) {
-            $hasPseudowires = \Illuminate\Support\Facades\DB::table( 'pw_circuits' )
-                ->where( 'requester_customer_id', $c->id )
-                ->orWhere( 'target_customer_id', $c->id )
-                ->exists();
-        }
+        $hasPseudowireModule = \Illuminate\Support\Facades\Schema::hasTable( 'pw_circuits' );
     } catch( \Exception $e ) {
         // Pseudowire module not installed — skip tab
     }
@@ -70,7 +65,7 @@
                                 </li>
                             <?php endif; ?>
 
-                            <?php if( $hasPseudowires ): ?>
+                            <?php if( $hasPseudowireModule ): ?>
                                 <li class="nav-item">
                                     <a class="nav-link <?php if( $t->tab === 'pseudowires' ): ?>active<?php endif; ?>" data-toggle="tab" href="#pseudowires" data-toggle="tab">
                                         Pseudowires
@@ -170,7 +165,7 @@
                                 </div>
                             <?php endif ?>
 
-                            <?php if( $hasPseudowires ): ?>
+                            <?php if( $hasPseudowireModule ): ?>
                                 <div id="pseudowires" class="tab-pane fade <?php if( $t->tab === 'pseudowires' ): ?> show active <?php endif; ?>">
                                     <?= $t->insert( 'customer/overview-tabs/pseudowires', [ 'isSuperUser' => $isSuperUser ] ); ?>
                                 </div>

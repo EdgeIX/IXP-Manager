@@ -64,7 +64,40 @@
 
     // Terminal states that are no longer "live"
     $terminalStates = [ 'deprovisioned', 'rejected', 'cancelled' ];
+
+    // Check if customer has any eligible ports for pseudowires:
+    // - 802.1q trunk (tagged), not reseller sub-rate, has physical interfaces
+    $eligiblePorts = $c->virtualInterfaces->filter( function( $vi ) {
+        if( !$vi->trunk ) return false;
+        if( method_exists( $vi, 'isResellerSubRate' ) && $vi->isResellerSubRate() ) return false;
+        if( $vi->physicalInterfaces->isEmpty() ) return false;
+        return true;
+    } );
+
+    $isEligible = $eligiblePorts->isNotEmpty() && $c->status === \IXP\Models\Customer::STATUS_NORMAL;
 ?>
+
+<?php if( $isEligible ): ?>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a href="<?= route( 'pw@dashboard' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+                <i class="fa fa-tachometer-alt"></i> Pseudowire Dashboard
+            </a>
+            <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+                <i class="fa fa-cog"></i> Port Settings
+            </a>
+        </div>
+        <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
+            <i class="fa fa-plus"></i> Request New Pseudowire
+        </a>
+    </div>
+<?php else: ?>
+    <div class="alert alert-info mb-3">
+        <i class="fa fa-info-circle"></i>
+        Pseudowire services require an 802.1q tagged port.
+        If you'd like to use pseudowires, please <a href="mailto:<?= config( 'identity.support_email', config( 'identity.email' ) ) ?>">contact us</a> to discuss your options.
+    </div>
+<?php endif; ?>
 
 <?php if( $ordered->isEmpty() && $received->isEmpty() ): ?>
     <p class="text-muted">No pseudowire circuits found for this account.</p>
