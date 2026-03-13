@@ -65,6 +65,11 @@
     // Terminal states that are no longer "live"
     $terminalStates = [ 'deprovisioned', 'rejected', 'cancelled' ];
 
+    // Pending / incoming counts for action badges
+    $pendingStates = [ 'pending_approval', 'approved', 'provisioning' ];
+    $pendingCount  = $ordered->filter( fn( $pw ) => in_array( $pw->state, $pendingStates ) )->count();
+    $incomingCount = $received->filter( fn( $pw ) => $pw->state === 'pending_approval' )->count();
+
     // Check if customer has any eligible ports for pseudowires:
     // - 802.1q trunk (tagged), not reseller sub-rate, has physical interfaces
     $eligiblePorts = $c->virtualInterfaces->filter( function( $vi ) {
@@ -99,9 +104,23 @@
         </div>
     <?php else: ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary">
-                <i class="fa fa-cog"></i> Port Settings
-            </a>
+            <div>
+                <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
+                    <i class="fa fa-cog"></i> Port Settings
+                </a>
+                <?php if( $pendingCount > 0 ): ?>
+                    <a href="<?= route( 'pw@dashboard', [ 'tab' => 'pending' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
+                        <i class="fa fa-clock"></i> Pending
+                        <span class="badge badge-warning"><?= $pendingCount ?></span>
+                    </a>
+                <?php endif; ?>
+                <?php if( $incomingCount > 0 ): ?>
+                    <a href="<?= route( 'pw@dashboard', [ 'tab' => 'incoming' ] ) ?>" class="btn btn-sm btn-info mr-1">
+                        <i class="fa fa-inbox"></i> Incoming Requests
+                        <span class="badge badge-light"><?= $incomingCount ?></span>
+                    </a>
+                <?php endif; ?>
+            </div>
             <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
                 <i class="fa fa-plus"></i> Request New Pseudowire
             </a>
