@@ -48,6 +48,7 @@
         </div>
     </div>
 
+    <?php if( Auth::check() ): ?>
     <div class="card col-sm-12">
         <div class="card-header"><b>Community Search</b></div>
         <div class="card-body">
@@ -113,6 +114,7 @@
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <div class="modal fade" id="route-modal" role="dialog">
         <div class="modal-dialog modal-lg" role="document">

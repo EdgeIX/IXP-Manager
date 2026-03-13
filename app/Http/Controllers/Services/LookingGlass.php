@@ -384,6 +384,11 @@ class LookingGlass extends Controller
      */
     public function routesByCommunity( string $handle, string $community ): RedirectResponse|View
     {
+        if( !Auth::check() ) {
+            AlertContainer::push( 'You must be logged in to search by community.', Alert::DANGER );
+            return redirect( route( 'lg::route-search', [ 'handle' => $handle ] ) );
+        }
+
         try {
             $lg = $this->lg();
             $router = $lg->router();
