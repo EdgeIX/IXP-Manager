@@ -369,8 +369,23 @@ class LookingGlass extends Controller
      */
     public function routeSearch( string $handle ): View
     {
+        $content = json_decode( $this->lg()->symbols(), false );
+
+        // Normalize symbols: birdseye wraps in ->symbols, birdwatcher may not
+        $symbols = $content->symbols ?? $content;
+
+        // Ensure we have the expected keys (handle case differences)
+        $tables = $symbols->{'routing table'} ?? $symbols->{'Routing table'} ?? [];
+        $protocols = $symbols->protocol ?? $symbols->Protocol ?? [];
+
+        // Build a clean object for the template
+        $normalized = new \stdClass();
+        $normalized->symbols = new \stdClass();
+        $normalized->symbols->{'routing table'} = $tables;
+        $normalized->symbols->protocol = $protocols;
+
         $view = view('services/lg/route-search' )->with( [
-            'content' => json_decode( $this->lg()->symbols(), false ),
+            'content' => $normalized,
         ]);
         return $this->addCommonParams( $view );
     }

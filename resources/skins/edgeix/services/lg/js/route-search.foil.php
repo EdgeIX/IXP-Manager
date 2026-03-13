@@ -2,28 +2,8 @@
     const dd_source   = $( '#source' );
     const btn_submit  = $( '#submit' );
 
-    <?php
-        // Safely extract symbols — handle different data structures from birdseye vs birdwatcher
-        $symbols = $t->content->symbols ?? $t->content ?? null;
-        $tables = [];
-        $protocols = [];
-        if( $symbols ) {
-            if( isset( $symbols->{'routing table'} ) ) {
-                $tables = $symbols->{'routing table'};
-            } elseif( isset( $symbols->{'Routing table'} ) ) {
-                $tables = $symbols->{'Routing table'};
-            }
-            if( isset( $symbols->protocol ) ) {
-                $protocols = $symbols->protocol;
-            } elseif( isset( $symbols->Protocol ) ) {
-                $protocols = $symbols->Protocol;
-            }
-        }
-    ?>
-    // DEBUG: symbols keys = <?= json_encode( $symbols ? array_keys( (array)$symbols ) : 'null' ) ?>
-
-    let tables    = <?= json_encode( $tables ) ?>.sort();
-    let protocols = <?= json_encode( $protocols ) ?>.sort();
+    let tables    = <?= json_encode( $t->content->symbols->{'routing table'} ) ?>.sort();
+    let protocols = <?= json_encode( $t->content->symbols->protocol ) ?>.sort();
     let source    = 'table';
 
     btn_submit.on( 'click', function( e ) {
