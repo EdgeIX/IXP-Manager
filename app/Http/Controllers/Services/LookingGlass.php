@@ -369,7 +369,8 @@ class LookingGlass extends Controller
      */
     public function routeSearch( string $handle ): View
     {
-        $content = json_decode( $this->lg()->symbols(), false );
+        $raw = $this->lg()->symbols();
+        $content = json_decode( $raw, false );
 
         // Normalize symbols: birdseye wraps in ->symbols, birdwatcher may not
         $symbols = $content->symbols ?? $content;
@@ -385,7 +386,8 @@ class LookingGlass extends Controller
         $normalized->symbols->protocol = $protocols;
 
         $view = view('services/lg/route-search' )->with( [
-            'content' => $normalized,
+            'content'      => $normalized,
+            'debugSymbols' => $raw,
         ]);
         return $this->addCommonParams( $view );
     }
