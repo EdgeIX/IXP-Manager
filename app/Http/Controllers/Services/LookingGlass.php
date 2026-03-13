@@ -228,7 +228,7 @@ class LookingGlass extends Controller
      */
     public function routesForTable( string $handle, string $table ): RedirectResponse|View
     {
-        $tooManyRoutesMsg = "The routing table <code>{$table}</code> has too many routes to display in the web interface. Please use "
+        $tooManyRoutesMsg = "The routing table <code>" . e( $table ) . "</code> has too many routes to display in the web interface. Please use "
             . "<a href=\"" . route( 'lg::route-search', [ 'handle' => $this->lg()->router()->handle ] )
             . "\">the route search tool</a> to query this table.";
 
@@ -482,7 +482,7 @@ class LookingGlass extends Controller
             ]);
             return $this->addCommonParams( $view );
         } catch( \Exception $e ) {
-            AlertContainer::push( 'Could not search routes by community: ' . $e->getMessage(), Alert::DANGER );
+            AlertContainer::push( 'Could not search routes by community. Please try again or check the community format.', Alert::DANGER );
             return redirect( route( 'lg::route-search', [ 'handle' => $handle ] ) );
         }
     }

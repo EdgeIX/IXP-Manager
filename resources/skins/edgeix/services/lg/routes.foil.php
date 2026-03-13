@@ -17,7 +17,6 @@
         $isProtocol     = in_array( $t->source, [ 'protocol' ] );
         $isFiltered     = $t->source === 'filtered from protocol';
         $isNotExported  = $t->source === 'not exported to protocol';
-        $isExport       = $t->source === 'export to protocol';
         $isTable        = $t->source === 'table';
         $isCommunitySearch = $t->source === 'community search';
 

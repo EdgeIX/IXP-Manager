@@ -42,11 +42,12 @@
     $( 'input:radio[name="source_selector"]' ).change( function(){
         if( $( this ).is( ':checked' ) ) {
             dd_source.html( '' );
+            let datas;
             if( $(this).val() === "table" ) {
-                source = 'table'
+                source = 'table';
                 datas = tables;
             } else {
-                source = 'protocol'
+                source = 'protocol';
                 datas = protocols;
             }
 
