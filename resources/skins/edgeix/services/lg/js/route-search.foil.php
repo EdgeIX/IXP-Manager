@@ -11,8 +11,10 @@
         let net     = $( "#net" ).val().trim();
         let masklen = 32;
         if( net === "" ) {
+            $( "#net" ).addClass('is-invalid').focus();
             return;
         }
+        $( "#net" ).removeClass('is-invalid');
         btn_submit.prop('disabled', true);
 
         if( net.indexOf('/') !== -1 ) {
@@ -74,8 +76,10 @@
                 community = $('#community-preset').val();
             }
             if( !community ) {
+                $('#community-custom').addClass('is-invalid').focus();
                 return;
             }
+            $('#community-custom').removeClass('is-invalid');
 
             // Validate format: x:y or x:y:z
             let parts = community.split(':');
