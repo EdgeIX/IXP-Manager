@@ -36,7 +36,7 @@
                     <?php endif; ?>
 
                     <?php if( $isLAG ): ?>
-                        &mdash; LAG Port
+                        &mdash; <?= $t->vi->bundleName() ?: 'LAG' ?> (LAG)
                     <?php else: ?>
                         <?= $t->insert( 'customer/overview-tabs/ports/pi-status', [ 'pi' => $firstPi, 'vi' => $t->vi, 'isSuperUser' => $t->isSuperUser ] ); ?>
                     <?php endif; ?>
