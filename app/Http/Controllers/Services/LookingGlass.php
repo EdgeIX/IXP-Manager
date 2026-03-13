@@ -375,19 +375,26 @@ class LookingGlass extends Controller
         $symbols = $content->symbols ?? $content;
 
         // Ensure we have the expected keys (handle case differences)
-        $tables = $symbols->{'routing table'} ?? $symbols->{'Routing table'} ?? [];
-        $protocols = $symbols->protocol ?? $symbols->Protocol ?? [];
+        $tables = (array)( $symbols->{'routing table'} ?? $symbols->{'Routing table'} ?? [] );
+        $protocols = (array)( $symbols->protocol ?? $symbols->Protocol ?? [] );
 
         // Birdwatcher doesn't have a /symbols endpoint — derive from BGP summary
         if( empty( $tables ) || empty( $protocols ) ) {
             $summary = json_decode( $this->lg()->bgpSummary(), true );
-            if( isset( $summary['protocols'] ) && is_array( $summary['protocols'] ) ) {
-                $protocols = array_keys( $summary['protocols'] );
-            }
-            // Build table list: master4/master6 based on router protocol
-            if( empty( $tables ) ) {
-                $proto = $this->lg()->router()->protocol;
-                $tables = [ 'master' . $proto ];
+            if( !empty( $summary['protocols'] ) && is_array( $summary['protocols'] ) ) {
+                if( empty( $protocols ) ) {
+                    $protocols = array_keys( $summary['protocols'] );
+                }
+                // Extract per-peer table names + master table
+                if( empty( $tables ) ) {
+                    $proto = $this->lg()->router()->protocol;
+                    $tables = [ 'master' . $proto ];
+                    foreach( $summary['protocols'] as $proto_data ) {
+                        if( !empty( $proto_data['table'] ) && !in_array( $proto_data['table'], $tables, true ) ) {
+                            $tables[] = $proto_data['table'];
+                        }
+                    }
+                }
             }
         }
 
