@@ -66,6 +66,8 @@ use IXP\Events\Auth\{
     ForgotPassword,
     PasswordReset
 };
+use Illuminate\Mail\Events\MessageSending;
+
 use IXP\Events\RipeAtlas\MeasurementComplete;
 
 /**
@@ -145,6 +147,10 @@ class EventServiceProvider extends ServiceProvider
 
         MeasurementComplete::class => [
             \IXP\Listeners\RipeAtlas\MeasurementComplete::class
+        ],
+
+        MessageSending::class => [
+            \IXP\Listeners\Mail\EmbedBrandLogo::class
         ],
 
     ];
