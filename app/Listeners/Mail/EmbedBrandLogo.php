@@ -12,7 +12,7 @@ class EmbedBrandLogo
 {
     public function handle( MessageSending $event ): void
     {
-        $logoPath = public_path( 'images/EdgeIX-Mark-Brand.png' );
+        $logoPath = public_path( 'images/EdgeIX-Logo-Email.png' );
 
         if( !file_exists( $logoPath ) ) {
             return;
