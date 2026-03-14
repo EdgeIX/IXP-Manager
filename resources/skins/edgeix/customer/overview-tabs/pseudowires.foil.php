@@ -119,6 +119,9 @@
                 <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
                     <i class="fa fa-cog"></i> Port Settings
                 </a>
+                <a href="<?= route( 'pw@dashboard' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+                    <i class="fa fa-exchange-alt"></i> Manage Pseudowires
+                </a>
                 <?php if( $pendingCount > 0 ): ?>
                     <a href="<?= route( 'pw@dashboard', [ 'tab' => 'pending' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
                         <i class="fa fa-clock"></i> Pending
