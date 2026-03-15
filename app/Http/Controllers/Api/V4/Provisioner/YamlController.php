@@ -216,7 +216,7 @@ class YamlController extends Controller
      */
     public function showSwitchByName( string $switchname, string $format ): Response
     {
-        if( !( $switch = Switcher::whereName( $switchname )->first()  ) ) {
+        if( !( $switch = Switcher::whereName( $switchname )->with( 'cabinet.location', 'infrastructureModel' )->first()  ) ) {
             abort( 404, "Unknown switch" );
         }
 
@@ -247,6 +247,28 @@ class YamlController extends Controller
         if( $data[ 'lastPolled' ] )       { $output[ 'lastpolled' ]    = Carbon::parse( $data[ 'lastPolled' ] )->format('c'); }
         if( $data[ 'osVersion' ] )        { $output[ 'osversion' ]     = $data[ 'osVersion' ];        }
         if( $data[ 'snmppasswd' ] )       { $output[ 'snmpcommunity' ] = $data[ 'snmppasswd' ];       }
+
+        // Location data via Cabinet → Location relationship
+        if( $switch->cabinet && $switch->cabinet->location ) {
+            $loc = $switch->cabinet->location;
+            $output[ 'location' ] = $loc->name;
+            if( $loc->shortname )  { $output[ 'location_shortname' ] = $loc->shortname; }
+            if( $loc->city )       { $output[ 'location_city' ]      = $loc->city;      }
+            if( $loc->country )    { $output[ 'location_country' ]   = $loc->country;   }
+        }
+
+        // Cabinet name
+        if( $switch->cabinet && $switch->cabinet->name ) {
+            $output[ 'cabinet' ] = $switch->cabinet->name;
+        }
+
+        // Infrastructure (IXP/exchange name)
+        if( $switch->infrastructureModel ) {
+            $output[ 'infrastructure' ] = $switch->infrastructureModel->name;
+            if( $switch->infrastructureModel->shortname ) {
+                $output[ 'infrastructure_shortname' ] = $switch->infrastructureModel->shortname;
+            }
+        }
 
         return array("switch" => $output);
     }
