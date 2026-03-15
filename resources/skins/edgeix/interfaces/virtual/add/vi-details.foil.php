@@ -152,10 +152,18 @@
                                 ->with( 'physicalInterfaces.switchPort.switcher' )
                                 ->get()
                                 ->mapWithKeys( function( $rvi ) {
-                                    $pi = $rvi->physicalInterfaces->first();
-                                    $label = $pi && $pi->switchPort
-                                        ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
-                                        : 'VI #' . $rvi->id;
+                                    // For LAGs, show the bundle name (e.g. Port-Channel6)
+                                    if( $rvi->lag_framing && $rvi->bundleName() ) {
+                                        $pi = $rvi->physicalInterfaces->first();
+                                        $switchName = $pi && $pi->switchPort && $pi->switchPort->switcher
+                                            ? $pi->switchPort->switcher->name : '?';
+                                        $label = $rvi->bundleName() . ' on ' . $switchName;
+                                    } else {
+                                        $pi = $rvi->physicalInterfaces->first();
+                                        $label = $pi && $pi->switchPort
+                                            ? $pi->switchPort->name . ' on ' . ( $pi->switchPort->switcher->name ?? '?' )
+                                            : 'VI #' . $rvi->id;
+                                    }
                                     return [ $rvi->id => $label ];
                                 } )
                                 ->toArray();
