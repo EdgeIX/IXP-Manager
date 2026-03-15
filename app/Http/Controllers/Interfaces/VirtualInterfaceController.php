@@ -292,15 +292,15 @@ class VirtualInterfaceController extends Common
         $this->setBundleDetails( $vi );
         $vi->save();
 
-        // Auto-create sub-interface PI when reseller port is assigned and no PI exists
-        if( $newResellerViId && $vi->physicalInterfaces()->count() === 0 ) {
+        // Auto-create or update sub-interface PI when reseller port is assigned
+        if( $newResellerViId ) {
             $vli = $vi->vlanInterfaces()->first();
             $vlanTag = $vli ? $vli->vlantag : null;
 
             if( $vlanTag ) {
                 $resellerVi = VirtualInterface::with( 'physicalInterfaces.switchPort' )
                     ->find( $newResellerViId );
-                $parentPi = $resellerVi->physicalInterfaces->first();
+                $parentPi = $resellerVi ? $resellerVi->physicalInterfaces->first() : null;
 
                 if( $parentPi && $parentPi->switchPort ) {
                     $parentSp = $parentPi->switchPort;
@@ -314,23 +314,46 @@ class VirtualInterfaceController extends Common
 
                     $subIfName = $parentName . '.' . $vlanTag;
 
-                    $subSwitchPort = SwitchPort::create( [
-                        'switchid' => $parentSp->switchid,
-                        'type'     => SwitchPort::TYPE_PEERING,
-                        'name'     => $subIfName,
-                        'ifName'   => $subIfName,
-                        'active'   => true,
-                    ] );
+                    $existingPi = $vi->physicalInterfaces()->first();
 
-                    PhysicalInterface::create( [
-                        'switchportid'       => $subSwitchPort->id,
-                        'virtualinterfaceid' => $vi->id,
-                        'status'             => PhysicalInterface::STATUS_CONNECTED,
-                        'speed'              => $parentPi->speed ?: 1000,
-                        'duplex'             => $parentPi->duplex ?: 'full',
-                    ] );
+                    if( $existingPi ) {
+                        // Reseller port changed — update existing SwitchPort to new parent
+                        $existingSp = $existingPi->switchPort;
 
-                    AlertContainer::push( "Sub-interface {$subIfName} created automatically.", Alert::INFO );
+                        if( $existingSp && $existingSp->name !== $subIfName ) {
+                            $existingSp->update( [
+                                'switchid' => $parentSp->switchid,
+                                'name'     => $subIfName,
+                                'ifName'   => $subIfName,
+                            ] );
+
+                            $existingPi->update( [
+                                'speed'  => 1000,
+                                'duplex' => 'full',
+                            ] );
+
+                            AlertContainer::push( "Sub-interface updated to {$subIfName}.", Alert::INFO );
+                        }
+                    } else {
+                        // No PI exists — create new SwitchPort + PI
+                        $subSwitchPort = SwitchPort::create( [
+                            'switchid' => $parentSp->switchid,
+                            'type'     => SwitchPort::TYPE_PEERING,
+                            'name'     => $subIfName,
+                            'ifName'   => $subIfName,
+                            'active'   => true,
+                        ] );
+
+                        PhysicalInterface::create( [
+                            'switchportid'       => $subSwitchPort->id,
+                            'virtualinterfaceid' => $vi->id,
+                            'status'             => PhysicalInterface::STATUS_CONNECTED,
+                            'speed'              => 1000,
+                            'duplex'             => 'full',
+                        ] );
+
+                        AlertContainer::push( "Sub-interface {$subIfName} created automatically.", Alert::INFO );
+                    }
                 }
             }
         }
