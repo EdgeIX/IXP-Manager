@@ -285,10 +285,55 @@ class VirtualInterfaceController extends Common
 
 
         DB::beginTransaction();
-        $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
+        $newResellerViId = $r->reseller_vi_id ?: null;
+        $oldResellerViId = $vi->reseller_vi_id;
+        $r->merge( [ 'reseller_vi_id' => $newResellerViId ] );
         $vi->fill( $r->all() );
         $this->setBundleDetails( $vi );
         $vi->save();
+
+        // Auto-create sub-interface PI when reseller port is assigned and no PI exists
+        if( $newResellerViId && $vi->physicalInterfaces()->count() === 0 ) {
+            $vli = $vi->vlanInterfaces()->first();
+            $vlanTag = $vli ? $vli->vlantag : null;
+
+            if( $vlanTag ) {
+                $resellerVi = VirtualInterface::with( 'physicalInterfaces.switchPort' )
+                    ->find( $newResellerViId );
+                $parentPi = $resellerVi->physicalInterfaces->first();
+
+                if( $parentPi && $parentPi->switchPort ) {
+                    $parentSp = $parentPi->switchPort;
+
+                    // For LAGs, derive sub-interface from bundle name; for physical ports, from the port name
+                    if( $resellerVi->lag_framing && $resellerVi->bundleName() ) {
+                        $parentName = $resellerVi->bundleName();
+                    } else {
+                        $parentName = $parentSp->ifName ?: $parentSp->name;
+                    }
+
+                    $subIfName = $parentName . '.' . $vlanTag;
+
+                    $subSwitchPort = SwitchPort::create( [
+                        'switchid' => $parentSp->switchid,
+                        'type'     => SwitchPort::TYPE_PEERING,
+                        'name'     => $subIfName,
+                        'ifName'   => $subIfName,
+                        'active'   => true,
+                    ] );
+
+                    PhysicalInterface::create( [
+                        'switchportid'       => $subSwitchPort->id,
+                        'virtualinterfaceid' => $vi->id,
+                        'status'             => PhysicalInterface::STATUS_CONNECTED,
+                        'speed'              => $parentPi->speed ?: 1000,
+                        'duplex'             => $parentPi->duplex ?: 'full',
+                    ] );
+
+                    AlertContainer::push( "Sub-interface {$subIfName} created automatically.", Alert::INFO );
+                }
+            }
+        }
 
         if( $vi->physicalInterfaces()->count() > 0 ) {
             // We need to try and make naming of the virtual interface name automatic as well as choice

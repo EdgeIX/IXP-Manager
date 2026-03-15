@@ -74,6 +74,37 @@
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///
+    /// Reseller port sub-rate logic:
+    /// When a reseller port is selected, 802.1q must be forced on (sub-rate = dot1q subinterface)
+    /// and LAG framing is irrelevant (LAG is on the reseller's parent port).
+    ///
+    const sel_reseller_vi = $( '#reseller_vi_id' );
+    const cb_trunk        = $( '#trunk' );
+
+    function updateResellerPortState() {
+        if ( sel_reseller_vi.length && sel_reseller_vi.val() ) {
+            // Sub-rate selected: force 802.1q on, hide LAG
+            cb_trunk.prop( 'checked', true ).prop( 'disabled', true );
+            cb_lag_framing.prop( 'checked', false ).prop( 'disabled', true );
+            div_fastlacp.slideUp();
+        } else {
+            // Dedicated port: restore editability
+            cb_trunk.prop( 'disabled', false );
+            cb_lag_framing.prop( 'disabled', false );
+        }
+    }
+
+    sel_reseller_vi.change( updateResellerPortState );
+    updateResellerPortState();
+
+    // Re-enable disabled checkboxes just before form submission so their values are sent
+    $( 'form' ).on( 'submit', function() {
+        cb_trunk.prop( 'disabled', false );
+        cb_lag_framing.prop( 'disabled', false );
+    });
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
     /// Initial states
     ///
     if ( $( '#name' ).val() !== '' || $( '#description' ).val() !== '' || $( '#channelgroup' ).val() !== '' || $( '#mtu' ).val() !== '' ) {
