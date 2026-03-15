@@ -291,13 +291,15 @@ class YamlController extends Controller
     {
         $cis = [];
         foreach( [ 'A', 'B' ] as $side ) {
-            $listCoreInterface = CoreBundle::selectRaw( "cb.type, cb.ipv4_subnet as cbSubnet, cb.enabled as cbEnabled, 
+            $listCoreInterface = CoreBundle::selectRaw( "cb.type, cb.ipv4_subnet as cbSubnet, cb.enabled as cbEnabled,
                         cl.enabled as clEnabled, cb.description, cl.bfd, sp{$side}.name,
-                        pi{$side}.speed, pi{$side}.autoneg, cl.ipv4_subnet as clSubnet, s{$side}.id as saId" )
+                        pi{$side}.speed, pi{$side}.autoneg, cl.ipv4_subnet as clSubnet, s{$side}.id as saId,
+                        cb.cost, cb.preference, vi{$side}.mtu" )
                 ->from( 'corebundles AS cb' )
                 ->leftJoin( 'corelinks AS cl', 'cl.core_bundle_id', 'cb.id' )
                 ->leftJoin( "coreinterfaces AS ci{$side}", "ci{$side}.id", "cl.core_interface_side{$side}_id"  )
                 ->leftJoin( "physicalinterface AS pi{$side}", "pi{$side}.id", "ci{$side}.physical_interface_id" )
+                ->leftJoin( "virtualinterface AS vi{$side}", "vi{$side}.id", "pi{$side}.virtualinterfaceid" )
                 ->leftJoin( "switchport AS sp{$side}", "sp{$side}.id", "pi{$side}.switchportid" )
                 ->leftJoin( "switch AS s{$side}", "s{$side}.id", "sp{$side}.switchid" )
                 ->whereIn( 'cb.type', [ CoreBundle::TYPE_ECMP, CoreBundle::TYPE_L3_LAG ] )
@@ -314,6 +316,12 @@ class YamlController extends Controller
                 $export[ 'name' ]         = $ci[ 'name' ];
                 $export[ 'autoneg' ]      = (bool)$ci[ 'autoneg' ];
                 $export[ 'shutdown' ]     = !( $ci[ 'cbEnabled' ] && $ci[ 'clEnabled' ] );
+                $export[ 'cost' ]         = $ci[ 'cost' ];
+                $export[ 'preference' ]   = $ci[ 'preference' ];
+
+                if( $ci[ 'mtu' ] ) {
+                    $export[ 'mtu' ] = $ci[ 'mtu' ];
+                }
 
                 $cis[] = $export;
             }
