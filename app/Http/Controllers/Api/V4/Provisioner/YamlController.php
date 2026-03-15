@@ -291,10 +291,13 @@ class YamlController extends Controller
     {
         $cis = [];
         foreach( [ 'A', 'B' ] as $side ) {
+            $remote = ( $side === 'A' ) ? 'B' : 'A';
+
             $listCoreInterface = CoreBundle::selectRaw( "cb.type, cb.ipv4_subnet as cbSubnet, cb.enabled as cbEnabled,
                         cl.enabled as clEnabled, cb.description, cl.bfd, sp{$side}.name,
                         pi{$side}.speed, pi{$side}.autoneg, cl.ipv4_subnet as clSubnet, s{$side}.id as saId,
-                        cb.cost, cb.preference, vi{$side}.mtu" )
+                        cb.cost, cb.preference, vi{$side}.mtu,
+                        s{$remote}.name as remoteSwitchName, sp{$remote}.name as remotePortName" )
                 ->from( 'corebundles AS cb' )
                 ->leftJoin( 'corelinks AS cl', 'cl.core_bundle_id', 'cb.id' )
                 ->leftJoin( "coreinterfaces AS ci{$side}", "ci{$side}.id", "cl.core_interface_side{$side}_id"  )
@@ -302,6 +305,10 @@ class YamlController extends Controller
                 ->leftJoin( "virtualinterface AS vi{$side}", "vi{$side}.id", "pi{$side}.virtualinterfaceid" )
                 ->leftJoin( "switchport AS sp{$side}", "sp{$side}.id", "pi{$side}.switchportid" )
                 ->leftJoin( "switch AS s{$side}", "s{$side}.id", "sp{$side}.switchid" )
+                ->leftJoin( "coreinterfaces AS ci{$remote}", "ci{$remote}.id", "cl.core_interface_side{$remote}_id"  )
+                ->leftJoin( "physicalinterface AS pi{$remote}", "pi{$remote}.id", "ci{$remote}.physical_interface_id" )
+                ->leftJoin( "switchport AS sp{$remote}", "sp{$remote}.id", "pi{$remote}.switchportid" )
+                ->leftJoin( "switch AS s{$remote}", "s{$remote}.id", "sp{$remote}.switchid" )
                 ->whereIn( 'cb.type', [ CoreBundle::TYPE_ECMP, CoreBundle::TYPE_L3_LAG ] )
                 ->where( "s{$side}.id", $switch->id )->get()->toArray();
 
@@ -318,6 +325,8 @@ class YamlController extends Controller
                 $export[ 'shutdown' ]     = !( $ci[ 'cbEnabled' ] && $ci[ 'clEnabled' ] );
                 $export[ 'cost' ]         = $ci[ 'cost' ];
                 $export[ 'preference' ]   = $ci[ 'preference' ];
+                $export[ 'remote_switch' ] = $ci[ 'remoteSwitchName' ];
+                $export[ 'remote_port' ]   = $ci[ 'remotePortName' ];
 
                 if( $ci[ 'mtu' ] ) {
                     $export[ 'mtu' ] = $ci[ 'mtu' ];
