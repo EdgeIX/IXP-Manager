@@ -770,10 +770,10 @@
   <file src="app/Http/Controllers/Interfaces/VirtualInterfaceController.php">
     <InvalidArgument>
       <code><![CDATA[Customer::trafficking()->orderBy('name')->get()]]></code>
+      <code><![CDATA[Customer::trafficking()->orderBy('name')->get()]]></code>
     </InvalidArgument>
     <MissingDocblockType>
       <code><![CDATA[public function createWizardForCust( Customer $cust ) : View]]></code>
-      <code><![CDATA[public function wizard( Customer $cust = null ): View]]></code>
     </MissingDocblockType>
     <TooManyArguments>
       <code><![CDATA[exceptInput]]></code>
@@ -789,9 +789,6 @@
     </UndefinedMagicPropertyFetch>
   </file>
   <file src="app/Http/Controllers/Interfaces/VlanInterfaceController.php">
-    <InvalidArgument>
-      <code><![CDATA[$vi->customer->maxprefixes]]></code>
-    </InvalidArgument>
     <MissingDocblockType>
       <code><![CDATA[public function duplicate( StoreVlanInterface $r, VlanInterface $vli ): RedirectResponse]]></code>
       <code><![CDATA[public function update( StoreVlanInterface $r, VlanInterface $vli ): RedirectResponse]]></code>
@@ -1131,11 +1128,6 @@
       <code><![CDATA[Auth::getUser()->custid]]></code>
     </NoInterfaceProperties>
   </file>
-  <file src="app/Http/Controllers/SettingsController.php">
-    <MissingDocblockType>
-      <code><![CDATA[public function update( Request $request ): array]]></code>
-    </MissingDocblockType>
-  </file>
   <file src="app/Http/Controllers/StatisticsController.php">
     <MissingDocblockType>
       <code><![CDATA[public function infrastructure( ?Infrastructure $infra = null, string $category = Graph::CATEGORY_BITS ) : View]]></code>
@@ -1154,11 +1146,32 @@
       <code><![CDATA[$vlan]]></code>
     </TypeDoesNotContainType>
     <UndefinedMagicPropertyFetch>
+      <code><![CDATA[$r->category]]></code>
+      <code><![CDATA[$r->category]]></code>
+      <code><![CDATA[$r->category]]></code>
+      <code><![CDATA[$r->category]]></code>
       <code><![CDATA[$r->day]]></code>
       <code><![CDATA[$r->infra]]></code>
+      <code><![CDATA[$r->period]]></code>
+      <code><![CDATA[$r->period]]></code>
+      <code><![CDATA[$r->period]]></code>
+      <code><![CDATA[$r->protocol]]></code>
+      <code><![CDATA[$r->protocol]]></code>
       <code><![CDATA[$r->vlan]]></code>
       <code><![CDATA[$r->vlan]]></code>
+      <code><![CDATA[$request->category]]></code>
+      <code><![CDATA[$request->period]]></code>
+      <code><![CDATA[$request->protocol]]></code>
+      <code><![CDATA[$request->type]]></code>
     </UndefinedMagicPropertyFetch>
+    <UndefinedPropertyAssignment>
+      <code><![CDATA[$r->protocol]]></code>
+      <code><![CDATA[$r->protocol]]></code>
+      <code><![CDATA[$request->category]]></code>
+      <code><![CDATA[$request->period]]></code>
+      <code><![CDATA[$request->protocol]]></code>
+      <code><![CDATA[$request->type]]></code>
+    </UndefinedPropertyAssignment>
   </file>
   <file src="app/Http/Controllers/Switches/SwitchController.php">
     <ImplementedReturnTypeMismatch>
@@ -1697,7 +1710,6 @@
   <file src="app/Models/Aggregators/VlanInterfaceAggregator.php">
     <MissingDocblockType>
       <code><![CDATA[public static function forProto( Vlan $vlan, int $proto, ?int $pistatus = PhysicalInterface::STATUS_CONNECTED ) : array]]></code>
-      <code><![CDATA[public static function getAllIPsForASN( Vlan $v, int $asn, int $proto ): array]]></code>
     </MissingDocblockType>
   </file>
   <file src="app/Models/CoreBundle.php">
@@ -1936,9 +1948,6 @@
       <code><![CDATA[$pi]]></code>
       <code><![CDATA[$pi]]></code>
     </TypeDoesNotContainNull>
-    <UndefinedMagicPropertyFetch>
-      <code><![CDATA[$this->pi->switchPort->ifSpeed]]></code>
-    </UndefinedMagicPropertyFetch>
   </file>
   <file src="app/Services/Diagnostics/Suites/RouterBgpSessionsDiagnosticSuite.php">
     <InvalidOperand>
@@ -2225,18 +2234,12 @@
     </RedundantCondition>
   </file>
   <file src="app/Services/Helpdesk/Zendesk.php">
-    <ImplementedReturnTypeMismatch>
-      <code><![CDATA[Contact|false]]></code>
-    </ImplementedReturnTypeMismatch>
     <ImplicitToStringCast>
       <code><![CDATA[now()]]></code>
     </ImplicitToStringCast>
     <InvalidScalarArgument>
       <code><![CDATA[60/200]]></code>
     </InvalidScalarArgument>
-    <MethodSignatureMismatch>
-      <code><![CDATA[Zendesk]]></code>
-    </MethodSignatureMismatch>
     <MissingDocblockType>
       <code><![CDATA[#[\Override]]]></code>
       <code><![CDATA[#[\Override]]]></code>
@@ -2346,11 +2349,6 @@
     <InvalidOperand>
       <code><![CDATA[$subnet]]></code>
     </InvalidOperand>
-  </file>
-  <file src="app/Utils/Former/Framework/TwitterBootstrap4.php">
-    <ImplementedReturnTypeMismatch>
-      <code><![CDATA[null|string]]></code>
-    </ImplementedReturnTypeMismatch>
   </file>
   <file src="app/Utils/Grapher/Dummy.php">
     <InvalidOperand>

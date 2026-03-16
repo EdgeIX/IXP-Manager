@@ -243,7 +243,7 @@
                                 "as_macro": "AS-HEANET",
                                 "routeserver": true,
                                 "mac_addresses": [],
-                                "max_prefix": 1000
+                                "max_prefix": 200
                             }
                         }
                     ]
@@ -272,27 +272,12 @@
                                 "as_macro": "AS-HEANET",
                                 "routeserver": true,
                                 "mac_addresses": [],
-                                "max_prefix": 1000
+                                "max_prefix": 200
                             }
                         }
                     ]
                 }
             ]
-        },
-        {
-            "asnum": 2128,
-            "member_since": "2014-01-06T00:00:00Z",
-            "url": "http:\/\/www.siep.com\/",
-            "name": "INEX",
-            "peering_policy": "mandatory",
-            "member_type": "ixp",
-            "ixp_manager": {
-                "tags": [],
-                "in_manrs": false,
-                "is_reseller": false,
-                "is_resold": false
-            },
-            "connection_list": []
         },
         {
             "asnum": 25441,
@@ -323,7 +308,7 @@
                         {
                             "vlan_id": 1,
                             "ipv6": {
-                                "address": "2001:db8:1::8",
+                                "address": "2001:db8:1::b",
                                 "as_macro": "AS-IBIS",
                                 "routeserver": true,
                                 "mac_addresses": [],

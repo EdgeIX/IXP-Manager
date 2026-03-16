@@ -60,10 +60,13 @@ return [
     */
     'rir' => [
         'password' => env( 'IXP_API_RIR_PASSWORD', 'xxxxx' ),
+        
         'email'    => [
             'from' => env( 'IXP_API_RIR_EMAIL_FROM', null ),
             'to'   => env( 'IXP_API_RIR_EMAIL_TO',   null ),
         ],
+        
+        'ripe_api_key' => env( 'IXP_RIPE_API_KEY', null ),
     ],
 
 
@@ -100,7 +103,7 @@ return [
 
         'fac_api'         => env( 'IXP_API_PEERING_DB_FAC_URL',  "https://api.peeringdb.com/api/fac" ),
         'ixp_api'         => env( 'IXP_API_PEERING_DB_IXP_URL',  "https://api.peeringdb.com/api/ix"  ),
-        'ixp_www'         => env( 'IXP_WWW_PEERING_DB_IXP_URL',  "https://www.peeringdb.com/ix"  ),
+        'ixp_www'         => env( 'IXP_WWW_PEERING_DB_IXP_URL',  "https://www.peeringdb.com/ix/%%COL%%"  ),
 
         'api_cache_ttl'   => 3600,      // how long to cache /ix results
     ],
@@ -113,7 +116,7 @@ return [
     */
     'IXPDB' => [
         'ixp_api'         => env( 'IXP_API_IXPDB_IXP_URL',  "https://api.ixpdb.net/v1/provider/list"  ),
-        'ixp_www'         => env( 'IXP_WWW_IXPDB_IXP_URL',  "https://ixpdb.euro-ix.net/en/ixpdb/ixp" ),
+        'ixp_www'         => env( 'IXP_WWW_IXPDB_IXP_URL',  "https://ixpdb.euro-ix.net/en/explore/ixp/%%COL%%/" ),
     ],
 
     /*
@@ -152,6 +155,7 @@ return [
     */
     'atlas_measurement_key' => env( 'ATLAS_MEASUREMENT_KEY', '' ),
 
+
     /*
     |--------------------------------------------------------------------------
     | Looking Glass / Birdwatcher
@@ -165,4 +169,17 @@ return [
     'looking_glass' => [
         'birdwatcher_max_routes' => env( 'IXP_API_LOOKING_GLASS_BIRDWATCHER_MAX_ROUTES', 1000000 ),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unsecured API paths
+    |--------------------------------------------------------------------------
+    |
+    | IXP Manager v7.1.0 introduced an admin/ prepend on APIs for securing them.
+    |
+    | See: https://docs.ixpmanager.org/install/security/
+    */
+
+    'unsecured_api_access' => env( 'UNSECURED_API_ACCESS', true ),
+
 ];

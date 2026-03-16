@@ -23,7 +23,7 @@ namespace IXP\Http\Controllers\Interfaces;
  * http://www.gnu.org/licenses/gpl-2.0.html
  */
 
-use DB;
+use Illuminate\Support\Facades\DB;
 use Exception;
 use Former;
 
@@ -379,17 +379,16 @@ class VirtualInterfaceController extends Common
         AlertContainer::push( 'Virtual Interface updated.', Alert::SUCCESS );
         return redirect( route( 'virtual-interface@edit', [ 'vi' => $vi->id ] ) );
     }
-
+    
     /**
      * Display the wizard form to add a virtual interface
      *
-     * @param  Customer|null  $cust  Id of the customer to preselect
+     * @param Customer|null $cust Id of the customer to preselect
      *
      * @return View
-     *
-     * @throws
+     * @throws JsonException
      */
-    public function wizard( Customer $cust = null ): View
+    public function wizard( ?Customer $cust ): View
     {
         if( $cust ) {
             Former::populate( [
@@ -398,26 +397,29 @@ class VirtualInterfaceController extends Common
         }
 
         return view( 'interfaces/virtual/wizard' )->with([
-            'custs'                 => CustomerAggregator::reformatNameWithDetail( Customer::trafficking()->current()->orderBy('name')->get() ),
+            'custs'                 => CustomerAggregator::reformatNameWithDetail( Customer::trafficking()->orderBy('name')->get() ),
             'vli'                   => false,
             'vlans'                 => Vlan::orderBy( 'number' )->get(),
             'pi_switches'           => Switcher::where( 'active', true )
                 ->orderBy( 'name' )->get(),
             'resoldCusts'           => $this->resellerMode() ? json_encode( Customer::join('cust AS reseller', 'reseller.reseller', 'cust.id')
                 ->orderBy('reseller.name')->get(), JSON_THROW_ON_ERROR) : json_encode([], JSON_THROW_ON_ERROR),
-            'selectedCust'          => $cust ?: false
+            'selectedCust'          => $cust ?? false
         ]);
     }
-
+    
     /**
      * Create an interface wizard
      *
-     * @param   StoreVirtualInterfaceWizard $r instance of the current HTTP request
+     * @param StoreVirtualInterfaceWizard $r instance of the current HTTP request
      *
      * @return  RedirectResponse
+     * @throws Throwable
      */
     public function storeWizard( StoreVirtualInterfaceWizard $r ): RedirectResponse
     {
+        DB::beginTransaction();
+
         $r->merge( [ 'reseller_vi_id' => $r->reseller_vi_id ?: null ] );
 
         // When skipping peering config, trunk is optional:
@@ -479,7 +481,8 @@ class VirtualInterfaceController extends Common
             ) );
 
             if( !$this->setIp( $r, $v, $vli, false ) || !$this->setIp( $r, $v, $vli, true ) ) {
-                return redirect(route( 'virtual-interface@wizard' ) )->withInput( $r->all() );
+                DB::rollBack();
+                return redirect( route( 'virtual-interface@wizard' ) )->withInput( $r->all() );
             }
 
             $vli->save();
@@ -487,6 +490,8 @@ class VirtualInterfaceController extends Common
             // add a warning if we're filtering on irrdb but have not configured one for the customer
             $this->warnIfIrrdbFilteringButNoIrrdbSourceSet( $vli );
         }
+
+        DB::commit();
 
         $msg = "Virtual interface created.";
         if( $r->skip_peering ) {
