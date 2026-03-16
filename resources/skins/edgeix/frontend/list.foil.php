@@ -119,9 +119,19 @@
                                                             <?php $params = '?' . $cconf['nameIdOptionalParam'] . '=' . $row[ $cconf['idField'] ] ; ?>
                                                         <?php endif; ?>
 
-                                                        <a href="<?= url( $cconf[ 'controller'] . '/' . $cconf[ 'action'] . $params ) ?>">
-                                                            <?= $t->ee( $row[$col] ) ?>
-                                                        </a>
+                                                        <?php if( isset( $cconf['route'] ) ): ?>
+
+                                                            <a href="<?= route( $cconf[ 'route'], $row[ $cconf['idField'] ] ) ?>">
+                                                                <?= $t->ee( $row[$col] ) ?>
+                                                            </a>
+
+                                                        <?php else: ?>
+
+                                                            <a href="<?= url( $cconf[ 'controller'] . '/' . $cconf[ 'action'] . $params ) ?>">
+                                                                <?= $t->ee( $row[$col] ) ?>
+                                                            </a>
+
+                                                        <?php endif; ?>
 
                                                     <?php elseif( $cconf[ 'type'] === $t->data[ 'col_types' ][ 'XLATE'] ): ?>
 

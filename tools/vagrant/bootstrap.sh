@@ -70,7 +70,7 @@ apt-get install -y apache2 php8.4 php8.4-intl php8.4-mysql php8.4-rrd php8.4-cgi
     mysql-client memcached snmp php8.4-mbstring php8.4-xml php8.4-gd bgpq3 unzip git joe    \
     php8.4-bcmath bgpq3 php8.4-memcache unzip php8.4-zip git php8.4-yaml phpmyadmin         \
     php8.4-ds libconfig-general-perl libnetaddr-ip-perl mrtg  libconfig-general-perl        \
-    libnetaddr-ip-perl rrdtool librrds-perl curl bash-completion &>/dev/null
+    php8.4-mcrypt libnetaddr-ip-perl rrdtool librrds-perl curl bash-completion &>/dev/null
 
 
 # Rather than packaged Bird on ubuntu which is a few versions behind, use NIX.CZ repo:
@@ -357,7 +357,6 @@ echo "Setting up Birdseye / looking glasses..."
 git clone https://github.com/inex/birdseye.git /srv/birdseye &>/dev/null
 cd /srv/birdseye
 git config --global --add safe.directory /srv/birdseye
-git checkout php83 &>/dev/null
 COMPOSER_ALLOW_SUPERUSER=1 composer install &>/dev/null
 
 cat >/etc/apache2/sites-enabled/birdseye.conf <<END_APACHE

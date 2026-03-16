@@ -3,7 +3,7 @@
 namespace Tests\Browser;
 
 /*
- * Copyright (C) 2009 - 2021 Internet Neutral Exchange Association Company Limited By Guarantee.
+ * Copyright (C) 2009 - 2025 Internet Neutral Exchange Association Company Limited By Guarantee.
  * All Rights Reserved.
  *
  * This file is part of IXP Manager.
@@ -37,17 +37,19 @@ use Throwable;
  * @author     Yann Robin <yann@islandbridgenetworks.ie>
  * @category   IXP
  * @package    IXP\Tests\Browser
- * @copyright  Copyright (C) 2009 - 2021 Internet Neutral Exchange Association Company Limited By Guarantee
+ * @copyright  Copyright (C) 2009 - 2025 Internet Neutral Exchange Association Company Limited By Guarantee
  * @license    http://www.gnu.org/licenses/gpl-2.0.html GNU GPL V2.0
  */
 class RouterControllerTest extends DuskTestCase
 {
+    
+    public function setUp(): void {
+        parent::setUp();
+        Router::whereHandle( 'aaa-dusk-ci-test' )->delete();
+    }
     public function tearDown(): void
     {
-        if( $router = Router::whereHandle( 'dusk-ci-test' )->get()->first() ) {
-            $router->delete();
-        }
-
+        Router::whereHandle( 'aaa-dusk-ci-test' )->delete();
         parent::tearDown();
     }
 
@@ -67,13 +69,13 @@ class RouterControllerTest extends DuskTestCase
                 ->type( 'username', 'travis' )
                 ->type( 'password', 'travisci' )
                 ->press( '#login-btn' )
-                ->waitForLocation( '/admin' );
+                ->waitForLocation( '/admin/dashboard' );
 
-            $browser->visit( '/router/create' )
+            $browser->visit( route( 'router@create' ) )
                 ->assertSee( 'Handle' );
 
             // 1. test add
-            $browser->type( 'handle', 'dusk-ci-test' )
+            $browser->type( 'handle', 'aaa-dusk-ci-test' )
                 ->select( 'vlan_id', '2' )
                 ->select( 'protocol', '6' )
                 ->select( 'type', '1' )
@@ -99,15 +101,15 @@ class RouterControllerTest extends DuskTestCase
                 ->check( 'skip_md5' )
                 ->type( 'template', 'api/v4/router/server/bird/standard' )
                 ->press( 'Create' )
-                ->waitForLocation( '/router/list' )
+                ->waitForLocation( route( 'router@list' ) )
                 ->assertSee( 'Router created' );
 
             /** @var Router $router */
-            $router = Router::whereHandle( 'dusk-ci-test' )->get()->first();
+            $router = Router::whereHandle( 'aaa-dusk-ci-test' )->get()->first();
 
             // 2. test added data in database against expected values
             $this->assertInstanceOf( Router::class, $router );
-            $this->assertEquals( 'dusk-ci-test', $router->handle );
+            $this->assertEquals( 'aaa-dusk-ci-test', $router->handle );
             $this->assertEquals( '2', $router->vlan_id );
             $this->assertEquals( '6', $router->protocol );
             $this->assertEquals( '1', $router->type );
@@ -130,11 +132,11 @@ class RouterControllerTest extends DuskTestCase
             $this->assertEquals( true, $router->skip_md5 );
             $this->assertEquals( 'api/v4/router/server/bird/standard', $router->template );
 
-            // 3. browse to edit router object: $browser->visit( '/router/edit/' . $router->getId() )
-            $browser->visit( '/router/edit/' . $router->id );
+            // 3. browse to edit router object: $browser->visit( route( 'router@edit'/' . $router->getId() )
+            $browser->visit( route( 'router@edit', $router->id ) );
 
             // 4. test that form contains settings as above using assertChecked(), assertNotChecked(), assertSelected(), assertInputValue, ...
-            $browser->assertInputValue( 'handle', 'dusk-ci-test' )
+            $browser->assertInputValue( 'handle', 'aaa-dusk-ci-test' )
                 ->assertSelected( 'vlan_id', '2' )
                 ->assertSelected( 'protocol', '6' )
                 ->assertSelected( 'type', '1' )
@@ -183,14 +185,14 @@ class RouterControllerTest extends DuskTestCase
                 ->uncheck( 'skip_md5' )
                 ->type( 'template', 'api/v4/router/as112/bird/standard' )
                 ->press( 'Save Changes' )
-                ->waitForLocation( '/router/list' );
+                ->waitForLocation( route( 'router@list' ) );
 
 
             // 6. repeat database load and database object check for new values (repeat 2)
             $router->refresh();
 
             $this->assertInstanceOf( Router::class, $router );
-            $this->assertEquals( 'dusk-ci-test', $router->handle );
+            $this->assertEquals( 'aaa-dusk-ci-test', $router->handle );
             $this->assertEquals( '1', $router->vlan_id );
             $this->assertEquals( '4', $router->protocol );
             $this->assertEquals( '2', $router->type );
@@ -215,7 +217,7 @@ class RouterControllerTest extends DuskTestCase
 
 
             // 7. edit again and assert that all checkboxes are unchecked and assert select values are as expected
-            $browser->visit( '/router/edit/' . $router->id )
+            $browser->visit( route( 'router@edit', $router->id ) )
                 ->assertSee( 'Handle' );
 
             $browser->assertSelected( 'vlan_id', '1' )
@@ -233,13 +235,13 @@ class RouterControllerTest extends DuskTestCase
 
             // 8. submit with no changes and verify no changes in database
             $browser->press( 'Save Changes' )
-                ->waitForLocation( '/router/list' );
+                ->waitForLocation( route( 'router@list' ) );
 
             // . repeat database load and database object check for new values (repeat 2)
             $router->refresh();
 
             $this->assertInstanceOf( Router::class, $router );
-            $this->assertEquals( 'dusk-ci-test', $router->handle );
+            $this->assertEquals( 'aaa-dusk-ci-test', $router->handle );
             $this->assertEquals( '1', $router->vlan_id );
             $this->assertEquals( '4', $router->protocol );
             $this->assertEquals( '2', $router->type );
@@ -263,7 +265,7 @@ class RouterControllerTest extends DuskTestCase
             $this->assertEquals( 'api/v4/router/as112/bird/standard', $router->template );
 
             // 9. edit again and check all checkboxes and submit
-            $browser->visit( '/router/edit/' . $router->id )
+            $browser->visit( route( 'router@edit', $router->id ) )
                 ->assertSee( 'Handle' );
 
             $browser->driver->executeScript( 'window.scrollTo(0, 3000);' );
@@ -273,7 +275,7 @@ class RouterControllerTest extends DuskTestCase
                 ->check( 'rpki' )
                 ->check( 'skip_md5' )
                 ->press( 'Save Changes' )
-                ->waitForLocation( '/router/list' );
+                ->waitForLocation( route( 'router@list' ) );
 
 
             // 10. verify checkbox bool elements in database are all true
@@ -285,16 +287,17 @@ class RouterControllerTest extends DuskTestCase
             $this->assertEquals( true, $router->skip_md5 );
 
             // 11. delete the router in the UI and verify via success message text and location
-            $browser->visit( '/router/list/' )
+            $browser->visit( route( 'router@list' ) )
+                ->pause( 500 )
                 ->click( 'a[href$="/router/view/' . $router->id . '"] + button' )
                 ->press( '#btn-delete-' . $router->id )
                 ->waitForText( 'Do you want to delete this router' )
-                ->press( 'Delete' );
+                ->press( 'Delete Router' );
 
             $browser->waitForText( 'Router deleted.' );
 
             // 12. do a D2EM findOneBy and verify false/null
-            $this->assertEquals( null, Router::whereHandle( 'dusk-ci-test' )->get()->first() );
+            $this->assertEquals( null, Router::whereHandle( 'aaa-dusk-ci-test' )->get()->first() );
         } );
     }
 }

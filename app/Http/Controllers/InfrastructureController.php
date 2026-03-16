@@ -61,6 +61,9 @@ class InfrastructureController extends Eloquent2Frontend
      */
     protected $object = null;
 
+    protected static bool $is_admin_route = true;
+
+
     /**
      * This function sets up the frontend controller
      */
@@ -85,12 +88,12 @@ class InfrastructureController extends Eloquent2Frontend
                 'ixf_ix_id' => [
                     'title'    => 'IXF-ID',
                     'type'     => self::$FE_COL_TYPES[ 'REPLACE' ],
-                    'subject'  => '<a href="' . config( 'ixp_api.IXPDB.ixp_www' ) . '/%%COL%%/" target="_blank">%%COL%%</a>',
+                    'subject'  => '<a href="' . config( 'ixp_api.IXPDB.ixp_www' ) . '" target="_blank">%%COL%%</a>',
                 ],
                 'peeringdb_ix_id' => [
                     'title'    => 'PeeringDB ID',
                     'type'     => self::$FE_COL_TYPES[ 'REPLACE' ],
-                    'subject'  => '<a href="' . config( 'ixp_api.peeringDB.ixp_www' ) . '/%%COL%%" target="_blank">%%COL%%</a>',
+                    'subject'  => '<a href="' . config( 'ixp_api.peeringDB.ixp_www' ) . '" target="_blank">%%COL%%</a>',
                 ],
             ],
         ];
@@ -101,6 +104,10 @@ class InfrastructureController extends Eloquent2Frontend
                 'country'   => [
                     'title' => 'Country',
                     'type' => self::$FE_COL_TYPES[ 'COUNTRY' ]
+                ],
+                'exclude_from_ixf_export' => [
+                    'title' => 'Exclude from IX-F Export',
+                    'type' => self::$FE_COL_TYPES[ 'YES_NO' ]
                 ],
                 'notes'       => [
                     'title'         => 'Notes',
@@ -171,7 +178,9 @@ class InfrastructureController extends Eloquent2Frontend
             'shortname'        => request()->old( 'shortname', $this->object->shortname     ),
             'isPrimary'        => request()->old( 'isPrimary', $this->object->isPrimary     ),
             'country'          => request()->old( 'country', in_array( $this->object->country,  array_values( Countries::getListForSelect( 'iso_3166_2' ) ), false ) ? $this->object->country : null ),
-            'notes'            => request()->old( 'notes', $this->object->notes             ),
+            'exclude_from_ixf_export'
+                               => request()->old( 'exclude_from_ixf_export', $this->object->exclude_from_ixf_export  ),
+            'notes'            => request()->old( 'notes',                   $this->object->notes                    ),
         ]);
 
         return [

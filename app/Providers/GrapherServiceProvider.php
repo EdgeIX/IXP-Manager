@@ -75,7 +75,7 @@ class GrapherServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Route::group( ['middleware' => 'grapher', 'namespace' => 'IXP\Http\Controllers\Services', 'as' => 'grapher::', 'prefix' => 'grapher'  ], function(){
+        Route::group( ['middleware' => 'grapher', 'namespace' => 'IXP\Http\Controllers\Services', 'prefix' => 'grapher'  ], function(){
             Route::get( 'ixp',               'Grapher@ixp'               );
             Route::get( 'infrastructure',    'Grapher@infrastructure'    );
             Route::get( 'vlan',              'Grapher@vlan'              );
@@ -90,14 +90,25 @@ class GrapherServiceProvider extends ServiceProvider
             Route::get( 'p2p',               'Grapher@p2p'               ); // member vlan interface
             Route::get( 'latency',           'Grapher@latency'           );
         });
-
+        
+        if( config( 'ixp_api.unsecured_api_access' ) ) {
+            Route::group( [ 'middleware' => [ 'apideprecated', 'api/v4', 'assert.privilege:' . User::AUTH_SUPERUSER ],
+                            'namespace'  => 'IXP\Http\Controllers\Services', ], function() {
+                
+                Route::get( 'api/v4/grapher/mrtg-config', 'Grapher\Api@generateConfiguration' );
+                Route::get( 'api/v4/grapher/config', 'Grapher\Api@generateConfiguration' );
+                Route::post( 'api/v4/grapher/config', 'Grapher\Api@generateConfiguration' );
+            } );
+        }
+        
         Route::group(['middleware' => [ 'api/v4', 'assert.privilege:' . User::AUTH_SUPERUSER ],
-                'namespace' => 'IXP\Http\Controllers\Services', 'as' => 'grapher::' ], function(){
-
-            Route::get(  'api/v4/grapher/mrtg-config', 'Grapher\Api@generateConfiguration' );
-            Route::get(  'api/v4/grapher/config',      'Grapher\Api@generateConfiguration' );
-            Route::post( 'api/v4/grapher/config',      'Grapher\Api@generateConfiguration' );
+                      'namespace' => 'IXP\Http\Controllers\Services',  ], function(){
+            
+            Route::get(  'admin/api/v4/grapher/mrtg-config', 'Grapher\Api@generateConfiguration' );
+            Route::get(  'admin/api/v4/grapher/config',      'Grapher\Api@generateConfiguration' );
+            Route::post( 'admin/api/v4/grapher/config',      'Grapher\Api@generateConfiguration' );
         });
+        
         
         // we have a few rendering functions we want to include here:
         $this->app->make( Engine::class )->loadExtension( new GrapherRendererExtension(), [] );
