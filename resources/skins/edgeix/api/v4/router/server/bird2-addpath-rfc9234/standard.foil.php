@@ -46,7 +46,3 @@
 <?= $this->insert('api/v4/router/server/bird2-addpath-rfc9234/neighbors', [ 'ipproto' => $t->router->protocol === 6 ? 'ipv6' : 'ipv4' ] ) ?>
 
 <?= $this->insert('api/v4/router/server/bird2-addpath-rfc9234/footer')   ?>
-
-##
-## END_OF_CONFIG_MARKER_FOR_<?= $t->handle . "\n" ?>
-##
