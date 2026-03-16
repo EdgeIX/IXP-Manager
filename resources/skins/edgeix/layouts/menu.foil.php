@@ -478,6 +478,13 @@
                 </a>
             </li>
 
+            <li class="<?= !request()->is( 'statistics/top-n' ) ?: 'active' ?>">
+                <a href="<?= route( 'statistics@top-n' ) ?>" class="nav-link">
+                    <i class="fa fa-sort-amount-desc"></i>
+                    Top-N Ports
+                </a>
+            </li>
+
             <h6>
                 <span>SYSTEM</span>
             </h6>
