@@ -62,7 +62,7 @@
                         ->label( 'Pair With' )
                         ->fromQuery( \IXP\Models\Router::pluck('handle', 'id')->toArray() )
                         ->placeholder( 'Production pairing / reconfigure isolation' )
-                        ->addClass( 'chzn-select' )
+                        ->addClass( 'chzn-select-deselect' )
                         ->blockHelp( 'The stock router configuration update scripts that ship with IXP Manager (>=v6.3.0) will '
                             . 'look to ensure that only one router in a pair can be updated at the one time and will pause '
                             . 'updating if either has not reported that the last update was successful. The idea being that '
@@ -245,10 +245,11 @@
                     starting at either the <code>resources/views</code> or <code>resources/skins/\$skin</code>. It is best
                     to read the documentation for this but examples of route server, route collector and AS112 configs as
                     used at INEX can be used with the bundled templates by entering one of the following:<br><br>
-                        &middot; <code>api/v4/router/server/bird2/standard</code><br>
-                        &middot; <code>api/v4/router/collector/bird2-2025/standard</code><br>
-                        &middot; <code>api/v4/router/collector/bird2/standard</code><br>
+                        &middot; <code>api/v4/router/server/bird2-2025/standard</code> (BIRD 2 &gt;=v2.14)<br>
+                        &middot; <code>api/v4/router/collector/bird2-2025/standard</code> (BIRD 2 &gt;=v2.14)<br>
                         &middot; <code>api/v4/router/as112/bird2/standard</code><br>
+                        &middot; <code>api/v4/router/server/bird2/standard</code> (BIRD 2 &lt;v2.14)<br>
+                        &middot; <code>api/v4/router/collector/bird2/standard</code> (BIRD 2 &lt;v2.14)<br>
                         
                         <b>NB: only <code>bird2</code> templates support RPKI and advanced looking glass features.</b>
                     " );
