@@ -21,6 +21,10 @@
         {
             "type": "vcs",
             "url": "git@github.com:barryo/Purifier.git"
+        },
+        {
+            "type": "vcs",
+            "url": "git@github.com:EdgeIX/ixpm-pseudowire.git"
         }
     ],
     "require": {
@@ -32,6 +36,7 @@
         "bacon/bacon-qr-code": "^3.0.0",
         "barryvdh/laravel-dompdf": "^3.0.0",
         "bluntelk/ixpmanager-xero": "^1.11",
+        "edgeix/ixpm-pseudowire": "dev-main",
         "erusev/parsedown": "^1.7",
         "intervention/image": "^2.7",
         "laravel/framework": "^12.0",
