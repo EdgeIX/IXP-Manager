@@ -143,13 +143,13 @@ class NagiosController extends Controller
      */
     public function birdseyeDaemons( Request $r, string $template = null, Vlan $vlan = null ): Response
     {
-        $routers = Router::where( 'api_type', Router::API_TYPE_BIRDSEYE )
+        $routers = Router::whereIn( 'api_type', [ Router::API_TYPE_BIRDSEYE, Router::API_TYPE_BIRDWATCHER ] )
             ->when( $vlan, function( Builder $q, $vlan ) {
                 return $q->where( 'vlan_id', $vlan->id );
             } )->orderBy( 'handle' )->get();
 
         if( !$routers->count() ) {
-            abort( 404, "No routers for the provided VLAN ID / Bird's Eye API type." );
+            abort( 404, "No routers for the provided VLAN ID / Bird's Eye / Birdwatcher API type." );
         }
 
         if( $template === null ) {
