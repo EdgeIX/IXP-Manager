@@ -222,16 +222,46 @@ class PeeringDb
         $response = $this->execute(
             $this->generateBasePeeringDbUrl( "/net.json?fields=asn" )
         );
-        
+
         if( $response->ok() ) {
             $asns = [];
             foreach( $response->json()['data'] as $net ) {
                 $asns[] = $net['asn'];
             }
-            
+
             return $asns;
         }
-        
+
+        $this->error = $response->json()[ 'message' ] ?? 'Error';
+        return false;
+    }
+
+
+    /**
+     * Get prefix limits for all networks from PeeringDB in a single API call.
+     *
+     * Returns an array keyed by ASN:
+     *   [ asn => [ 'info_prefixes4' => int|null, 'info_prefixes6' => int|null ], ... ]
+     *
+     * @return array|false
+     */
+    public function getAllNetworkPrefixLimits(): array|false
+    {
+        $response = $this->execute(
+            $this->generateBasePeeringDbUrl( "/net.json?fields=asn,info_prefixes4,info_prefixes6" )
+        );
+
+        if( $response->ok() ) {
+            $limits = [];
+            foreach( $response->json()['data'] as $net ) {
+                $limits[ (int)$net['asn'] ] = [
+                    'info_prefixes4' => $net['info_prefixes4'] > 0 ? (int)$net['info_prefixes4'] : null,
+                    'info_prefixes6' => $net['info_prefixes6'] > 0 ? (int)$net['info_prefixes6'] : null,
+                ];
+            }
+            return $limits;
+        }
+
         $this->error = $response->json()[ 'message' ] ?? 'Error';
         return false;
     }

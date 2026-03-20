@@ -113,6 +113,7 @@ Route::group( [ 'prefix' => 'dashboard' ], function() {
     Route::get(  '{tab?}',                          'DashboardController@index'                 )->name( "dashboard@index"                  );
     Route::post(  'store-noc-details',              'DashboardController@storeNocDetails'       )->name( "dashboard@store-noc-details"      );
     Route::post(  'store-billing-details',          'DashboardController@storeBillingDetails'   )->name( "dashboard@store-billing-details"  );
+    Route::post(  'peeringdb/sync-prefixes',        'PeeringDbSyncController@syncOwn'           )->name( "dashboard@peeringdb-sync-prefixes" );
 
 });
 

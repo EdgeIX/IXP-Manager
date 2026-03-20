@@ -142,7 +142,20 @@ class BirdWatcher implements LookingGlassContract
             ] );
         }
 
-        return $this->normalizeResponse( $ret );
+        $normalized = $this->normalizeResponse( $ret );
+
+        // Guard: if normalizeResponse() returns empty/non-JSON (e.g. json_encode failure), use fallback
+        if( empty( $normalized ) || !str_starts_with( trim( $normalized ), '{' ) ) {
+            return json_encode( [
+                'api'       => [ 'version' => 'birdwatcher', 'from_cache' => false, 'max_routes' => 0 ],
+                'status'    => [ 'version' => 'unavailable', 'message' => 'Response encoding failed', 'router_id' => '',
+                                 'last_reboot' => '1970-01-01T00:00:00+0000', 'last_reconfig' => '1970-01-01T00:00:00+0000' ],
+                'protocols' => (object)[],
+                'routes'    => [],
+            ] );
+        }
+
+        return $normalized;
     }
 
     /**
@@ -252,7 +265,8 @@ class BirdWatcher implements LookingGlassContract
             $data['symbols'] = $normalized;
         }
 
-        return json_encode( $data );
+        $encoded = json_encode( $data, JSON_INVALID_UTF8_SUBSTITUTE );
+        return $encoded !== false ? $encoded : $response;
     }
 
     /**
@@ -483,7 +497,8 @@ class BirdWatcher implements LookingGlassContract
             return false;
         }));
 
-        return json_encode( $data );
+        $encoded = json_encode( $data, JSON_INVALID_UTF8_SUBSTITUTE );
+        return $encoded !== false ? $encoded : $routesJson;
     }
 
     /**
@@ -535,7 +550,8 @@ class BirdWatcher implements LookingGlassContract
         }
 
         $data['routes'] = $filtered;
-        return json_encode( $data );
+        $encoded = json_encode( $data, JSON_INVALID_UTF8_SUBSTITUTE );
+        return $encoded !== false ? $encoded : json_encode( [ 'api' => [ 'version' => 'birdwatcher' ], 'routes' => [] ] );
     }
 
     // =========================================================================

@@ -422,3 +422,10 @@ Route::group( [ 'prefix' => 'admin/utils', 'namespace' => 'Utils' ], function() 
     Route::post( 'do-ixf-compare', 'IxfCompareController@compare' )->name('utils/do-ixf-compare');
 
 });
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// PeeringDB
+///
+Route::post( 'admin/customer/{id}/peeringdb/sync-prefixes', 'PeeringDbSyncController@syncCustomer' )->name( 'customer@peeringdb-sync-prefixes' );

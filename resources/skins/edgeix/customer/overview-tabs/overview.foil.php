@@ -81,6 +81,13 @@ $c = $t->c; /** @var \IXP\Models\Customer $c */
                                     <a href="https://www.peeringdb.com/asn/<?= $c->autsys ?>" target="_blank">
                                       Yes &raquo;
                                     </a>
+                                    &nbsp;
+                                    <button type="button" class="btn btn-xs btn-outline-secondary pdb-admin-sync-btn"
+                                            data-url="<?= route( 'customer@peeringdb-sync-prefixes', ['id' => $c->id] ) ?>"
+                                            title="Sync prefix limits from PeeringDB">
+                                        <i class="fa fa-refresh pdb-admin-sync-icon"></i>
+                                    </button>
+                                    <span class="pdb-admin-sync-msg small ml-1"></span>
                                 <?php else: ?>
                                     No
                                 <?php endif; ?>
@@ -335,3 +342,43 @@ $c = $t->c; /** @var \IXP\Models\Customer $c */
         </div>
     </div>
 </div>
+
+<script>
+$( function() {
+    $( '.pdb-admin-sync-btn' ).on( 'click', function() {
+        var btn  = $( this );
+        var icon = btn.find( '.pdb-admin-sync-icon' );
+        var msg  = btn.siblings( '.pdb-admin-sync-msg' );
+
+        btn.prop( 'disabled', true );
+        icon.addClass( 'fa-spin' );
+        msg.text( '' ).removeClass( 'text-success text-danger text-warning' );
+
+        $.ajax({
+            url:    btn.data( 'url' ),
+            method: 'POST',
+            data:   { _token: $( 'meta[name="csrf-token"]' ).attr( 'content' ) },
+            success: function( res ) {
+                if ( res.error ) {
+                    msg.addClass( 'text-danger' ).text( res.error );
+                } else if ( res.warning ) {
+                    msg.addClass( 'text-warning' ).text( res.warning );
+                } else if ( Object.keys( res.changed ).length > 0 ) {
+                    msg.addClass( 'text-success' ).text( 'Updated.' );
+                } else {
+                    msg.addClass( 'text-success' ).text( 'Up to date.' );
+                }
+            },
+            error: function( xhr ) {
+                var errMsg = 'Sync failed.';
+                try { errMsg = xhr.responseJSON.error || errMsg; } catch(e) {}
+                msg.addClass( 'text-danger' ).text( errMsg );
+            },
+            complete: function() {
+                btn.prop( 'disabled', false );
+                icon.removeClass( 'fa-spin' );
+            }
+        });
+    });
+});
+</script>
