@@ -233,57 +233,56 @@
             </tr>
         </table>
         <button type="button" class="btn btn-primary btn-sm" id="pdb-sync-btn"
-                data-url="<?= route( 'dashboard@peeringdb-sync-prefixes' ) ?>">
+                data-url="<?= route( 'dashboard@peeringdb-sync-prefixes' ) ?>"
+                data-token="<?= csrf_token() ?>">
             <i class="fa fa-refresh" id="pdb-sync-icon"></i> Sync from PeeringDB
         </button>
         <span id="pdb-sync-msg" class="ml-2 small"></span>
-
-        <script>
-        $( function() {
-            $( '#pdb-sync-btn' ).on( 'click', function() {
-                var btn  = $( this );
-                var icon = $( '#pdb-sync-icon' );
-                var msg  = $( '#pdb-sync-msg' );
-
-                btn.prop( 'disabled', true );
-                icon.addClass( 'fa-spin' );
-                msg.text( '' ).removeClass( 'text-success text-danger text-warning' );
-
-                $.ajax({
-                    url:    btn.data( 'url' ),
-                    method: 'POST',
-                    data:   { _token: '<?= csrf_token() ?>' },
-                    success: function( res ) {
-                        if ( res.error ) {
-                            msg.addClass( 'text-danger' ).text( res.error );
-                        } else if ( res.warning ) {
-                            msg.addClass( 'text-warning' ).text( res.warning );
-                        } else {
-                            if ( res.v4 !== null ) $( '#pdb-v4' ).text( res.v4 );
-                            if ( res.v6 !== null ) $( '#pdb-v6' ).text( res.v6 );
-
-                            if ( Object.keys( res.changed ).length > 0 ) {
-                                msg.addClass( 'text-success' ).text( 'Updated.' );
-                            } else {
-                                msg.addClass( 'text-success' ).text( 'Already up to date.' );
-                            }
-                        }
-                    },
-                    error: function( xhr ) {
-                        var errMsg = 'Sync failed.';
-                        try {
-                            errMsg = xhr.responseJSON.error || errMsg;
-                        } catch(e) {}
-                        msg.addClass( 'text-danger' ).text( errMsg );
-                    },
-                    complete: function() {
-                        btn.prop( 'disabled', false );
-                        icon.removeClass( 'fa-spin' );
-                    }
-                });
-            });
-        });
-        </script>
     </div>
     <?php endif; ?>
 </div>
+
+<?php $this->section( 'scripts' ) ?>
+<script>
+$( '#pdb-sync-btn' ).on( 'click', function() {
+    var btn  = $( this );
+    var icon = $( '#pdb-sync-icon' );
+    var msg  = $( '#pdb-sync-msg' );
+
+    btn.prop( 'disabled', true );
+    icon.addClass( 'fa-spin' );
+    msg.text( '' ).removeClass( 'text-success text-danger text-warning' );
+
+    $.ajax({
+        url:    btn.data( 'url' ),
+        method: 'POST',
+        data:   { _token: btn.data( 'token' ) },
+        success: function( res ) {
+            if ( res.error ) {
+                msg.addClass( 'text-danger' ).text( res.error );
+            } else if ( res.warning ) {
+                msg.addClass( 'text-warning' ).text( res.warning );
+            } else {
+                if ( res.v4 !== null ) $( '#pdb-v4' ).text( res.v4 );
+                if ( res.v6 !== null ) $( '#pdb-v6' ).text( res.v6 );
+
+                if ( Object.keys( res.changed ).length > 0 ) {
+                    msg.addClass( 'text-success' ).text( 'Updated.' );
+                } else {
+                    msg.addClass( 'text-success' ).text( 'Already up to date.' );
+                }
+            }
+        },
+        error: function( xhr ) {
+            var errMsg = 'Sync failed.';
+            try { errMsg = xhr.responseJSON.error || errMsg; } catch(e) {}
+            msg.addClass( 'text-danger' ).text( errMsg );
+        },
+        complete: function() {
+            btn.prop( 'disabled', false );
+            icon.removeClass( 'fa-spin' );
+        }
+    });
+});
+</script>
+<?php $this->append() ?>
