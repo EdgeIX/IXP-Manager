@@ -24,6 +24,7 @@ namespace IXP\Http\Controllers;
 
 use Auth;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 use IXP\Models\Customer;
 use IXP\Services\PeeringDb;
@@ -45,9 +46,18 @@ class PeeringDbSyncController extends Controller
      */
     public function syncOwn(): JsonResponse
     {
-        $customer = Auth::getUser()->customer;
+        $user     = Auth::getUser();
+        $customer = $user->customer;
 
-        return $this->doSync( $customer );
+        Log::info( 'PeeringDB prefix sync initiated by customer user', [
+            'user_id'     => $user->id,
+            'username'    => $user->username,
+            'customer_id' => $customer->id,
+            'customer'    => $customer->name,
+            'asn'         => $customer->autsys,
+        ] );
+
+        return $this->doSync( $customer, $user->username );
     }
 
     /**
@@ -55,17 +65,30 @@ class PeeringDbSyncController extends Controller
      */
     public function syncCustomer( int $id ): JsonResponse
     {
+        $user     = Auth::getUser();
         $customer = Customer::findOrFail( $id );
 
-        return $this->doSync( $customer );
+        Log::info( 'PeeringDB prefix sync initiated by admin', [
+            'admin_user_id' => $user->id,
+            'admin'         => $user->username,
+            'customer_id'   => $customer->id,
+            'customer'      => $customer->name,
+            'asn'           => $customer->autsys,
+        ] );
+
+        return $this->doSync( $customer, $user->username );
     }
 
     /**
      * Perform the actual PeeringDB lookup and update.
      */
-    private function doSync( Customer $customer ): JsonResponse
+    private function doSync( Customer $customer, string $initiatedBy ): JsonResponse
     {
         if ( !$customer->autsys ) {
+            Log::warning( 'PeeringDB prefix sync failed: no ASN', [
+                'initiated_by' => $initiatedBy,
+                'customer_id'  => $customer->id,
+            ] );
             return response()->json( [ 'error' => 'No ASN configured for this customer.' ], 422 );
         }
 
@@ -73,9 +96,14 @@ class PeeringDbSyncController extends Controller
         $net = $pdb->getNetworkByAsn( (int) $customer->autsys );
 
         if ( $net === false ) {
-            return response()->json( [
-                'error' => $pdb->error ?: 'PeeringDB lookup failed.',
-            ], 422 );
+            $error = $pdb->error ?: 'PeeringDB lookup failed.';
+            Log::warning( 'PeeringDB prefix sync failed: API error', [
+                'initiated_by' => $initiatedBy,
+                'customer'     => $customer->name,
+                'asn'          => $customer->autsys,
+                'error'        => $error,
+            ] );
+            return response()->json( [ 'error' => $error ], 422 );
         }
 
         $v4 = isset( $net['info_prefixes4'] ) && $net['info_prefixes4'] > 0
@@ -87,6 +115,11 @@ class PeeringDbSyncController extends Controller
             : null;
 
         if ( $v4 === null && $v6 === null ) {
+            Log::info( 'PeeringDB prefix sync: no prefix limits in PeeringDB', [
+                'initiated_by' => $initiatedBy,
+                'customer'     => $customer->name,
+                'asn'          => $customer->autsys,
+            ] );
             return response()->json( [
                 'warning' => 'PeeringDB has no prefix limits set for AS' . $customer->autsys . '. No changes made.',
                 'v4'      => $customer->maxprefixes,
@@ -108,6 +141,20 @@ class PeeringDbSyncController extends Controller
 
         if ( !empty( $changed ) ) {
             $customer->save();
+            Log::info( 'PeeringDB prefix sync: updated', [
+                'initiated_by' => $initiatedBy,
+                'customer'     => $customer->name,
+                'asn'          => $customer->autsys,
+                'changed'      => $changed,
+            ] );
+        } else {
+            Log::info( 'PeeringDB prefix sync: already up to date', [
+                'initiated_by' => $initiatedBy,
+                'customer'     => $customer->name,
+                'asn'          => $customer->autsys,
+                'v4'           => $v4,
+                'v6'           => $v6,
+            ] );
         }
 
         return response()->json( [
