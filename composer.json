@@ -25,6 +25,10 @@
         {
             "type": "vcs",
             "url": "git@github.com:EdgeIX/ixpm-pseudowire.git"
+        },
+        {
+            "type": "vcs",
+            "url": "git@github.com:EdgeIX/ixpm-mac-sync.git"
         }
     ],
     "require": {
@@ -37,6 +41,7 @@
         "barryvdh/laravel-dompdf": "^3.0.0",
         "bluntelk/ixpmanager-xero": "^1.11",
         "edgeix/ixpm-pseudowire": "dev-main",
+        "edgeix/ixpm-mac-sync": "dev-main",
         "erusev/parsedown": "^1.7",
         "intervention/image": "^2.7",
         "laravel/framework": "^12.0",
