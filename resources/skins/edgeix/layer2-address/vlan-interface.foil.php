@@ -16,6 +16,9 @@
     $isThrottled  = $syncState?->isThrottled() ?? false;
     $syncPending  = (bool) ( $syncState?->sync_pending ?? false );
     $syncQueuedAt = $syncState?->sync_queued_at;
+    $syncedBy     = $syncState?->last_synced_by
+        ? \IXP\Models\User::find( $syncState->last_synced_by )
+        : null;
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>
@@ -106,6 +109,9 @@
                         <dt class="col-sm-2">Last Synced</dt>
                         <dd class="col-sm-9">
                             <?= $t->ee( $syncState->last_synced_at?->diffForHumans() ?? 'Never' ) ?>
+                            <?php if( $syncState->last_synced_at && $syncedBy ): ?>
+                                <span class="text-muted small">by <?= $t->ee( $syncedBy->username ) ?></span>
+                            <?php endif; ?>
                         </dd>
                         <?php if( $syncPending && $syncQueuedAt ): ?>
                         <dt class="col-sm-2">Sync Scheduled</dt>
@@ -128,15 +134,37 @@
                             <th>MAC Address</th>
                             <th>Created</th>
                             <th>Updated</th>
+                            <?php if( $macSyncEnabled ): ?>
+                            <th>Switch</th>
+                            <?php endif; ?>
                             <th>Action <a class="btn btn-sm btn-white" href="#" id="add-l2a"><i class="fa fa-plus"></i></a></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach( $t->vli->layer2Addresses as $l2a ):?>
+                            <?php $mac = strtolower( $l2a->macFormatted(':') ); ?>
                             <tr>
                                 <td><?= $l2a->macFormatted( ':' ) ?></td>
                                 <td><?= $l2a->created_at ?></td>
                                 <td><?= $l2a->updated_at ?></td>
+                                <?php if( $macSyncEnabled ): ?>
+                                <td>
+                                    <?php if( !$syncState ): ?>
+                                        <span class="badge badge-secondary" title="Never synced">Not Synced</span>
+                                    <?php elseif( in_array( $mac, $syncedMacs ) ): ?>
+                                        <span class="badge badge-success" title="This MAC is on the switch">
+                                            <i class="fa fa-check"></i> On Switch
+                                        </span>
+                                        <?php if( $syncState->last_synced_at ): ?>
+                                            <br><small class="text-muted"><?= $syncState->last_synced_at->format('Y-m-d H:i') ?></small>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="badge badge-warning" title="Not yet pushed to switch">
+                                            <i class="fa fa-clock-o"></i> Pending
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <?php endif; ?>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
                                         <a class="btn btn-white btn-view-l2a" id="view-l2a-<?= $l2a->id ?>" data-object-mac="<?= $l2a->mac ?>" href="#" title="View">
@@ -244,6 +272,18 @@
         }
         $( '#mac-sync-queued-eta' ).text( res.run_at_human || '' );
         $( '#mac-sync-queued' ).show();
+
+        // Update the header badge and disable buttons immediately — don't wait for page reload.
+        var eta = res.run_at_human || '';
+        $( '#mac-sync-badge' )
+            .removeClass( 'badge-warning badge-success badge-secondary' )
+            .addClass( 'badge-info' )
+            .html( '<i class="fa fa-clock-o"></i> Sync Queued' + ( eta ? ' <span id="mac-sync-eta"> — ' + eta + '</span>' : '' ) )
+            .attr( 'title', eta ? 'Scheduled ' + eta : 'Queued' );
+        $( '#btn-mac-preview' ).addClass( 'disabled' ).prop( 'disabled', true );
+        $( '#btn-mac-apply' ).addClass( 'disabled' ).prop( 'disabled', true )
+            .attr( 'title', 'Sync already queued' );
+
         macSyncStartPolling();
     }
 
