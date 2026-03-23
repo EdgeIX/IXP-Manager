@@ -202,7 +202,7 @@
     <script>
     var macSyncPreviewUrl  = '<?= route( 'mac-sync@preview' ) ?>';
     var macSyncApplyUrl    = '<?= route( 'mac-sync@apply' ) ?>';
-    var macSyncStatusUrl   = '<?= route( 'mac-sync@vli-status' ) ?>';
+    var macSyncStatusUrl   = '<?= route( 'mac-sync@vli-status', [ 'vliId' => $t->vli->id ] ) ?>';
     var macSyncVliId       = <?= (int) $t->vli->id ?>;
     var macSyncPollTimer   = null;
 
@@ -251,7 +251,7 @@
     function macSyncStartPolling() {
         if ( macSyncPollTimer ) return;
         macSyncPollTimer = setInterval( function() {
-            $.getJSON( macSyncStatusUrl + '/' + macSyncVliId + '/status', function( data ) {
+            $.getJSON( macSyncStatusUrl, function( data ) {
                 if ( !data.sync_pending ) {
                     clearInterval( macSyncPollTimer );
                     macSyncPollTimer = null;
