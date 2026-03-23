@@ -9,7 +9,8 @@
         ? \EdgeIX\IxpmMacSync\Models\MacSyncState::where( 'vlan_interface_id', $t->vli->id )->first()
         : null;
     $currentMacs  = $t->vli->layer2Addresses->map( fn($l2) => strtolower( $l2->macFormatted(':') ) )->filter()->values()->all();
-    $syncedMacs   = $syncState?->synced_macs ?? [];
+    $syncedMacs   = $syncState?->synced_macs    ?? [];
+    $syncedMacsAt = $syncState?->synced_macs_at ?? [];
     $macsAdd      = array_diff( $currentMacs, $syncedMacs );
     $macsRemove   = array_diff( $syncedMacs, $currentMacs );
     $inSync       = empty( $macsAdd ) && empty( $macsRemove );
@@ -52,10 +53,9 @@
 
         <?php if( $macSyncEnabled ): ?>
         <div class="btn-group btn-sm mr-2">
-            <button class="btn btn-sm btn-white <?= $syncPending ? 'disabled' : '' ?>" id="btn-mac-preview"
+            <button class="btn btn-sm btn-white" id="btn-mac-preview"
                     data-vli-id="<?= $t->vli->id ?>"
-                    data-token="<?= csrf_token() ?>"
-                    <?php if( $syncPending ): ?> disabled title="Sync already queued"<?php endif; ?>>
+                    data-token="<?= csrf_token() ?>">
                 <i class="fa fa-eye"></i> Preview
             </button>
             <button class="btn btn-sm btn-primary <?= ($isThrottled || $syncPending) ? 'disabled' : '' ?>" id="btn-mac-apply"
@@ -155,8 +155,8 @@
                                         <span class="badge badge-success" title="This MAC is on the switch">
                                             <i class="fa fa-check"></i> On Switch
                                         </span>
-                                        <?php if( $syncState->last_synced_at ): ?>
-                                            <br><small class="text-muted"><?= $syncState->last_synced_at->format('Y-m-d H:i') ?></small>
+                                        <?php if( isset( $syncedMacsAt[$mac] ) ): ?>
+                                            <br><small class="text-muted"><?= \Carbon\Carbon::parse( $syncedMacsAt[$mac] )->format('Y-m-d H:i') ?></small>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <span class="badge badge-warning" title="Not yet pushed to switch">
@@ -280,7 +280,6 @@
             .addClass( 'badge-info' )
             .html( '<i class="fa fa-clock-o"></i> Sync Queued' + ( eta ? ' <span id="mac-sync-eta"> — ' + eta + '</span>' : '' ) )
             .attr( 'title', eta ? 'Scheduled ' + eta : 'Queued' );
-        $( '#btn-mac-preview' ).addClass( 'disabled' ).prop( 'disabled', true );
         $( '#btn-mac-apply' ).addClass( 'disabled' ).prop( 'disabled', true )
             .attr( 'title', 'Sync already queued' );
 
