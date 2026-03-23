@@ -8,12 +8,14 @@
     $syncState      = $macSyncEnabled
         ? \EdgeIX\IxpmMacSync\Models\MacSyncState::where( 'vlan_interface_id', $t->vli->id )->first()
         : null;
-    $currentMacs = $t->vli->layer2Addresses->map( fn($l2) => strtolower( $l2->macFormatted(':') ) )->filter()->values()->all();
-    $syncedMacs  = $syncState?->synced_macs ?? [];
-    $macsAdd     = array_diff( $currentMacs, $syncedMacs );
-    $macsRemove  = array_diff( $syncedMacs, $currentMacs );
-    $inSync      = empty( $macsAdd ) && empty( $macsRemove );
-    $isThrottled = $syncState?->isThrottled() ?? false;
+    $currentMacs  = $t->vli->layer2Addresses->map( fn($l2) => strtolower( $l2->macFormatted(':') ) )->filter()->values()->all();
+    $syncedMacs   = $syncState?->synced_macs ?? [];
+    $macsAdd      = array_diff( $currentMacs, $syncedMacs );
+    $macsRemove   = array_diff( $syncedMacs, $currentMacs );
+    $inSync       = empty( $macsAdd ) && empty( $macsRemove );
+    $isThrottled  = $syncState?->isThrottled() ?? false;
+    $syncPending  = (bool) ( $syncState?->sync_pending ?? false );
+    $syncQueuedAt = $syncState?->sync_queued_at;
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>
@@ -22,32 +24,44 @@
 
 <?php $this->section( 'page-header-postamble' ) ?>
     <div class="d-flex align-items-center">
-        <?php if( $macSyncEnabled && $inSync ): ?>
-            <span class="badge badge-success mr-3" title="Switch ACL matches IXP-Manager">
+        <?php if( $macSyncEnabled && $syncPending ): ?>
+            <span class="badge badge-info mr-3" id="mac-sync-badge"
+                  title="<?= $syncQueuedAt ? 'Scheduled for ' . $syncQueuedAt->format('H:i:s') : 'Queued' ?>">
+                <i class="fa fa-clock-o"></i> Sync Queued
+                <?php if( $syncQueuedAt ): ?>
+                    <span id="mac-sync-eta"> — <?= $syncQueuedAt->diffForHumans() ?></span>
+                <?php endif; ?>
+            </span>
+        <?php elseif( $macSyncEnabled && $inSync && $syncState ): ?>
+            <span class="badge badge-success mr-3" id="mac-sync-badge" title="Switch ACL matches IXP-Manager">
                 <i class="fa fa-check-circle"></i> In Sync
             </span>
         <?php elseif( $macSyncEnabled && $syncState ): ?>
-            <span class="badge badge-warning mr-3" title="<?= count($macsAdd) ?> to add, <?= count($macsRemove) ?> to remove">
+            <span class="badge badge-warning mr-3" id="mac-sync-badge"
+                  title="<?= count($macsAdd) ?> to add, <?= count($macsRemove) ?> to remove">
                 <i class="fa fa-exclamation-triangle"></i> Changes Pending
             </span>
         <?php elseif( $macSyncEnabled ): ?>
-            <span class="badge badge-secondary mr-3" title="Never synced via MAC Sync">
+            <span class="badge badge-secondary mr-3" id="mac-sync-badge" title="Never synced via MAC Sync">
                 <i class="fa fa-question-circle"></i> Not Synced
             </span>
         <?php endif; ?>
 
         <?php if( $macSyncEnabled ): ?>
         <div class="btn-group btn-sm mr-2">
-            <button class="btn btn-sm btn-white" id="btn-mac-preview"
+            <button class="btn btn-sm btn-white <?= $syncPending ? 'disabled' : '' ?>" id="btn-mac-preview"
                     data-vli-id="<?= $t->vli->id ?>"
-                    data-token="<?= csrf_token() ?>">
+                    data-token="<?= csrf_token() ?>"
+                    <?php if( $syncPending ): ?> disabled title="Sync already queued"<?php endif; ?>>
                 <i class="fa fa-eye"></i> Preview
             </button>
-            <button class="btn btn-sm btn-primary <?= $isThrottled ? 'disabled' : '' ?>" id="btn-mac-apply"
+            <button class="btn btn-sm btn-primary <?= ($isThrottled || $syncPending) ? 'disabled' : '' ?>" id="btn-mac-apply"
                     data-vli-id="<?= $t->vli->id ?>"
                     data-token="<?= csrf_token() ?>"
                     <?php if( $isThrottled ): ?>
                         disabled title="Throttled until <?= $syncState->throttle_until->format('H:i:s') ?>"
+                    <?php elseif( $syncPending ): ?>
+                        disabled title="Sync already queued"
                     <?php endif; ?>>
                 <i class="fa fa-upload"></i> Sync to Switch
             </button>
@@ -93,6 +107,13 @@
                         <dd class="col-sm-9">
                             <?= $t->ee( $syncState->last_synced_at?->diffForHumans() ?? 'Never' ) ?>
                         </dd>
+                        <?php if( $syncPending && $syncQueuedAt ): ?>
+                        <dt class="col-sm-2">Sync Scheduled</dt>
+                        <dd class="col-sm-9">
+                            <?= $t->ee( $syncQueuedAt->format('H:i:s') ) ?>
+                            (<?= $t->ee( $syncQueuedAt->diffForHumans() ) ?>)
+                        </dd>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </dl>
                 </div>
@@ -136,7 +157,7 @@
     </div>
 
     <?php if( $macSyncEnabled ): ?>
-    <!-- MAC Sync diff/result modal -->
+    <!-- MAC Sync preview modal -->
     <div class="modal fade" id="mac-sync-modal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -153,11 +174,14 @@
                         <div id="mac-sync-no-changes" class="alert alert-info" style="display:none">
                             No changes needed — switch is already up to date.
                         </div>
-                        <div id="mac-sync-applied" class="alert alert-success" style="display:none">
-                            <i class="fa fa-check"></i> Changes applied successfully.
+                        <div id="mac-sync-queued" class="alert alert-info" style="display:none">
+                            <i class="fa fa-clock-o"></i>
+                            <strong>Sync queued.</strong>
+                            Changes will be applied to the switch <span id="mac-sync-queued-eta"></span>.
+                            This page will update automatically when the sync completes.
                         </div>
                         <div id="mac-sync-diff-wrap" style="display:none">
-                            <h6>Config diff</h6>
+                            <h6>Config diff (preview only — no changes made)</h6>
                             <pre id="mac-sync-diff" class="bg-light p-3" style="font-size:12px; max-height:400px; overflow-y:auto;"></pre>
                         </div>
                     </div>
@@ -176,8 +200,11 @@
     <?= $t->insert( 'layer2-address/js/vlan-interface' ); ?>
     <?php if( $macSyncEnabled ): ?>
     <script>
-    var macSyncPreviewUrl = '<?= route( 'mac-sync@preview' ) ?>';
-    var macSyncApplyUrl   = '<?= route( 'mac-sync@apply' ) ?>';
+    var macSyncPreviewUrl  = '<?= route( 'mac-sync@preview' ) ?>';
+    var macSyncApplyUrl    = '<?= route( 'mac-sync@apply' ) ?>';
+    var macSyncStatusUrl   = '<?= route( 'mac-sync@vli-status' ) ?>';
+    var macSyncVliId       = <?= (int) $t->vli->id ?>;
+    var macSyncPollTimer   = null;
 
     function macSyncShowModal( title ) {
         $( '#mac-sync-modal-title' ).text( title );
@@ -185,13 +212,13 @@
         $( '#mac-sync-result' ).hide();
         $( '#mac-sync-error' ).hide().text('');
         $( '#mac-sync-no-changes' ).hide();
-        $( '#mac-sync-applied' ).hide();
+        $( '#mac-sync-queued' ).hide();
         $( '#mac-sync-diff-wrap' ).hide();
         $( '#mac-sync-diff' ).text('');
         $( '#mac-sync-modal' ).modal('show');
     }
 
-    function macSyncShowResult( res, applied ) {
+    function macSyncShowPreviewResult( res ) {
         $( '#mac-sync-spinner' ).hide();
         $( '#mac-sync-result' ).show();
 
@@ -203,11 +230,35 @@
             $( '#mac-sync-no-changes' ).show();
             return;
         }
-        if ( applied ) {
-            $( '#mac-sync-applied' ).show();
-        }
         $( '#mac-sync-diff' ).text( res.diff );
         $( '#mac-sync-diff-wrap' ).show();
+    }
+
+    function macSyncShowQueued( res ) {
+        $( '#mac-sync-spinner' ).hide();
+        $( '#mac-sync-result' ).show();
+
+        if ( !res.success ) {
+            $( '#mac-sync-error' ).text( res.error || 'Unknown error' ).show();
+            return;
+        }
+        $( '#mac-sync-queued-eta' ).text( res.run_at_human || '' );
+        $( '#mac-sync-queued' ).show();
+        macSyncStartPolling();
+    }
+
+    // Poll the status endpoint until sync_pending clears, then reload the page.
+    function macSyncStartPolling() {
+        if ( macSyncPollTimer ) return;
+        macSyncPollTimer = setInterval( function() {
+            $.getJSON( macSyncStatusUrl + '/' + macSyncVliId + '/status', function( data ) {
+                if ( !data.sync_pending ) {
+                    clearInterval( macSyncPollTimer );
+                    macSyncPollTimer = null;
+                    location.reload();
+                }
+            } );
+        }, 10000 ); // poll every 10 seconds
     }
 
     $( '#btn-mac-preview' ).on( 'click', function() {
@@ -218,11 +269,11 @@
             url:    macSyncPreviewUrl,
             method: 'POST',
             data:   { _token: token, vli_id: vliId },
-            success: function( res ) { macSyncShowResult( res, false ); },
+            success: function( res ) { macSyncShowPreviewResult( res ); },
             error:   function( xhr ) {
                 var msg = 'Request failed.';
                 try { msg = xhr.responseJSON.error || msg; } catch(e) {}
-                macSyncShowResult( { success: false, error: msg }, false );
+                macSyncShowPreviewResult( { success: false, error: msg } );
             }
         });
     });
@@ -231,27 +282,25 @@
         var btn   = $( this );
         var vliId = btn.data('vli-id');
         var token = btn.data('token');
-        if ( !confirm('Sync MAC addresses to the switch now?') ) return;
-        macSyncShowModal('Applying Changes...');
+        if ( !confirm('Queue MAC sync to switch? Changes will be applied within the next few minutes.') ) return;
+        macSyncShowModal('Queuing Sync...');
         $.ajax({
             url:    macSyncApplyUrl,
             method: 'POST',
             data:   { _token: token, vli_id: vliId },
-            success: function( res ) {
-                macSyncShowResult( res, true );
-                if ( res.success ) {
-                    $( '#mac-sync-modal' ).on( 'hidden.bs.modal', function() {
-                        location.reload();
-                    });
-                }
-            },
-            error: function( xhr ) {
+            success: function( res ) { macSyncShowQueued( res ); },
+            error:   function( xhr ) {
                 var msg = 'Request failed.';
                 try { msg = xhr.responseJSON.error || msg; } catch(e) {}
-                macSyncShowResult( { success: false, error: msg }, false );
+                macSyncShowQueued( { success: false, error: msg } );
             }
         });
     });
+
+    // If the page loads with a sync already pending, start polling immediately.
+    <?php if( $syncPending ): ?>
+    macSyncStartPolling();
+    <?php endif; ?>
     </script>
     <?php endif; // $macSyncEnabled ?>
 <?php $this->append() ?>
