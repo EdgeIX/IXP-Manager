@@ -266,12 +266,15 @@
         var token = $( this ).data('token');
         macSyncShowModal('Preview — no changes will be made');
         $.ajax({
-            url:    macSyncPreviewUrl,
-            method: 'POST',
-            data:   { _token: token, vli_id: vliId },
+            url:     macSyncPreviewUrl,
+            method:  'POST',
+            data:    { _token: token, vli_id: vliId },
+            timeout: 45000,
             success: function( res ) { macSyncShowPreviewResult( res ); },
-            error:   function( xhr ) {
-                var msg = 'Request failed.';
+            error:   function( xhr, status ) {
+                var msg = status === 'timeout'
+                    ? 'Request timed out — switch may be unreachable.'
+                    : 'Request failed.';
                 try { msg = xhr.responseJSON.error || msg; } catch(e) {}
                 macSyncShowPreviewResult( { success: false, error: msg } );
             }
