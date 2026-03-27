@@ -36,6 +36,11 @@
                     <span id="mac-sync-eta"> — <?= $syncQueuedAt->diffForHumans() ?></span>
                 <?php endif; ?>
             </span>
+        <?php elseif( $macSyncEnabled && $inSync && $syncState && $isThrottled ): ?>
+            <span class="badge badge-success mr-3" id="mac-sync-badge"
+                  title="Re-sync available at <?= $syncState->throttle_until->format('H:i:s') ?>">
+                <i class="fa fa-check-circle"></i> In Sync
+            </span>
         <?php elseif( $macSyncEnabled && $inSync && $syncState ): ?>
             <span class="badge badge-success mr-3" id="mac-sync-badge" title="Switch ACL matches IXP-Manager">
                 <i class="fa fa-check-circle"></i> In Sync
@@ -62,11 +67,16 @@
                     data-vli-id="<?= $t->vli->id ?>"
                     data-token="<?= csrf_token() ?>"
                     <?php if( $isThrottled ): ?>
-                        disabled title="Throttled until <?= $syncState->throttle_until->format('H:i:s') ?>"
+                        disabled title="Re-sync available at <?= $syncState->throttle_until->format('H:i:s') ?>"
                     <?php elseif( $syncPending ): ?>
                         disabled title="Sync already queued"
                     <?php endif; ?>>
-                <i class="fa fa-upload"></i> Sync to Switch
+                <i class="fa fa-upload"></i>
+                <?php if( $isThrottled ): ?>
+                    Sync to Switch <small>(available <?= $syncState->throttle_until->diffForHumans() ?>)</small>
+                <?php else: ?>
+                    Sync to Switch
+                <?php endif; ?>
             </button>
         </div>
         <?php endif; ?>
