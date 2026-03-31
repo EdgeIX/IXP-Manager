@@ -79,8 +79,9 @@ class InfrastructureController extends Eloquent2Frontend
             'listOrderByDir'    => 'ASC',
             'viewFolderName'    => 'infrastructure',
             'listColumns'       => [
-                'name'      => 'Name',
-                'shortname' => 'Shortname',
+                'name'       => 'Name',
+                'shortname'  => 'Shortname',
+                'short_code' => 'Short Code',
                 'isPrimary' => [
                     'title' => 'Primary',
                     'type' => self::$FE_COL_TYPES[ 'YES_NO' ]
