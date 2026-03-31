@@ -207,5 +207,15 @@ return [
         }),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Service Reference Prefix
+    |--------------------------------------------------------------------------
+    |
+    | Prefix used when auto-generating service references for VirtualInterfaces.
+    | Format: {PREFIX}-{INFRA_SHORT_CODE}-{PADDED_ID} e.g. EIX-SYD-00475
+    |
+    */
+    'service_ref_prefix' => env( 'SERVICE_REF_PREFIX', 'EIX' ),
 
 ];

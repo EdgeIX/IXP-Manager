@@ -90,6 +90,7 @@ class Infrastructure extends Model
         'ixp_id',
         'name',
         'shortname',
+        'short_code',
         'isPrimary',
         'exclude_from_ixf_export',
         'peeringdb_ix_id',

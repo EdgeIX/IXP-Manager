@@ -18,6 +18,13 @@
             ->blockHelp( "A lowercase single word to represent the infrastructure." );
         ?>
 
+        <?= Former::text( 'short_code' )
+            ->label( 'Short Code' )
+            ->maxlength( 10 )
+            ->blockHelp( "A short location code (e.g. SYD, ADL, AKL, PER) used in service reference IDs. "
+                . "Service references are auto-generated as <code>{PREFIX}-{SHORT_CODE}-{ID}</code> e.g. <code>EIX-SYD-00475</code>." );
+        ?>
+
         <?= Former::select( 'country' )
             ->label( 'Country' )
             ->fromQuery( $t->data[ 'params'][ 'countries' ], 'name', 'iso_3166_2' )

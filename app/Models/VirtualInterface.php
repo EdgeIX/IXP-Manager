@@ -94,6 +94,7 @@ class VirtualInterface extends Model
         'custid',
         'name',
         'description',
+        'service_reference',
         'mtu',
         'trunk',
         'channelgroup',
@@ -112,6 +113,49 @@ class VirtualInterface extends Model
         'lag_framing'   => 'boolean',
         'fastlacp'      => 'boolean',
     ];
+
+    /**
+     * Auto-generate service_reference on creation if not already set.
+     * Format: {PREFIX}-{SHORT_CODE}-{PADDED_ID} e.g. EIX-SYD-00475
+     */
+    protected static function booted(): void
+    {
+        static::created( function ( VirtualInterface $vi ) {
+            if ( $vi->service_reference ) {
+                return;
+            }
+
+            $ref = $vi->generateServiceReference();
+
+            if ( $ref ) {
+                $vi->service_reference = $ref;
+                $vi->saveQuietly();
+            }
+        } );
+    }
+
+    /**
+     * Generate a service reference from the VI's infrastructure short_code.
+     */
+    public function generateServiceReference(): ?string
+    {
+        $prefix = config( 'ixp.service_ref_prefix', 'EIX' );
+
+        $pi = $this->physicalInterfaces()->with( 'switchPort.switcher' )->first();
+        $infraId = $pi?->switchPort?->switcher?->infrastructure;
+
+        if ( !$infraId ) {
+            return null;
+        }
+
+        $shortCode = Infrastructure::where( 'id', $infraId )->value( 'short_code' );
+
+        if ( !$shortCode ) {
+            return null;
+        }
+
+        return $prefix . '-' . strtoupper( $shortCode ) . '-' . str_pad( $this->id, 5, '0', STR_PAD_LEFT );
+    }
 
     /**
      * Get the customer that owns the virtual interfaces.

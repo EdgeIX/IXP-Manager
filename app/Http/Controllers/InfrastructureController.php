@@ -176,6 +176,7 @@ class InfrastructureController extends Eloquent2Frontend
         Former::populate([
             'name'             => request()->old( 'name',      $this->object->name          ),
             'shortname'        => request()->old( 'shortname', $this->object->shortname     ),
+            'short_code'       => request()->old( 'short_code', $this->object->short_code   ),
             'isPrimary'        => request()->old( 'isPrimary', $this->object->isPrimary     ),
             'country'          => request()->old( 'country', in_array( $this->object->country,  array_values( Countries::getListForSelect( 'iso_3166_2' ) ), false ) ? $this->object->country : null ),
             'exclude_from_ixf_export'
@@ -284,6 +285,7 @@ class InfrastructureController extends Eloquent2Frontend
         $r->validate( [
             'name'          => 'required|string|max:255|unique:infrastructure,name' . ( $r->id ? ','. $r->id : '' ),
             'shortname'     => 'required|string|max:255',
+            'short_code'    => 'nullable|string|max:10|alpha',
             'country'       => 'required|string|max:2|in:' . implode( ',', array_values( Countries::getListForSelect( 'iso_3166_2' ) ) ),
         ] );
     }
