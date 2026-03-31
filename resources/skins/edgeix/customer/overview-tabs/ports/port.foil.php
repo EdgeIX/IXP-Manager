@@ -20,7 +20,7 @@
             <h5 class="mb-0 mr-auto">
                 Connection <?= $t->nbVi ?>
                 <?php if( $t->vi->service_reference ): ?>
-                    <span class="badge badge-light border ml-2" title="Service Reference"><?= $t->ee( $t->vi->service_reference ) ?></span>
+                    <span class="badge badge-secondary ml-2" title="Service Reference"><?= $t->ee( $t->vi->service_reference ) ?></span>
                 <?php endif; ?>
                 <small class="text-muted">
                     <?php if( $t->vi->typePeering() && $countPis ): ?>
