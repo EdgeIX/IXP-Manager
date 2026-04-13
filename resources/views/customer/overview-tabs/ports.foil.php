@@ -10,6 +10,15 @@
 
     <?php $nbVi = 1 ?>
     <?php foreach( $t->c->virtualInterfaces as $vi ): ?>
+        <?php
+            // Skip core bundles, monitor, and management ports
+            $viType = $vi->type();
+            if( $viType === \IXP\Models\SwitchPort::TYPE_CORE
+                || $viType === \IXP\Models\SwitchPort::TYPE_MONITOR
+                || $viType === \IXP\Models\SwitchPort::TYPE_MANAGEMENT ) {
+                continue;
+            }
+        ?>
         <?= $t->insert( 'customer/overview-tabs/ports/port', [ 'c' => $t->c ,'vi' => $vi, 'nbVi' => $nbVi, 'isSuperUser' => $t->isSuperUser ] ); ?>
         <?php $nbVi++ ?>
     <?php endforeach; ?>

@@ -361,7 +361,7 @@
                         <?php if( $t->resellerMode() && $c->isReseller ): ?>
                             <?= $t->insert( 'customer/overview-tabs/reseller-ports', [ 'isSuperUser' => $isSuperUser ] ); ?>
                         <?php else: ?>
-                            <?php include resource_path( 'skins/edgeix/customer/overview-tabs/ports.foil.php' ); ?>
+                            <?= $t->insert( 'customer/overview-tabs/ports', [ 'isSuperUser' => $isSuperUser ] ); ?>
                         <?php endif ?>
                     </div>
 
