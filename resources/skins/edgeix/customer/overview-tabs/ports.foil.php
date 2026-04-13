@@ -11,7 +11,11 @@
     $servicePorts = [];
 
     foreach( $t->c->virtualInterfaces as $vi ) {
-        // Skip core uplinks, monitor ports, and management ports
+        // Skip core bundles, core/monitor/management port types
+        if( $vi->getCoreBundle() ) {
+            continue;
+        }
+
         $viType = $vi->type();
         if( in_array( $viType, [ \IXP\Models\SwitchPort::TYPE_CORE, \IXP\Models\SwitchPort::TYPE_MONITOR, \IXP\Models\SwitchPort::TYPE_MANAGEMENT ], true ) ) {
             continue;
