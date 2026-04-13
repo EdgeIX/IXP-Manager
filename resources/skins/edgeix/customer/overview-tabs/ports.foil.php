@@ -85,7 +85,7 @@
 <?php else: ?>
     <div class="d-flex row">
         <?php $nbVi = 1 ?>
-        <?php foreach( $t->c->virtualInterfaces as $vi ): ?>
+        <?php foreach( $peeringPorts as $vi ): ?>
             <?= $t->insert( 'customer/overview-tabs/ports/port', [ 'c' => $t->c, 'vi' => $vi, 'nbVi' => $nbVi, 'isSuperUser' => $t->isSuperUser ] ); ?>
             <?php $nbVi++ ?>
         <?php endforeach; ?>
