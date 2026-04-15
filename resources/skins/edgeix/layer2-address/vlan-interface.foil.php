@@ -63,13 +63,15 @@
                     data-token="<?= csrf_token() ?>">
                 <i class="fa fa-eye"></i> Preview
             </button>
-            <button class="btn btn-sm btn-primary <?= ($isThrottled || $syncPending) ? 'disabled' : '' ?>" id="btn-mac-apply"
+            <button class="btn btn-sm btn-primary <?= ($isThrottled || $syncPending || $inSync) ? 'disabled' : '' ?>" id="btn-mac-apply"
                     data-vli-id="<?= $t->vli->id ?>"
                     data-token="<?= csrf_token() ?>"
                     <?php if( $isThrottled ): ?>
                         disabled title="Re-sync available at <?= $syncState->throttle_until->format('H:i:s') ?>"
                     <?php elseif( $syncPending ): ?>
                         disabled title="Sync already queued"
+                    <?php elseif( $inSync ): ?>
+                        disabled title="Switch is already in sync"
                     <?php endif; ?>>
                 <i class="fa fa-upload"></i>
                 <?php if( $isThrottled ): ?>
