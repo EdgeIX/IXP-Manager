@@ -56,6 +56,13 @@ class Kernel extends ConsoleKernel
                 ->dailyAt( '0:10' )->withoutOverlapping();
         }
 
+        // Akvorado P2P daily stats (runs alongside or instead of sflow P2P)
+        if( config( 'grapher.backends.akvorado.url' ) ) {
+            $schedule->command( 'grapher:prune-daily-p2p --days=30' )->dailyAt( '0:05' );
+            $schedule->command( 'akvorado:upload-daily-p2p ' . now()->subDay()->format( 'Y-m-d' ) )
+                ->dailyAt( '0:15' )->withoutOverlapping();
+        }
+
 
 
         // https://docs.ixpmanager.org/latest/features/peeringdb/#existence-of-peeringdb-records
