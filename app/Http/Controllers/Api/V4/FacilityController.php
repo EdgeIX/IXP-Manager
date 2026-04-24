@@ -30,7 +30,7 @@ class FacilityController extends Controller
         $query = Location::query()->orderBy( 'name' );
 
         if ( $activeOnly ) {
-            $query->whereHas( 'cabinets.switcher' );
+            $query->whereHas( 'cabinets.switchers' );
         }
 
         $facilities = $query->get()->map( fn( Location $l ) => $this->formatFacility( $l ) );
@@ -78,7 +78,7 @@ class FacilityController extends Controller
             // Switches at this facility
             $switches = [];
             foreach ( $l->cabinets as $cab ) {
-                foreach ( $cab->switcher ?? [] as $sw ) {
+                foreach ( $cab->switchers as $sw ) {
                     $switches[] = [
                         'name'           => $sw->name,
                         'infrastructure' => $sw->infrastructureModel?->name,
