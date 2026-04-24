@@ -44,6 +44,11 @@ Route::any( 'ping', 'PublicController@ping' )->name('api-v4:ping' );
 Route::any( 'test', 'PublicController@test' )->name('api-v4:test' );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Facilities (public, no auth required — for website integration)
+Route::get( 'facilities', 'FacilityController@index' )->name( 'api-v4:facilities' );
+Route::get( 'facilities/{id}', 'FacilityController@show' )->name( 'api-v4:facility' );
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // IX-F Member List Export
 Route::group( [  'prefix' => 'member-export' ], function() {
     Route::get('ixf',            'MemberExportController@ixf' )->name('ixf-member-export');
