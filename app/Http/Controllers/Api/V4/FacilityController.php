@@ -65,7 +65,7 @@ class FacilityController extends Controller
             'country'          => $l->country,
             'address'          => $l->address,
             'pdb_facility_id'  => $l->pdb_facility_id,
-            'active'           => $l->cabinets()->whereHas( 'switcher' )->exists(),
+            'active'           => $l->cabinets()->whereHas( 'switchers' )->exists(),
         ];
 
         if ( $detailed ) {
