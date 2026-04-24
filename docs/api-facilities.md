@@ -1,6 +1,6 @@
 # Facilities API
 
-Public API for retrieving facility/location data. No authentication required — designed for website integration to dynamically display on-net facilities.
+API for retrieving facility/location data. Requires API key authentication (superuser). Designed for website integration to dynamically display on-net facilities.
 
 ## Endpoints
 
@@ -88,28 +88,31 @@ Returns detailed information for a single facility, including switches.
 
 ## Usage Examples
 
-### Fetch all on-net facilities (for website)
+### Fetch all on-net facilities
 
 ```bash
-curl -s https://ixp.edgeix.net.au/api/v4/facilities | jq
+curl -s -H "X-IXP-Manager-API-Key: YOUR_API_KEY" https://ixp.edgeix.net.au/api/v4/facilities | jq
 ```
 
 ### Fetch all facilities including planned
 
 ```bash
-curl -s "https://ixp.edgeix.net.au/api/v4/facilities?active=0" | jq
+curl -s -H "X-IXP-Manager-API-Key: YOUR_API_KEY" "https://ixp.edgeix.net.au/api/v4/facilities?active=0" | jq
 ```
 
 ### Fetch single facility
 
 ```bash
-curl -s https://ixp.edgeix.net.au/api/v4/facilities/1 | jq
+curl -s -H "X-IXP-Manager-API-Key: YOUR_API_KEY" https://ixp.edgeix.net.au/api/v4/facilities/1 | jq
 ```
 
-### JavaScript (website integration)
+### JavaScript (website backend integration)
 
 ```javascript
-fetch('https://ixp.edgeix.net.au/api/v4/facilities')
+// Call from your website's backend (server-side) to keep the API key private
+fetch('https://ixp.edgeix.net.au/api/v4/facilities', {
+    headers: { 'X-IXP-Manager-API-Key': process.env.IXP_API_KEY }
+})
     .then(r => r.json())
     .then(data => {
         data.facilities.forEach(f => {

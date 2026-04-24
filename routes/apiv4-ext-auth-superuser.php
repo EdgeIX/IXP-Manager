@@ -99,6 +99,11 @@ Route::group( [  'prefix' => 'router' ], function() {
 });
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Facilities
+Route::get( 'facilities',      'FacilityController@index' )->name( 'api-v4:facilities' );
+Route::get( 'facilities/{id}', 'FacilityController@show'  )->name( 'api-v4:facility' );
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Sflow Receiver
 //
 Route::group( [  'prefix' => 'sflow-receivers' ], function() {

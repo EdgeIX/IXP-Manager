@@ -8,8 +8,7 @@ use IXP\Http\Controllers\Controller;
 use IXP\Models\Location;
 
 /**
- * Public API for facilities/locations.
- * No authentication required — intended for website integration.
+ * Facilities API (requires API key — superuser auth).
  *
  * Endpoints:
  *   GET /api/v4/facilities          — list all active facilities
