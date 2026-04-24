@@ -308,9 +308,11 @@ class LookingGlass extends Controller
      */
     public function routeProtocol( string $handle, string $network, string $mask, string $protocol ): View
     {
+        $raw = $this->lg()->protocolRoute($protocol, $network, (int) $mask);
+        $content = json_decode($raw, false);
+
         return view('services/lg/route' )->with([
-            'content' => json_decode($this->lg()->protocolRoute($protocol, $network, (int) $mask), false, 512,
-                JSON_THROW_ON_ERROR),
+            'content' => $content ?: (object)['routes' => []],
             'source'  => 'protocol',
             'name'    => $protocol,
             'lg'      => $this->lg(),
@@ -330,8 +332,11 @@ class LookingGlass extends Controller
      */
     public function routeTable( string $handle, string $network, string $mask, string $table ): View
     {
+        $raw = $this->lg()->protocolTable( $table, $network, (int)$mask );
+        $content = json_decode( $raw, false );
+
         return view('services/lg/route')->with( [
-            'content' => json_decode( $this->lg()->protocolTable( $table, $network, (int)$mask ), false ),
+            'content' => $content ?: (object)['routes' => []],
             'source'  => 'table',
             'name'    => $table,
             'lg'      => $this->lg(),
