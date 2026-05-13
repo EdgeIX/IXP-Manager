@@ -390,10 +390,19 @@
                 <?php endif; ?>
             <?php endif; ?>
 
-            <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) ): ?>
+            <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) || Route::has( 'mac-sync@index' ) ): ?>
                 <h6>
                     <span>EDGEIX</span>
                 </h6>
+            <?php endif; ?>
+
+            <?php if( Route::has( 'mac-sync@index' ) ): ?>
+                <li class="<?= !request()->is( 'mac-sync*' ) ?: 'active' ?>">
+                    <a href="<?= route( 'mac-sync@index' ) ?>" class="nav-link">
+                        <i class="fa fa-exchange"></i>
+                        MAC Sync
+                    </a>
+                </li>
             <?php endif; ?>
 
             <?php if( Route::has( 'pw-admin@dashboard' ) ): ?>
