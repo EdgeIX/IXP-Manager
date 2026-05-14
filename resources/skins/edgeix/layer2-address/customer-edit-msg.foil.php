@@ -8,7 +8,7 @@
             <b>Notice about MAC Changes</b>
             <br>
 
-            MAC Addresses can be updated here. You must add a NEW MAC before you can delete the old one. Additionally we allow 2 MAC address so that you may transition to a new MAC if you are scheduling upgrades. Old MAC address should be deleted when this has been completed. MAC Addresses changes occur daily 09:00 AWST.
+            MAC Addresses can be updated here. You must add a NEW MAC before you can delete the old one. Additionally we allow 2 MAC addresses so that you may transition to a new MAC if you are scheduling upgrades. Old MAC address should be deleted when this has been completed. Once you have made your changes, press <b>Sync to Switch</b> to apply them.
 
         </div>
     </div>
