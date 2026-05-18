@@ -218,7 +218,7 @@
                     var rx   = u.data[1][idx];
                     var tx   = u.data[2][idx];
                     var date = new Date(ts * 1000);
-                    var str  = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    var str  = date.toLocaleDateString('en-AU') + ' ' + date.toLocaleTimeString('en-AU');
 
                     tt.innerHTML =
                         '<strong>' + str + '</strong><br>' +
@@ -278,7 +278,17 @@
                 {
                     stroke: '#888',
                     grid: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
-                    ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 }
+                    ticks: { stroke: 'rgba(0,0,0,0.07)', width: 1 },
+                    values: [
+                        // [tick incr,  default,         year,                            month,   day,                       hour,   min,           sec,   mode]
+                        [3600 * 24 * 365, "{YYYY}",        null,                            null,    null,                      null,   null,          null,  1],
+                        [3600 * 24 * 28,  "{MMM}",         "\n{YYYY}",                      null,    null,                      null,   null,          null,  1],
+                        [3600 * 24,       "{D}/{M}",       "\n{YYYY}",                      null,    null,                      null,   null,          null,  1],
+                        [3600,            "{HH}:{mm}",     "\n{D}/{M}/{YYYY}",              null,    "\n{D}/{M}",               null,   null,          null,  1],
+                        [60,              "{HH}:{mm}",     "\n{D}/{M}/{YYYY}",              null,    "\n{D}/{M}",               null,   null,          null,  1],
+                        [1,               ":{ss}",         "\n{D}/{M}/{YYYY} {HH}:{mm}",    null,    "\n{D}/{M} {HH}:{mm}",     null,   "\n{HH}:{mm}", null,  1],
+                        [0.001,           ":{ss}.{fff}",   "\n{D}/{M}/{YYYY} {HH}:{mm}",    null,    "\n{D}/{M} {HH}:{mm}",     null,   "\n{HH}:{mm}", null,  1],
+                    ]
                 },
                 {
                     stroke: '#888',
