@@ -10,8 +10,11 @@
     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 </div>
 <div class="modal-body">
-    <?php $content = $t->content ?? null; ?>
-    <?php if( $content && isset( $content->routes ) ): ?>
+    <?php
+        // Foil's __get throws on undefined vars even with ??, so we have to try/catch.
+        try { $content = $t->content; } catch ( \Throwable $e ) { $content = null; }
+    ?>
+    <?php if( $content && isset( $content->routes ) && !empty( $content->routes ) ): ?>
     <?php foreach( $content->routes as $r ): ?>
       <table class="table table-striped text-monospace" style="font-size: 14px;">
           <tbody>
@@ -174,6 +177,8 @@
       </table>
     <br><br>
     <?php endforeach; ?>
+    <?php else: ?>
+        <div class="alert alert-info">No route details available. The route may have been withdrawn or the looking-glass API returned no data.</div>
     <?php endif; ?>
 </div>
 <div class="modal-footer">
