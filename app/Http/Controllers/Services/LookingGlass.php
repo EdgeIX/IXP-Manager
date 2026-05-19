@@ -100,6 +100,33 @@ class LookingGlass extends Controller
     }
 
     /**
+     * Safely decode a JSON response from the looking glass backend.
+     *
+     * Birdseye/birdwatcher can return garbage (HTML error pages, empty bodies,
+     * control characters) when the daemon is restarting or hits an internal
+     * error. Without this guard, json_decode throws and we 500 the user.
+     *
+     * Returns an object with an empty "routes" array as a safe default so the
+     * template always has something iterable.
+     */
+    private function safeJsonDecode( ?string $raw ): object
+    {
+        if ( $raw === null || $raw === '' ) {
+            return (object)['routes' => []];
+        }
+        try {
+            $decoded = json_decode( $raw, false, 512, JSON_THROW_ON_ERROR );
+            return is_object( $decoded ) ? $decoded : (object)['routes' => []];
+        } catch ( \Throwable $e ) {
+            \Log::warning( '[LookingGlass] Invalid JSON from backend', [
+                'error'  => $e->getMessage(),
+                'sample' => substr( (string)$raw, 0, 200 ),
+            ] );
+            return (object)['routes' => []];
+        }
+    }
+
+    /**
      * Looking glass accessor
      *
      * @return LookingGlassContract
@@ -142,7 +169,7 @@ class LookingGlass extends Controller
         $cust = Auth::check() ? Customer::find( Auth::getUser()->custid ) : null;
         $user = Auth::check() ? User::find( Auth::id() ) : null;
 
-        $view->with( 'status',      json_decode( $this->lg()->status(), false, 512, JSON_THROW_ON_ERROR));
+        $view->with( 'status',      $this->safeJsonDecode( $this->lg()->status() ));
         $view->with( 'lg',          $this->lg() );
         $view->with( 'routers',     RouterAggregator::forDropdown( $cust, $user ) );
         $view->with( 'tabRouters',  RouterAggregator::forTab( $cust, $user ) );
@@ -212,7 +239,7 @@ class LookingGlass extends Controller
     {
         // get bgp protocol summary
         $view = view('services/lg/bgp-summary' )->with([
-            'content' => json_decode( $this->lg()->bgpSummary(), false, 512, JSON_THROW_ON_ERROR),
+            'content' => $this->safeJsonDecode( $this->lg()->bgpSummary() ),
         ]);
 
         return $this->addCommonParams( $view );
@@ -246,7 +273,7 @@ class LookingGlass extends Controller
         }
 
         $view = view('services/lg/routes' )->with([
-            'content'   => json_decode($routes, false, 512, JSON_THROW_ON_ERROR),
+            'content'   => $this->safeJsonDecode( $routes ),
             'source'    => 'table', 'name' => $table,
             'peerName'  => null,
         ]);
@@ -265,7 +292,7 @@ class LookingGlass extends Controller
         try{
             // get bgp protocol summary
             $view = view('services/lg/routes' )->with([
-                'content'  => json_decode( $this->lg()->routesForProtocol( $protocol ), false, 512, JSON_THROW_ON_ERROR),
+                'content'  => $this->safeJsonDecode( $this->lg()->routesForProtocol( $protocol ) ),
                 'source'   => 'protocol', 'name' => $protocol,
                 'peerName' => $this->peerName( $protocol ),
             ]);
@@ -288,7 +315,7 @@ class LookingGlass extends Controller
     {
         // get bgp protocol summary
         $view = view('services/lg/routes' )->with([
-            'content'   => json_decode( $this->lg()->routesForExport( $protocol ), false, 512, JSON_THROW_ON_ERROR),
+            'content'   => $this->safeJsonDecode( $this->lg()->routesForExport( $protocol ) ),
             'source'    => 'export to protocol',
             'name'      => $protocol,
             'peerName'  => $this->peerName( $protocol ),
@@ -308,11 +335,8 @@ class LookingGlass extends Controller
      */
     public function routeProtocol( string $handle, string $network, string $mask, string $protocol ): View
     {
-        $raw = $this->lg()->protocolRoute($protocol, $network, (int) $mask);
-        $content = json_decode($raw, false);
-
         return view('services/lg/route' )->with([
-            'content' => $content ?: (object)['routes' => []],
+            'content' => $this->safeJsonDecode( $this->lg()->protocolRoute($protocol, $network, (int) $mask) ),
             'source'  => 'protocol',
             'name'    => $protocol,
             'lg'      => $this->lg(),
@@ -332,11 +356,8 @@ class LookingGlass extends Controller
      */
     public function routeTable( string $handle, string $network, string $mask, string $table ): View
     {
-        $raw = $this->lg()->protocolTable( $table, $network, (int)$mask );
-        $content = json_decode( $raw, false );
-
         return view('services/lg/route')->with( [
-            'content' => $content ?: (object)['routes' => []],
+            'content' => $this->safeJsonDecode( $this->lg()->protocolTable( $table, $network, (int)$mask ) ),
             'source'  => 'table',
             'name'    => $table,
             'lg'      => $this->lg(),
@@ -357,7 +378,7 @@ class LookingGlass extends Controller
     public function routeExport( string $handle, string $network, string $mask, string $protocol ): View
     {
         return view('services/lg/route' )->with([
-            'content'   => json_decode( $this->lg()->exportRoute( $protocol, $network, (int)$mask ), false ),
+            'content'   => $this->safeJsonDecode( $this->lg()->exportRoute( $protocol, $network, (int)$mask ) ),
             'source'    => 'export',
             'name'      => $protocol,
             'lg'        => $this->lg(),
@@ -503,7 +524,7 @@ class LookingGlass extends Controller
         try {
             $routes = $this->getFilteredRoutes( $protocol );
             $view = view('services/lg/routes' )->with([
-                'content'  => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'content'  => $this->safeJsonDecode( $routes ),
                 'source'   => 'filtered from protocol',
                 'name'     => $protocol,
                 'peerName' => $this->peerName( $protocol ),
@@ -523,7 +544,7 @@ class LookingGlass extends Controller
         try {
             $routes = $this->getNotExportedRoutes( $protocol );
             $view = view('services/lg/routes' )->with([
-                'content'  => json_decode( $routes, false, 512, JSON_THROW_ON_ERROR ),
+                'content'  => $this->safeJsonDecode( $routes ),
                 'source'   => 'not exported to protocol',
                 'name'     => $protocol,
                 'peerName' => $this->peerName( $protocol ),
