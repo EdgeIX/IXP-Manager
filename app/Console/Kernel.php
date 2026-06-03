@@ -63,6 +63,11 @@ class Kernel extends ConsoleKernel
                 ->dailyAt( '0:15' )->withoutOverlapping();
         }
 
+        // Alert admins when route servers haven't synced or have stuck locks
+        if( config( 'router.stale_alert_email' ) ) {
+            $schedule->command( 'router:check-stale' )->hourly();
+        }
+
 
 
         // https://docs.ixpmanager.org/latest/features/peeringdb/#existence-of-peeringdb-records
