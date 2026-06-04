@@ -77,6 +77,7 @@ class Store extends FormRequest
             'cost'                      => 'nullable|integer',
             'preference'                => 'nullable|integer',
             'type'                      => 'required|integer|in:' . implode( ',', array_keys( CoreBundle::$TYPES ) ),
+            'reach_type'                => 'nullable|in:' . implode( ',', array_keys( CoreBundle::$REACH_TYPES ) ),
             'ipv4_subnet'               => $this->type === CoreBundle::TYPE_L3_LAG ? "required" : "nullable",
         ];
 

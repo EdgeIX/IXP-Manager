@@ -91,6 +91,7 @@ class CoreBundle extends Model
     protected $fillable = [
         'description',
         'type',
+        'reach_type',
         'graph_title',
         'bfd',
         'ipv4_subnet',
@@ -123,6 +124,23 @@ class CoreBundle extends Model
         self::TYPE_ECMP          => "ECMP",
         self::TYPE_L2_LAG        => "L2-LAG (e.g. LACP)",
         self::TYPE_L3_LAG        => "L3-LAG",
+    ];
+
+    /**
+     * REACH classification — orthogonal to the link-technology `$TYPES` above.
+     * Describes the physical reach of this CORE link so the pseudowire
+     * pricing/capacity stack can classify segments correctly.
+     */
+    public const REACH_LOCAL         = 'local';
+    public const REACH_METRO         = 'metro';
+    public const REACH_INTERCAPITAL  = 'intercapital';
+    public const REACH_INTERNATIONAL = 'international';
+
+    public static $REACH_TYPES = [
+        self::REACH_LOCAL         => 'Local (single fabric — not capacity-tracked)',
+        self::REACH_METRO         => 'Metro (same city)',
+        self::REACH_INTERCAPITAL  => 'Intercapital (between capitals)',
+        self::REACH_INTERNATIONAL => 'International (crosses country)',
     ];
 
     /**
@@ -174,6 +192,14 @@ class CoreBundle extends Model
     public function typeText(): string
     {
         return self::$TYPES[ $this->type ] ?? 'Unknown';
+    }
+
+    /**
+     * Human-readable reach classification (e.g. "Metro (same city)").
+     */
+    public function reachTypeText(): string
+    {
+        return self::$REACH_TYPES[ $this->reach_type ] ?? 'Unclassified';
     }
 
     /**
