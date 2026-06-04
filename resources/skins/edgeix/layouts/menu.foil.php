@@ -420,11 +420,46 @@
                                 Approval Queue
                             </a>
                         </li>
-                        <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/circuits' ) ?: 'active' ?>">
+                        <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/circuits*' ) ?: 'active' ?>">
                             <a href="<?= route( 'pw-admin@list' ) ?>" class="nav-link">
                                 All Circuits
                             </a>
                         </li>
+                        <?php if( Route::has( 'pw-admin@capacity' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/capacity*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@capacity' ) ?>" class="nav-link">
+                                    Capacity Dashboard
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if( Route::has( 'pw-admin@segments' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/settings/segments*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@segments' ) ?>" class="nav-link">
+                                    Network Segments
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if( Route::has( 'pw-admin@overrides' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/settings/overrides*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@overrides' ) ?>" class="nav-link">
+                                    Pair Overrides
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if( Route::has( 'pw-admin@settings-pricing' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/settings/pricing*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@settings-pricing' ) ?>" class="nav-link">
+                                    Pricing
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if( Route::has( 'pw-admin@opt-ins' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/opt-ins*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@opt-ins' ) ?>" class="nav-link">
+                                    Opt-Ins
+                                </a>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                 <?php endif; ?>
             <?php endif; ?>
