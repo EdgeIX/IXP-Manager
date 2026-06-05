@@ -460,6 +460,13 @@
                                 </a>
                             </li>
                         <?php endif; ?>
+                        <?php if( Route::has( 'pw-admin@extended-peering' ) ): ?>
+                            <li class="nav-sub-menu-item <?= !request()->is( 'pseudowire/admin/extended-peering*' ) ?: 'active' ?>">
+                                <a href="<?= route( 'pw-admin@extended-peering' ) ?>" class="nav-link">
+                                    Extended Peering
+                                </a>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                 <?php endif; ?>
             <?php endif; ?>
