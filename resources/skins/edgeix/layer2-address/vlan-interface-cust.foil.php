@@ -129,7 +129,9 @@
                                     <?= $l2a->macFormatted( ':' ) ?>
                                 </td>
                                 <td>
-                                    <?= $l2a->created_at ?>
+                                    <?php if( $l2a->created_at ): ?>
+                                        <span class="local-datetime" data-utc="<?= $l2a->created_at->toIso8601String() ?>"><?= $l2a->created_at ?> UTC</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if( in_array( $macColon, $syncedMacs, true ) ): ?>
@@ -192,6 +194,19 @@
     <?= $t->insert( 'layer2-address/js/clipboard' ); ?>
     <?= $t->insert( 'layer2-address/js/vlan-interface' ); ?>
     <script>
+    // Render UTC-stored timestamps in the logged-in user's own local timezone
+    // (the browser's tz). Server outputs ISO-8601 UTC in data-utc; we reformat
+    // in place. Falls back to the server-rendered "… UTC" text if JS is off.
+    document.querySelectorAll( '.local-datetime[data-utc]' ).forEach( function( el ) {
+        var d = new Date( el.getAttribute( 'data-utc' ) );
+        if ( !isNaN( d.getTime() ) ) {
+            el.textContent = d.toLocaleString( undefined, {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+            } );
+        }
+    } );
+
     $( '#btn-mac-sync' ).on( 'click', function() {
         var btn = $( this );
         if ( btn.is( ':disabled' ) ) return;
