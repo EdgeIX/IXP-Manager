@@ -223,9 +223,20 @@
                     $( '#mac-sync-err' ).text( res.error || 'Sync could not be queued.' ).show();
                 }
             },
-            error: function() {
+            error: function( xhr ) {
                 $( '#mac-sync-spinner' ).hide();
                 $( '#mac-sync-result' ).show();
+                // Actually notify staff — the message below promises it. Best-effort,
+                // fire-and-forget; the backend logs + emails MAC_SYNC_NOTIFY_EMAIL.
+                $.ajax( {
+                    url:    '<?= route( 'mac-sync@customer-report-failure' ) ?>',
+                    method: 'POST',
+                    data:   {
+                        _token: btn.data( 'token' ),
+                        vli_id: btn.data( 'vli-id' ),
+                        status: xhr ? xhr.status : 0
+                    }
+                } );
                 $( '#mac-sync-err' )
                     .text( 'Sync could not be completed — EdgeIX staff have been notified and will follow up.' )
                     .show();
