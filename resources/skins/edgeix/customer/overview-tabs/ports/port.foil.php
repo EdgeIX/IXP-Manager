@@ -162,7 +162,23 @@
                             </tr>
                         </table>
                     <?php else: ?>
-                        <h6 class="mt-2"><?= $t->ee( $vli->vlan->name ) ?>:</h6>
+                        <?php
+                            // Extended peering = peering on an IX whose Infrastructure
+                            // differs from this port's Infrastructure. The customer is
+                            // riding the inter-PoP CORE link to peer at a remote IX.
+                            $portInfraId   = $firstPi?->switchPort?->switcher?->infrastructure;
+                            $vlanInfraId   = $vli->vlan?->infrastructureid;
+                            $isExtended    = $portInfraId && $vlanInfraId && $portInfraId !== $vlanInfraId;
+                            $extendedTitle = 'Extended peering: this VLAN belongs to a different IX than your port location. Traffic rides the inter-PoP CORE link.';
+                        ?>
+                        <h6 class="mt-2">
+                            <?= $t->ee( $vli->vlan->name ) ?>:
+                            <?php if( $isExtended ): ?>
+                                <span class="badge badge-info ml-1" title="<?= $extendedTitle ?>">
+                                    <i class="fa fa-broadcast-tower"></i> Extended
+                                </span>
+                            <?php endif; ?>
+                        </h6>
                         <table class="table table-sm table-borderless table-striped mb-2">
                             <?php if( $vli->ipv6enabled && $v6 = $vli->ipv6address ): ?>
                                 <tr>
