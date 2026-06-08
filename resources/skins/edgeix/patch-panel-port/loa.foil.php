@@ -36,7 +36,7 @@ $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
 <hr>
 
 <p>
-    EdgeIX hereby authorises <?= $ppp->customer->name ?>
+    EdgeIX hereby authorises <?= $t->ee( $ppp->customer?->name ?? '' ) ?>
     and / or its agents to order a connection to the following demarcation point:
 </p>
 
@@ -45,7 +45,7 @@ $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
         <tr>
             <td width="10%"></td>
             <td><b>Facility:</b></td>
-            <td><?= $t->ee( $ppp->patchPanel->cabinet->location->name ) ?></td>
+            <td><?= $t->ee( $ppp->patchPanel->cabinet?->location?->name ?? '' ) ?></td>
         </tr>
         <tr>
             <td></td>
@@ -73,77 +73,84 @@ $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
             <td></td>
             <td><b>Provider:</b></td>
             <td>
-                <?php if ($ppp->patchPanel->cabinet->type): ?>
+                <?php if ($ppp->patchPanel->cabinet?->type): ?>
                     <?= $t->ee( $ppp->patchPanel->cabinet->type ) ?> (Cage Provider)
                 <?php endif; ?>
             </td>
         </tr>
+        <?php
+        // Peering details only exist once the cross-connect is wired to the
+        // peering fabric (a switch port with an IXP VLAN interface). For a bare
+        // x-connect — not connected yet, or connecting to something other than
+        // the peering switch — there is no switch port / IP / AS data, so this
+        // whole section is omitted rather than fataling on a null dereference.
+        $vi = null;
+        if( $ppp->switchPort && $ppp->customer ) {
+            foreach( $ppp->customer->virtualInterfaces as $cvi ) {
+                if( $ppp->switchPort->id === $cvi->switchPort()?->id ) {
+                    $vi = $cvi;
+                    break;
+                }
+            }
+        }
+
+        $ips = [];
+        if( $vi && $vlis = $vi->vlanInterfaces ) {
+            $netmask = [];
+            foreach( $vlis as $vli ) {
+                if( $vli->vlan?->private ) {
+                    continue;
+                }
+                foreach( $vli->vlan?->networksInfo ?? [] as $ni ) {
+                    $netmask[ $ni->protocol ] = $ni->masklen;
+                }
+                if( $vli->ipv4enabled && $vli->ipv4address ) {
+                    $ips[] = ['type' => 'IPv4', 'addr' => $vli->ipv4address->address, 'mask' => $netmask[4] ?? '?'];
+                }
+                if( $vli->ipv6enabled && $vli->ipv6address ) {
+                    $ips[] = ['type' => 'IPv6', 'addr' => $vli->ipv6address->address, 'mask' => $netmask[6] ?? '?'];
+                }
+            }
+        }
+
+        $routers = [];
+        if( $vi && $vlis = $vi->vlanInterfaces ) {
+            foreach( $vlis as $vli ) {
+                if( $vli->vlan?->private ) {
+                    continue;
+                }
+                foreach( $vli->vlan?->routers ?? [] as $router ) {
+                    if( $router->type !== Router::TYPE_ROUTE_SERVER ) {
+                        continue;
+                    }
+                    $routers[ $router->asn ][ $router->router_id ] ??= [];
+                    $routers[ $router->asn ][ $router->router_id ][] = $router->peering_ip;
+                }
+            }
+        }
+        $routeServerNum = 0;
+        ?>
+        <?php if( $ppp->switchPort ): ?>
         <tr>
             <td></td>
             <td><b>Peering Details:</b></td>
             <td>
-                <strong>AS<?= $ppp->customer->autsys ?><br/></strong>
-                <?php
-                $vi = null;
-                 foreach ($ppp->customer->virtualInterfaces as $cvi) {
-                    if ($ppp->switchPort->id == $cvi->switchPort()->id) {
-                        $vi = $cvi;
-                        break;
-                    }
-                }
-                $ips = [];
-                if ($vi && $vlis = $vi->vlanInterfaces) {
-                    $netmask = [];
-                    foreach( $vlis as $vli ) {
-                        if ($vli->vlan->private) {
-                            continue;
-                        }
-                        foreach ($vli->vlan->networksInfo as $ni) {
-                            $netmask[$ni->protocol] = $ni->masklen;
-                        }
-
-                        if( $vli->ipv4enabled && $vli->ipv4address ) {
-                            $ips[] = ['type' => 'IPv4', 'addr' => $vli->ipv4address->address, 'mask' => $netmask[4] ?? '?'];
-                        }
-                        if( $vli->ipv6enabled && $vli->ipv6address ) {
-                            $ips[] = ['type' => 'IPv6', 'addr' => $vli->ipv6address->address, 'mask' => $netmask[6] ?? '?'];
-                        }
-                    }
-                }
-                ?>
+                <?php if( $ppp->customer?->autsys ): ?>
+                    <strong>AS<?= $t->ee( $ppp->customer->autsys ) ?><br/></strong>
+                <?php endif; ?>
                 <?php foreach( $ips as $ip ): ?>
                     <?= $t->ee( "{$ip['type']}: {$ip['addr']}/{$ip['mask']}" ) ?><br/>
                 <?php endforeach; ?>
                 <br/>
-
-                <?php
-                $routers = [];
-                if ($vi && $vlis = $vi->vlanInterfaces) {
-                    foreach( $vlis as $vli ) {
-                        if ($vli->vlan->private) {
-                            continue;
-                        }
-                        foreach ($vli->vlan->routers as $router) {
-                            if (!$router->type == Router::TYPE_ROUTE_SERVER) {
-                                continue;
-                            }
-                            $routers[$router->asn][$router->router_id] ??= [];
-
-                            $routers[$router->asn][$router->router_id][] = $router->peering_ip;
-                        }
-                    }
-                }
-                $routeServerNum = 0;
-                ?>
                 <?php foreach( $routers as $asn => $asnRouters ): ?>
                 <strong>AS<?= $t->ee( $asn ) ?></strong><br/>
                     <?php foreach( $asnRouters as $asnRouter ): ?>
                         Route Server <?= ++$routeServerNum ?>: <?= implode(' / ', $asnRouter) ?><br/>
                     <?php endforeach; ?>
                 <?php endforeach; ?>
-
             </td>
         </tr>
+        <?php endif; ?>
     </table>
     <br>
 
@@ -152,11 +159,13 @@ $ppp = $t->ppp; /** @var $ppp \IXP\Models\PatchPanelPort*/
 <p>
     Should you have any questions or concerns regarding this Letter of Authority, please contact our NOC
     via the details found at <a href="https://www.edgeix.net">https://www.edgeix.net</a>.
+    <?php if( $ppp->loa_code ): ?>
     <em>We generate our LoA's via our provisioning system. Each LoA can be individually
     authenticated by clicking on the following unique link:</em><br><br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     &nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="<?= route ( 'patch-panel-port-loa@verify' , [ 'ppp' => $ppp->id , 'code' => $ppp->loa_code ] ) ?>">
-       <?= route ( 'patch-panel-port-loa@verify' , [ 'ppp' => $ppp->id , 'code' => $ppp->loa_code ] ) ?>
+       <?= route ( 'patch-panel-port-loa@verify' , [ 'ppp' => $ppp->id , 'code' => $ppp->loa_code ] ) ?></a>
+    <?php endif; ?>
 </p>
 
 
