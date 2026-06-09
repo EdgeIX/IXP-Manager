@@ -284,6 +284,48 @@
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <?php
+                    // Per-VLI sub-interface graphs for EXTENDED VLIs only.
+                    // Lets the customer see "how much of my 1G extended commit am I using?"
+                    // alongside the parent port's total traffic. Same data is useful for
+                    // admin reconciliation when a port carries both local and extended peering.
+                    $extendedVlis = [];
+                    if ( !empty( $vlis ) ) {
+                        $portInfraForGraphs = $firstPi?->switchPort?->switcher?->infrastructure;
+                        foreach( $vlis as $vliCheck ) {
+                            $vlanInfraForGraphs = $vliCheck->vlan?->infrastructureid;
+                            if ( $portInfraForGraphs && $vlanInfraForGraphs && $portInfraForGraphs !== $vlanInfraForGraphs ) {
+                                $extendedVlis[] = $vliCheck;
+                            }
+                        }
+                    }
+                ?>
+                <?php if( !empty( $extendedVlis ) ): ?>
+                    <div class="row mt-2">
+                        <?php foreach( $extendedVlis as $extVli ): ?>
+                            <div class="col-lg-6 mb-3">
+                                <div class="card border">
+                                    <div class="card-header d-flex py-2 bg-white">
+                                        <h6 class="mb-0 mr-auto">
+                                            <i class="fa fa-broadcast-tower text-info"></i>
+                                            <?= $t->ee( $extVli->vlan->name ) ?> sub-interface
+                                            <span class="badge badge-info ml-1">Extended</span>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <?php
+                                            $vliId      = $extVli->id;
+                                            $vliLabel   = 'Sub-interface traffic for ' . $extVli->vlan->name;
+                                            $trafficUrl = route( 'pw@vli-traffic', [ 'vliId' => $extVli->id ] );
+                                            include base_path( 'vendor/edgeix/ixpm-pseudowire/resources/views/partials/vli-traffic-graph.foil.php' );
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
