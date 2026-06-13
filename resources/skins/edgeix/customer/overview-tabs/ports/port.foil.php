@@ -20,7 +20,12 @@
             <h5 class="mb-0 mr-auto">
                 Connection <?= $t->nbVi ?>
                 <?php if( $t->vi->service_reference ): ?>
-                    <span class="badge badge-secondary ml-2" title="Service Reference"><?= $t->ee( $t->vi->service_reference ) ?></span>
+                    <span class="badge badge-primary ml-2 text-monospace svc-ref"
+                          title="Service Reference — click to copy. Use on support tickets and invoices."
+                          data-svc-ref="<?= $t->ee( $t->vi->service_reference ) ?>"
+                          style="cursor:pointer; font-size:0.85rem; letter-spacing:0.5px;">
+                        <i class="fa fa-hashtag"></i> <?= $t->ee( $t->vi->service_reference ) ?>
+                    </span>
                 <?php endif; ?>
                 <small class="text-muted">
                     <?php if( $t->vi->typePeering() && $countPis ): ?>
@@ -286,11 +291,15 @@
                 </div>
 
                 <?php
-                    // Per-port sub-interface breakdown: one stacked area chart
-                    // per physical port, showing all VLIs (local + extended).
-                    // Only render when the port carries an extended VLI OR has
-                    // multiple VLIs — single-VLI parent ports get nothing new
-                    // (the port graph already tells the story).
+                    // Per-VLI sub-interface graphs: render one graph per VlanInterface
+                    // on this VI (peering / extended). Same look as the parent port
+                    // graph but with a teal/orange palette to distinguish at a glance.
+                    //
+                    // Pseudowire sub-interfaces don't have a VlanInterface so they
+                    // are automatically excluded — they live on their own PW page.
+                    //
+                    // Skip rendering entirely if there's only one VLI AND it's local
+                    // (not extended) — the parent port graph already tells the story.
                     $renderSubBreakdown = false;
                     if ( !empty( $vlis ) && count( $vlis ) > 0 ) {
                         $portInfraForGraphs = $firstPi?->switchPort?->switcher?->infrastructure;
@@ -307,21 +316,47 @@
                 ?>
                 <?php if( $renderSubBreakdown ): ?>
                     <div class="row mt-2">
-                        <?php foreach( $pis as $pi ): ?>
+                        <div class="col-12 mb-2">
+                            <h6 class="text-muted">
+                                <i class="fa fa-layer-group text-info"></i>
+                                Sub-interface breakdown
+                                <small class="text-muted">— peering &amp; extended VLANs on this port</small>
+                            </h6>
+                        </div>
+                        <?php
+                            // Sub-int graphs use the partial's default green/blue.
+                            // That already contrasts with the parent port graph's
+                            // scheme, so no override needed.
+                            $portInfraForBreakdown = $firstPi?->switchPort?->switcher?->infrastructure;
+                        ?>
+                        <?php foreach( $vlis as $subVli ): ?>
+                            <?php
+                                $isExtended = $portInfraForBreakdown
+                                    && $subVli->vlan?->infrastructureid
+                                    && $portInfraForBreakdown !== $subVli->vlan->infrastructureid;
+                                $vlanName   = $subVli->vlan?->name ?? ( 'VLAN ' . ( $subVli->vlan?->number ?? '?' ) );
+                                $vlanTag    = $subVli->vlan?->number;
+                            ?>
                             <div class="col-12 mb-3">
                                 <div class="card border">
-                                    <div class="card-header d-flex py-2 bg-white">
+                                    <div class="card-header d-flex align-items-center py-2 bg-white">
                                         <h6 class="mb-0 mr-auto">
-                                            <i class="fa fa-layer-group text-info"></i>
-                                            Sub-interface breakdown — <?= $t->ee( $pi->switchPort->switcher->name ) ?> / <?= $t->ee( $pi->switchPort->name ) ?>
+                                            <i class="fa fa-tag text-muted"></i>
+                                            <?= $t->ee( $vlanName ) ?>
+                                            <?php if( $vlanTag ): ?>
+                                                <small class="text-muted text-monospace">.<?= $vlanTag ?></small>
+                                            <?php endif; ?>
+                                            <?php if( $isExtended ): ?>
+                                                <span class="badge badge-info ml-2" title="Extended peering — VLAN is at a different IX than this port. Traffic rides the inter-PoP core link.">Extended</span>
+                                            <?php endif; ?>
                                         </h6>
                                     </div>
                                     <div class="card-body py-2">
                                         <?php
-                                            $piId       = $pi->id;
-                                            $portLabel  = $pi->switchPort->switcher->name . ' / ' . $pi->switchPort->name;
-                                            $trafficUrl = route( 'pw@port-sub-traffic', [ 'piId' => $pi->id ] );
-                                            include base_path( 'vendor/edgeix/ixpm-pseudowire/resources/views/partials/port-sub-traffic-graph.foil.php' );
+                                            $vliId      = $subVli->id;
+                                            $vliLabel   = $vlanName . ( $vlanTag ? ' (VLAN ' . $vlanTag . ')' : '' );
+                                            $trafficUrl = route( 'pw@vli-traffic', [ 'vliId' => $subVli->id ] );
+                                            include base_path( 'vendor/edgeix/ixpm-pseudowire/resources/views/partials/vli-traffic-graph.foil.php' );
                                         ?>
                                     </div>
                                 </div>
@@ -333,3 +368,27 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    // Idempotent: this template renders once per VirtualInterface, so this
+    // block may run several times per page. Register the click handler once
+    // via event delegation on document.
+    if (window._svcRefCopyBound) return;
+    window._svcRefCopyBound = true;
+
+    document.addEventListener('click', function(e) {
+        var el = e.target.closest('.svc-ref');
+        if (!el) return;
+        var ref = el.getAttribute('data-svc-ref');
+        if (!ref) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(ref).then(function() {
+                var original = el.innerHTML;
+                el.innerHTML = '<i class="fa fa-check"></i> copied';
+                setTimeout(function() { el.innerHTML = original; }, 1200);
+            });
+        }
+    });
+})();
+</script>
