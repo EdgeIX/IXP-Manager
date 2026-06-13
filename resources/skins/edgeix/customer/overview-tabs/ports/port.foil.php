@@ -277,7 +277,12 @@
                         <div class="<?= $isLAG ? 'col-lg-6' : 'col-12' ?> mb-3">
                             <div class="card border">
                                 <div class="card-header d-flex py-2 bg-white">
-                                    <h6 class="mb-0 mr-auto"><?= $t->ee( $pi->switchPort->switcher->name ) ?> / <?= $t->ee( $pi->switchPort->name ) ?></h6>
+                                    <h6 class="mb-0 mr-auto">
+                                        <i class="fa fa-plug text-muted"></i>
+                                        Physical port —
+                                        <?= $t->ee( $pi->switchPort->switcher->name ) ?> / <?= $t->ee( $pi->switchPort->name ) ?>
+                                        <small class="text-muted">total traffic across all VLANs &amp; services</small>
+                                    </h6>
                                     <a class="btn btn-white btn-sm py-0" href="<?= route( "statistics@member-drilldown", [ 'type' => 'pi', 'typeid' => $pi->id ] ) ?>">
                                         <i class="fa fa-search"></i>
                                     </a>
