@@ -14,7 +14,7 @@
 return [
 
     'terms' => [
-        'privacy_url' => env( 'SIGNUP_TERMS_PRIVACY_URL', 'https://www.edgeix.com.au/privacy' ),
+        'privacy_url' => env( 'SIGNUP_TERMS_PRIVACY_URL', 'https://edgeix.net/privacy/' ),
         'version'     => env( 'SIGNUP_TERMS_VERSION',     '2026-07-01'                        ),
     ],
 
