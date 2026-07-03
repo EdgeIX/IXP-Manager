@@ -9,8 +9,6 @@ $lastName  = $t->lastName  ?? '';
 $email     = $t->email     ?? '';
 
 $privacyUrl = config( 'signup.terms.privacy_url' );
-$termsUrl   = config( 'signup.terms.terms_url'   );
-$aupUrl     = config( 'signup.terms.aup_url' ) ?: route( 'pw@aup' );
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>
@@ -96,17 +94,10 @@ $aupUrl     = config( 'signup.terms.aup_url' ) ?: route( 'pw@aup' );
                             <span class="tw-text-sm">
                                 I agree to the
                                 <?php if( $privacyUrl ): ?>
-                                    <a href="<?= $t->ee( $privacyUrl ) ?>" target="_blank" rel="noopener">Privacy Policy</a>,
+                                    <a href="<?= $t->ee( $privacyUrl ) ?>" target="_blank" rel="noopener">Privacy Policy</a>.
                                 <?php else: ?>
-                                    Privacy Policy,
+                                    Privacy Policy.
                                 <?php endif; ?>
-                                <?php if( $termsUrl ): ?>
-                                    <a href="<?= $t->ee( $termsUrl ) ?>" target="_blank" rel="noopener">Site Terms</a>
-                                <?php else: ?>
-                                    Site Terms
-                                <?php endif; ?>
-                                and
-                                <a href="<?= $t->ee( $aupUrl ) ?>" target="_blank" rel="noopener">Acceptable Use Policy</a>.
                             </span>
                         </label>
                         <?php foreach( $t->errors->get( 'consent' ) as $err ): ?>

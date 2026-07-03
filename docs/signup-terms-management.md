@@ -1,20 +1,21 @@
 # Managing Signup Terms & Consent
 
-The public signup form at `/signup` shows a consent checkbox with links to your
-Privacy Policy, Site Terms and Acceptable Use Policy. This page explains how to
-manage those links and how consent is tracked over time.
+The public signup form at `/signup` shows a consent checkbox with a link to your
+Privacy Policy. This page explains how to manage that link and how consent is
+tracked over time.
 
-## Where to change the URLs
+(Other legal terms like the MSA are dealt with separately at service-order time
+— see Phase 2 in the project plan. Signup only collects Privacy Policy consent.)
+
+## Where to change the URL
 
 Log in as a superuser and go to **Admin → Settings → Signup Terms**.
 
-Four fields are exposed:
+Two fields are exposed:
 
 | Field | Env var | Notes |
 |---|---|---|
-| Privacy Policy URL | `SIGNUP_TERMS_PRIVACY_URL` | Shown as the "Privacy Policy" link. |
-| Site Terms URL | `SIGNUP_TERMS_SITE_URL` | Shown as the "Site Terms" link. |
-| Acceptable Use Policy URL | `SIGNUP_TERMS_AUP_URL` | Optional. If blank, falls back to the built-in AUP page at `/aup`. |
+| Privacy Policy URL | `SIGNUP_TERMS_PRIVACY_URL` | Shown as the "Privacy Policy" link on the signup form. |
 | Terms Version | `SIGNUP_TERMS_VERSION` | Identifier stamped on each customer at consent. See below. |
 
 Save the form — IXP-Manager rewrites `.env` and clears the config cache. Changes
@@ -22,13 +23,13 @@ are live immediately, no restart required.
 
 ## The terms version — why it matters
 
-Every time a customer accepts the T&Cs (via signup, or later at MSA acceptance
-in Phase 2), IXP-Manager stamps the current `SIGNUP_TERMS_VERSION` on their
-`cust.terms_version_accepted` column.
+Every time a customer accepts the privacy policy (via signup, or later at MSA
+acceptance in Phase 2), IXP-Manager stamps the current `SIGNUP_TERMS_VERSION`
+on their `cust.terms_version_accepted` column.
 
-When you make a substantive change to the linked documents:
+When you make a substantive change to the privacy policy:
 
-1. Update the linked page (marketing site, hosted PDF, whatever).
+1. Update the linked page.
 2. Bump `SIGNUP_TERMS_VERSION` (e.g. `2026-07-01` → `2026-09-15`).
 
 From that point on:
@@ -38,9 +39,9 @@ From that point on:
   prompted to re-consent at their next MSA gate or order flow (Phase 2 wires
   this in — Phase 1 just captures the stamp).
 
-What counts as "substantive": material changes to rights or obligations
-(e.g. new data handling, changed liability, added terms). Cosmetic edits and
-typo fixes don't need a version bump.
+What counts as "substantive": material changes to how customer data is
+collected, used or shared. Cosmetic edits and typo fixes don't need a version
+bump.
 
 ## Audit trail — proving who agreed to what and when
 
@@ -73,16 +74,18 @@ up in database logs.
 - `config/ixp_fe_settings.php` (panel `signup_terms`) — the admin UI field
   definitions.
 - `resources/skins/edgeix/signup/create.foil.php` — the signup form, which
-  pulls URLs from `config('signup.terms.*')`.
-- `app/Http/Controllers/EdgeIX/SignupController.php` — stamps
-  `config('signup.terms.version')` onto the customer at signup.
+  pulls the Privacy Policy URL from `config('signup.terms.privacy_url')`.
+- `resources/skins/edgeix/signup/pick-asn.foil.php` — the OAuth-path
+  confirmation screen; same consent block.
+- `app/Services/EdgeIX/CustomerCreatorService.php` — stamps
+  `config('signup.terms.version')` onto the customer at signup (both paths).
 
 ## PeeringDB OAuth signup path
 
 When `AUTH_PEERINGDB_ENABLED=true` in `.env` (see the "Enable PeeringDB OAuth"
 section below), an additional "Sign up with PeeringDB" button appears on the
-signup form. It uses the same terms URLs and version stamping as the manual
-form — the T&Cs consent checkbox is preserved on the OAuth confirmation page,
+signup form. It uses the same Privacy Policy URL and version stamping as the
+manual form — the consent checkbox is preserved on the OAuth confirmation page,
 so version stamping and audit work identically for both paths.
 
 ### Enable PeeringDB OAuth

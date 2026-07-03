@@ -214,7 +214,7 @@ class SignupOAuthController extends Controller
             'asn'     => 'required|integer|min:1',
             'consent' => 'accepted',
         ], [
-            'consent.accepted' => 'You must agree to the Privacy Policy, Site Terms and Acceptable Use Policy to continue.',
+            'consent.accepted' => 'You must agree to the Privacy Policy to continue.',
         ] );
 
         $asn = (int) $r->input( 'asn' );

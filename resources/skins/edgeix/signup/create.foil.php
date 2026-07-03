@@ -96,11 +96,8 @@ $this->layout( 'layouts/ixpv4' );
                     </div>
 
                     <?php
-                    // T&C URLs come from config (env-driven, editable via /admin/settings).
-                    // AUP falls back to the built-in AUP page if not configured.
+                    // Privacy Policy URL comes from config (env-driven, editable via /admin/settings).
                     $privacyUrl = config( 'signup.terms.privacy_url' );
-                    $termsUrl   = config( 'signup.terms.terms_url'   );
-                    $aupUrl     = config( 'signup.terms.aup_url' ) ?: route( 'pw@aup' );
                     ?>
                     <div class="tw-mb-6">
                         <label class="tw-block tw-text-grey-dark">
@@ -109,17 +106,10 @@ $this->layout( 'layouts/ixpv4' );
                             <span class="tw-text-sm">
                                 I agree to the
                                 <?php if( $privacyUrl ): ?>
-                                    <a href="<?= $t->ee( $privacyUrl ) ?>" target="_blank" rel="noopener">Privacy Policy</a>,
+                                    <a href="<?= $t->ee( $privacyUrl ) ?>" target="_blank" rel="noopener">Privacy Policy</a>.
                                 <?php else: ?>
-                                    Privacy Policy,
+                                    Privacy Policy.
                                 <?php endif; ?>
-                                <?php if( $termsUrl ): ?>
-                                    <a href="<?= $t->ee( $termsUrl ) ?>" target="_blank" rel="noopener">Site Terms</a>
-                                <?php else: ?>
-                                    Site Terms
-                                <?php endif; ?>
-                                and
-                                <a href="<?= $t->ee( $aupUrl ) ?>" target="_blank" rel="noopener">Acceptable Use Policy</a>.
                             </span>
                         </label>
                         <?php foreach( $t->errors->get( 'consent' ) as $err ): ?>

@@ -41,7 +41,7 @@ class SignupRequest extends FormRequest
     {
         return [
             'email.unique'      => 'That email address is already registered. Please log in or use a different email.',
-            'consent.accepted'  => 'You must agree to the Privacy Policy, Site Terms and Acceptable Use Policy to continue.',
+            'consent.accepted'  => 'You must agree to the Privacy Policy to continue.',
             'asn.max'           => 'ASN must be a valid 32-bit AS number.',
         ];
     }
