@@ -181,9 +181,18 @@ if( !config( 'ixp_fe.frontend.disabled.docstore' ) ) {
 ///
 /// Signup Form
 ///
-Route::group( [ 'namespace' => 'Signup' ], function() {
-    Route::get( '/signup',          'SignupController@create'   )->name('signup@create' );
-    Route::post('/signup/store',    'SignupController@store'    )->name('signup@store'  );
+// EdgeIX minimal signup — replaces upstream Signup\SignupController.
+// See app/Http/Controllers/EdgeIX/SignupController.php for the design.
+Route::group( [ 'namespace' => 'EdgeIX' ], function() {
+    Route::get(  '/signup',         'SignupController@create' )->name( 'signup@create' );
+    Route::post( '/signup',         'SignupController@store'  )->name( 'signup@store'  );
+    Route::get(  '/signup/thanks',  'SignupController@thanks' )->name( 'signup@thanks' );
+
+    // PeeringDB OAuth signup path — companion to LoginController's login flow.
+    // Only surfaced in the UI when AUTH_PEERINGDB_ENABLED=true.
+    Route::get(  '/signup/peeringdb',          'SignupOAuthController@redirect' )->name( 'signup@peeringdb.redirect' );
+    Route::get(  '/signup/peeringdb/callback', 'SignupOAuthController@callback' )->name( 'signup@peeringdb.callback' );
+    Route::post( '/signup/peeringdb/confirm',  'SignupOAuthController@confirm'  )->name( 'signup@peeringdb.confirm'  );
 } );
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

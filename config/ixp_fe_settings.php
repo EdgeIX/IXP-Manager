@@ -863,6 +863,68 @@ return [
 
         ],
 
+        /*
+         * EdgeIX signup form — terms & conditions URLs shown on /signup, and a
+         * terms-version identifier stamped on the customer at consent time.
+         *
+         * Bump SIGNUP_TERMS_VERSION whenever the linked terms documents change
+         * substantively — that forces re-consent at the next MSA/order gate.
+         */
+        'signup_terms' => [
+            'title'       => 'Signup Terms',
+            'description' => 'URLs displayed next to the consent checkbox on the public /signup form,
+                                    plus a terms-version identifier stamped on each customer at consent time.
+                                    Update the version whenever the linked documents change substantively —
+                                    this drives re-consent prompts at MSA / order-service gates.',
+
+            'fields' => [
+
+                'privacy_url'  => [
+                    'config_key' => 'signup.terms.privacy_url',
+                    'dotenv_key' => 'SIGNUP_TERMS_PRIVACY_URL',
+                    'type'       => 'text',
+                    'rules'      => 'nullable|url|max:255',
+                    'name'       => 'Privacy Policy URL',
+                    'docs_url'   => null,
+                    'help'       => 'URL to your Privacy Policy — shown as a link on the signup form.',
+                ],
+
+                'terms_url'    => [
+                    'config_key' => 'signup.terms.terms_url',
+                    'dotenv_key' => 'SIGNUP_TERMS_SITE_URL',
+                    'type'       => 'text',
+                    'rules'      => 'nullable|url|max:255',
+                    'name'       => 'Site Terms URL',
+                    'docs_url'   => null,
+                    'help'       => 'URL to your Site Terms / general Terms & Conditions — shown as a link on the signup form.',
+                ],
+
+                'aup_url'      => [
+                    'config_key' => 'signup.terms.aup_url',
+                    'dotenv_key' => 'SIGNUP_TERMS_AUP_URL',
+                    'type'       => 'text',
+                    'rules'      => 'nullable|url|max:255',
+                    'name'       => 'Acceptable Use Policy URL',
+                    'docs_url'   => null,
+                    'help'       => 'URL to your Acceptable Use Policy. Leave blank to fall back to the built-in AUP page.',
+                ],
+
+                'version'      => [
+                    'config_key' => 'signup.terms.version',
+                    'dotenv_key' => 'SIGNUP_TERMS_VERSION',
+                    'type'       => 'text',
+                    'rules'      => 'nullable|max:32',
+                    'name'       => 'Terms Version',
+                    'docs_url'   => null,
+                    'help'       => 'Version identifier for the current terms (e.g. "2026-07-01"). Stamped on each
+                                          customer at signup / MSA acceptance so you can prove which version they agreed to.
+                                          Bump this whenever the linked documents change substantively — Phase 2 uses
+                                          this value to prompt re-consent at the next order.',
+                ],
+
+            ],
+        ],
+
     ],
 
 
