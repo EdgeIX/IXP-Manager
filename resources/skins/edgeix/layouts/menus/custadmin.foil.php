@@ -218,6 +218,13 @@ use PragmaRX\Google2FALaravel\Support\Authenticator as GoogleAuthenticator;
         </ul>
 
         <ul class="navbar-nav mt-lg-0">
+            <li class="nav-item d-flex align-items-center tw-mr-3">
+                <a id="order-port-cta"
+                   class="tw-bg-orange-500 hover:tw-bg-orange-600 tw-text-white tw-font-semibold tw-px-4 tw-py-1 tw-rounded tw-shadow tw-no-underline <?= request()->is( 'order', 'order/*' ) ? 'tw-ring-2 tw-ring-orange-300' : '' ?>"
+                   href="<?= route( 'order@index' ) ?>">
+                    <i class="fa fa-plus-circle tw-mr-1"></i> Order Port
+                </a>
+            </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle <?= !request()->is( 'profile', 'api-key/list' ) ?: 'active' ?>" href="#" id="my-account" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     My Account
