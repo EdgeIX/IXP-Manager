@@ -78,8 +78,17 @@ $isSuperUser = Auth::check() ? Auth::getUser()->isSuperUser() : false;
                 <?php foreach( IXP\Services\Grapher\Graph::PERIODS as $pvalue => $pname ): ?>
                     <div class="col-md-12 col-lg-6 mb-4">
                         <div class="card">
-                            <div class="card-header">
-                                <h3><?= IXP\Services\Grapher\Graph::resolvePeriod( $pvalue ) ?> Graph</h3>
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h3 class="mb-0"><?= IXP\Services\Grapher\Graph::resolvePeriod( $pvalue ) ?> Graph</h3>
+                                <a class="btn btn-outline-secondary btn-sm" title="Break this graph down by VLAN"
+                                   href="<?= route( 'statistics@p2p-per-vlan', [
+                                        'srcCust' => $t->srcCustomer->id,
+                                        'dstCust' => $t->dstCustomer->id,
+                                        'protocol' => $t->protocol,
+                                        'category' => $t->category,
+                                        'period' => $pvalue ] ) ?>">
+                                    <i class="fa fa-sitemap"></i> Per-VLAN
+                                </a>
                             </div>
                             <div class="card-body">
                                 <a href="<?= route( 'statistics@p2p-per-vlan', [
