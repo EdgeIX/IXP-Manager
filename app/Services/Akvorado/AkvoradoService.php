@@ -218,7 +218,21 @@ class AkvoradoService
 
         $responses = Http::pool( function ( $pool ) use ( $liveDescriptors, $url, $timeout, $authUser, $authPass ) {
             return array_map( function ( $desc ) use ( $pool, $url, $timeout, $authUser, $authPass ) {
-                $req = $pool->as( $desc['key'] )->timeout( $timeout );
+                // retry(2, 1500) — up to 2 retries with 1.5s between. Akvorado /
+                // ClickHouse can return HTTP 500 'Unable to query database' when
+                // the concurrent year-range wave overwhelms it; a second attempt
+                // after the wave has passed usually succeeds. throw:false lets
+                // us handle the final failure ourselves without an exception.
+                $req = $pool->as( $desc['key'] )
+                    ->timeout( $timeout )
+                    ->retry( 2, 1500, function ( $exception, $request ) {
+                        // Retry on connection errors and 5xx; don't retry 4xx
+                        // (a 400 is a filter bug — retrying won't help).
+                        return $exception instanceof \Illuminate\Http\Client\ConnectionException
+                            || ( method_exists( $exception, 'response' )
+                                 && $exception->response()
+                                 && $exception->response()->status() >= 500 );
+                    }, throw: false );
                 if( $authUser && $authPass ) {
                     $req = $req->withBasicAuth( $authUser, $authPass );
                 }
