@@ -123,6 +123,152 @@ class AkvoradoService
     }
 
     /**
+     * Execute multiple queryTimeSeries-style queries concurrently via Http::pool().
+     *
+     * Query descriptor shape:
+     *   [
+     *     'key'        => string,   // caller-supplied key for the return map
+     *     'filter'     => string,   // Akvorado filter expression
+     *     'period'     => string,   // Graph period constant
+     *     'units'      => string,   // e.g. 'l3bps'
+     *     'dimensions' => string[], // dimensions to group by (may be empty)
+     *     'limit'      => int,      // max rows returned (>= expected dimension count)
+     *   ]
+     *
+     * Return: results keyed by descriptor 'key'. Failed queries return [] for that key.
+     *
+     * Cache hits are served straight from the local file cache; only cache misses
+     * hit the network — and they go via one Http::pool() call so wall-clock is
+     * bounded by the slowest single query, not the sum.
+     *
+     * @param  array<int, array<string, mixed>> $descriptors
+     * @return array<string, array>
+     */
+    public function queryTimeSeriesParallel( array $descriptors ): array
+    {
+        if( empty( $descriptors ) ) {
+            return [];
+        }
+
+        $results = [];
+
+        // Build cache keys + payloads; separate hits from misses.
+        $liveDescriptors = [];
+        $now = new \DateTime( 'now', new \DateTimeZone( 'UTC' ) );
+
+        foreach( $descriptors as $desc ) {
+            $key      = $desc['key'];
+            $period   = $desc['period'] ?? Graph::PERIOD_DAY;
+            $timing   = self::PERIOD_MAP[ $period ] ?? self::PERIOD_MAP[ Graph::PERIOD_DAY ];
+            $filter   = $desc['filter'];
+            $units    = $desc['units'] ?? 'l3bps';
+            $dimensions = $desc['dimensions'] ?? [];
+            $limit    = $desc['limit'] ?? 5;
+
+            // 5-minute cache window, same shape as queryTimeSeries().
+            $cacheWindow = (int) floor( time() / 300 );
+            $cacheKey    = 'akvorado:' . md5( $filter . $period . $units . json_encode( $dimensions ) . $cacheWindow );
+
+            $cached = Cache::get( $cacheKey );
+            if( $cached !== null ) {
+                $results[ $key ] = $cached;
+                continue;
+            }
+
+            // Build the payload once here so pool callbacks stay simple.
+            $start = clone $now;
+            if( preg_match( '/^(\d+)([hd])$/', $timing['range'], $m ) ) {
+                $start->modify( $m[2] === 'h' ? "-{$m[1]} hours" : "-{$m[1]} days" );
+            }
+            $payload = [
+                'start'  => $start->format( 'c' ),
+                'end'    => $now->format( 'c' ),
+                'filter' => $filter,
+                'units'  => $units,
+                'points' => $timing['points'],
+                'limit'  => $limit,
+            ];
+            if( !empty( $dimensions ) ) {
+                $payload['dimensions'] = $dimensions;
+            }
+
+            $liveDescriptors[] = [
+                'key'      => $key,
+                'cacheKey' => $cacheKey,
+                'payload'  => $payload,
+                'filter'   => $filter,
+                'period'   => $period,
+            ];
+        }
+
+        if( empty( $liveDescriptors ) ) {
+            return $results;
+        }
+
+        Log::debug( sprintf( '[Akvorado] queryTimeSeriesParallel: %d live queries (%d cached)',
+            count( $liveDescriptors ), count( $results ) ) );
+
+        // Fire all live queries concurrently. Bump timeout above the sequential
+        // default because year-period queries can take 15-20s server-side, but
+        // in parallel wall-clock is just the slowest one.
+        $url        = "{$this->url}/api/v0/console/graph/line";
+        $timeout    = max( 30, $this->timeout );
+        $authUser   = $this->authUser;
+        $authPass   = $this->authPass;
+
+        $responses = Http::pool( function ( $pool ) use ( $liveDescriptors, $url, $timeout, $authUser, $authPass ) {
+            return array_map( function ( $desc ) use ( $pool, $url, $timeout, $authUser, $authPass ) {
+                $req = $pool->as( $desc['key'] )->timeout( $timeout );
+                if( $authUser && $authPass ) {
+                    $req = $req->withBasicAuth( $authUser, $authPass );
+                }
+                return $req->post( $url, $desc['payload'] );
+            }, $liveDescriptors );
+        } );
+
+        // Correlate responses back to descriptors and cache successful ones.
+        $descByKey = [];
+        foreach( $liveDescriptors as $desc ) {
+            $descByKey[ $desc['key'] ] = $desc;
+        }
+
+        foreach( $responses as $key => $resp ) {
+            $desc = $descByKey[ $key ] ?? null;
+            if( !$desc ) {
+                continue;
+            }
+
+            if( $resp instanceof \Throwable ) {
+                Log::warning( '[Akvorado] Pool request threw', [
+                    'key'    => $key,
+                    'filter' => $desc['filter'],
+                    'period' => $desc['period'],
+                    'error'  => $resp->getMessage(),
+                ] );
+                $results[ $key ] = [];
+                continue;
+            }
+
+            if( !$resp->successful() ) {
+                Log::warning( '[Akvorado] Pool query failed', [
+                    'key'    => $key,
+                    'period' => $desc['period'],
+                    'status' => $resp->status(),
+                    'body'   => substr( $resp->body(), 0, 500 ),
+                ] );
+                $results[ $key ] = [];
+                continue;
+            }
+
+            $data = $resp->json() ?? [];
+            Cache::put( $desc['cacheKey'], $data, 300 );
+            $results[ $key ] = $data;
+        }
+
+        return $results;
+    }
+
+    /**
      * Query Akvorado's graph/line API endpoint.
      *
      * @param  string $filter     Akvorado filter expression
@@ -446,37 +592,27 @@ class AkvoradoService
         string   $protocol = Graph::PROTOCOL_IPV4,
         string   $category = Graph::CATEGORY_BITS,
     ): array {
-        // PROTOCOL_ALL — the p2p-totals view's default. Akvorado only queries
-        // one EType at a time, so fan out to IPv4 + IPv6 and sum the resulting
-        // series. Empty series from either side (e.g. v6 not deployed) are
-        // handled naturally by the aggregation loop below.
-        if( $protocol === Graph::PROTOCOL_ALL ) {
-            return $this->sumSeriesByTimestamp( [
-                $this->multiP2pTraffic( $srcCust, $dstCust, $vlanId, $period, Graph::PROTOCOL_IPV4, $category ),
-                $this->multiP2pTraffic( $srcCust, $dstCust, $vlanId, $period, Graph::PROTOCOL_IPV6, $category ),
-            ] );
-        }
+        $protocols = ( $protocol === Graph::PROTOCOL_ALL )
+            ? [ Graph::PROTOCOL_IPV4, Graph::PROTOCOL_IPV6 ]
+            : [ $protocol ];
 
-        // Find every VLAN both customers are present on.
         $sharedVlanIds = VlanInterfaceAggregator::findVlansBetweenCustomers( $srcCust, $dstCust );
-
         if( $vlanId !== null ) {
             $sharedVlanIds = array_intersect( $sharedVlanIds, [ $vlanId ] );
         }
-
         if( empty( $sharedVlanIds ) ) {
             return [];
         }
 
-        // Collect per-pair series across every shared VLAN, then aggregate
-        // via sumSeriesByTimestamp() at the end.
-        //
-        // p2pBatchTraffic runs one src VLI against ALL its destination VLIs
-        // on a given VLAN in just 2 Akvorado calls (OUT with DstMAC grouping,
-        // IN with SrcMAC grouping) — regardless of destination fan-out. So
-        // total calls per (period, protocol) = 2 × (sum of src VLIs across
-        // shared VLANs), which is roughly halves vs a naive pair-wise loop.
-        $seriesList = [];
+        $units = $this->categoryToUnits( $category );
+
+        // Build every Akvorado query descriptor we need up-front so we can
+        // dispatch them concurrently via Http::pool(). Each (shared VLAN,
+        // src VLI, protocol) contributes 2 queries — an OUT (src→peers) and
+        // an IN (peers→src). We don't need dimension grouping here since
+        // multi-p2p just wants a single aggregated series — Akvorado returns
+        // the total for each filter directly.
+        $descriptors = [];
 
         foreach( $sharedVlanIds as $sharedVlanId ) {
             $srcVlis = $srcCust->vlanInterfaces()->where( 'vlaninterface.vlanid', $sharedVlanId )->get();
@@ -486,16 +622,106 @@ class AkvoradoService
                 continue;
             }
 
+            // Resolve destination MACs + vlan tags once per shared VLAN.
+            $dstMacsAll  = [];
+            $dstVlanTags = [];
+            foreach( $dstVlis as $dvli ) {
+                foreach( $this->resolveMACs( $dvli ) as $mac ) {
+                    $dstMacsAll[ $mac ] = true;
+                }
+                $dstVlanTags[ $this->resolveVlan( $dvli ) ] = true;
+            }
+            $dstMacsAll  = array_keys( $dstMacsAll );
+            $dstVlanTags = array_keys( $dstVlanTags );
+            if( empty( $dstMacsAll ) ) {
+                continue;
+            }
+
             foreach( $srcVlis as $svli ) {
-                // batch returns [ dvli_id => [[t, avg_in, avg_out, max_in, max_out], ...], ... ]
-                $batch = $this->p2pBatchTraffic( $svli, $dstVlis, $period, $protocol, $category );
-                foreach( $batch as $dvliSeries ) {
-                    $seriesList[] = $dvliSeries;
+                $srcMacs = $this->resolveMACs( $svli );
+                if( empty( $srcMacs ) ) {
+                    continue;
+                }
+                $srcVlan = $this->resolveVlan( $svli );
+
+                foreach( $protocols as $p ) {
+                    $etypeFilter = $this->buildEtypeFilter( $p );
+
+                    // OUT — src sending to peers on this shared VLAN
+                    $descriptors[] = [
+                        'key'        => "out_v{$sharedVlanId}_svli{$svli->id}_p{$p}",
+                        'filter'     => $this->buildMacFilter( 'SrcMAC', $srcMacs )
+                                      . ' AND ' . $this->buildMacFilter( 'DstMAC', $dstMacsAll )
+                                      . " AND SrcVlan = {$srcVlan}"
+                                      . $etypeFilter,
+                        'period'     => $period,
+                        'units'      => $units,
+                        'dimensions' => [],
+                        'limit'      => 5,
+                    ];
+
+                    // IN — peers sending to src on this shared VLAN.
+                    // Unlike p2pBatchTraffic (which serves the network-wide
+                    // p2p list and can't know each peer's ingress VLAN
+                    // upfront), for multi-p2p we know exactly which VLAN
+                    // tags the peers hit — so add SrcVlan IN (...) which
+                    // massively reduces Akvorado's ClickHouse scan cost
+                    // and gets year-period queries under the timeout.
+                    $srcVlanList = implode( ',', array_map( 'intval', $dstVlanTags ) );
+                    $descriptors[] = [
+                        'key'        => "in_v{$sharedVlanId}_svli{$svli->id}_p{$p}",
+                        'filter'     => $this->buildMacFilter( 'SrcMAC', $dstMacsAll )
+                                      . ' AND ' . $this->buildMacFilter( 'DstMAC', $srcMacs )
+                                      . " AND SrcVlan IN ({$srcVlanList})"
+                                      . $etypeFilter,
+                        'period'     => $period,
+                        'units'      => $units,
+                        'dimensions' => [],
+                        'limit'      => 5,
+                    ];
                 }
             }
         }
 
-        return $this->sumSeriesByTimestamp( $seriesList );
+        if( empty( $descriptors ) ) {
+            return [];
+        }
+
+        // Fire everything in parallel.
+        $rawResults = $this->queryTimeSeriesParallel( $descriptors );
+
+        // Aggregate — split by direction, sum all rows per timestamp.
+        $inByTs  = [];
+        $outByTs = [];
+
+        foreach( $rawResults as $key => $data ) {
+            $isOut      = str_starts_with( $key, 'out_' );
+            $timestamps = $this->toUnixTimestamps( $data['t'] ?? [] );
+            $values     = $this->sumPoints( $data['points'] ?? [] );
+
+            foreach( $timestamps as $i => $ts ) {
+                $v = (float)( $values[ $i ] ?? 0 );
+                if( $isOut ) {
+                    $outByTs[ $ts ] = ( $outByTs[ $ts ] ?? 0 ) + $v;
+                } else {
+                    $inByTs[ $ts ]  = ( $inByTs[ $ts ]  ?? 0 ) + $v;
+                }
+            }
+        }
+
+        // Merge into grapher-standard rows [ts, avg_in, avg_out, max_in, max_out].
+        // Akvorado gives one point per interval, so avg == max.
+        $allTs = array_unique( array_merge( array_keys( $inByTs ), array_keys( $outByTs ) ) );
+        sort( $allTs );
+
+        $result = [];
+        foreach( $allTs as $ts ) {
+            $in  = $inByTs[ $ts ]  ?? 0;
+            $out = $outByTs[ $ts ] ?? 0;
+            $result[] = [ $ts, $in, $out, $in, $out ];
+        }
+
+        return $result;
     }
 
     /**

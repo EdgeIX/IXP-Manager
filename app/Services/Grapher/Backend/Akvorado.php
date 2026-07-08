@@ -121,27 +121,16 @@ class Akvorado extends GrapherBackend implements GrapherBackendContract
             // every VLAN both are on, or scoped to a single VLAN when the graph
             // has setVlan() called (used by the /statistics/p2p-per-vlan view).
             //
-            // Unlike single P2p we accept PROTOCOL_ALL here because the p2p-totals
-            // view defaults to protocol=all — see AkvoradoService::multiP2pTraffic
-            // for the IPv4+IPv6 fan-out.
-            //
-            // NOTE: PERIOD_YEAR is deliberately excluded. Akvorado's ClickHouse
-            // times out (10s+ cURL) on year-range multi-VLAN aggregations. A
-            // proper fix needs (a) a VLAN filter on the IN direction of batch
-            // queries and (b) parallel HTTP via Http::pool(). Tracked as a
-            // post-merge follow-up — for now the year graph would just render
-            // an incomplete series.
+            // Accepts PROTOCOL_ALL — the p2p-totals view's default — see
+            // AkvoradoService::multiP2pTraffic which fans out to IPv4 + IPv6
+            // and executes every query concurrently via queryTimeSeriesParallel.
             'multip2p' => [
                 'protocols'  => Graph::PROTOCOLS,
                 'categories' => [
                     Graph::CATEGORY_BITS    => Graph::CATEGORY_BITS,
                     Graph::CATEGORY_PACKETS => Graph::CATEGORY_PACKETS,
                 ],
-                'periods'    => [
-                    Graph::PERIOD_DAY   => Graph::PERIOD_DAY,
-                    Graph::PERIOD_WEEK  => Graph::PERIOD_WEEK,
-                    Graph::PERIOD_MONTH => Graph::PERIOD_MONTH,
-                ],
+                'periods'    => Graph::PERIODS_EXTENDED,
                 'types'      => Graph::TYPES,
             ],
         ];
