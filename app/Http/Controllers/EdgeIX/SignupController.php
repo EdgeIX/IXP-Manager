@@ -71,6 +71,7 @@ class SignupController extends Controller
             firstName:        $r->input( 'first_name' ),
             lastName:         $r->input( 'last_name' ),
             email:            $r->input( 'email' ),
+            username:         $r->input( 'username' ),
             viaOauth:         false,
             fireWelcomeEmail: true,
         );

@@ -1,5 +1,10 @@
 # EdgeIX Customer Ordering — Workflow Spec
 
+> **Note (2026-07-08):** Ordering work is on hold pending the upstream
+> IXP-Manager v7.2.0 merge. The "Order Port" CTA + placeholder page ship as-is.
+> Phase 2 (MSA gate) and Phase 3 (actual order flows) resume after the merge
+> lands.
+
 This document describes the planned customer self-service ordering flows and
 the current state of implementation.
 

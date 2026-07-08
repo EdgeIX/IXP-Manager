@@ -1,5 +1,11 @@
 # Managing Signup Terms & Consent
 
+> **Note (2026-07-08):** Active development of signup / MSA / ordering features
+> is on hold pending the merge of upstream IXP-Manager v7.2.0 into our fork.
+> Phase 1 (manual signup) and Phase 1b (PeeringDB OAuth signup) are deployed
+> and functional. Phase 2 (MSA e-sign gate) resumes after the merge lands.
+> See `memory/v720-merge-plan.md` for context.
+
 The public signup form at `/signup` shows a consent checkbox with a link to your
 Privacy Policy. This page explains how to manage that link and how consent is
 tracked over time.

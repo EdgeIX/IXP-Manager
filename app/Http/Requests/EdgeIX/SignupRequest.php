@@ -27,6 +27,8 @@ class SignupRequest extends FormRequest
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
             'email'      => 'required|email|max:255|unique:user,email',
+            // Match the admin form rule at Http/Requests/User/Store.php.
+            'username'   => 'required|string|min:3|max:255|regex:/^[a-z0-9\-_\.]{3,255}$/|unique:user,username',
             'asn'        => [
                 'required',
                 'integer',
@@ -41,6 +43,9 @@ class SignupRequest extends FormRequest
     {
         return [
             'email.unique'      => 'That email address is already registered. Please log in or use a different email.',
+            'username.regex'    => 'Username can only contain lowercase letters, digits, dots, hyphens and underscores.',
+            'username.unique'   => 'That username is already taken. Please choose another.',
+            'username.min'      => 'Username must be at least 3 characters.',
             'consent.accepted'  => 'You must agree to the Privacy Policy to continue.',
             'asn.max'           => 'ASN must be a valid 32-bit AS number.',
         ];

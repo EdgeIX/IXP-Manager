@@ -82,6 +82,20 @@ $this->layout( 'layouts/ixpv4' );
                     </div>
 
                     <div class="tw-mb-4">
+                        <label class="control-label" for="username">Username</label>
+                        <input name="username" id="username" type="text" class="form-control"
+                               placeholder="jane.doe" required minlength="3" maxlength="255"
+                               pattern="[a-z0-9\-_\.]{3,255}"
+                               value="<?= $t->ee( old( 'username' ) ) ?>">
+                        <p class="tw-text-xs tw-text-gray-500 tw-mt-1">
+                            Your login handle. Lowercase letters, digits, dots, hyphens and underscores only.
+                        </p>
+                        <?php foreach( $t->errors->get( 'username' ) as $err ): ?>
+                            <p class="tw-text-red-500 tw-text-xs tw-italic tw-mt-1"><?= $t->ee( $err ) ?></p>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="tw-mb-4">
                         <label class="control-label" for="asn">ASN</label>
                         <input name="asn" id="asn" type="number" min="1" class="form-control"
                                placeholder="65001" required

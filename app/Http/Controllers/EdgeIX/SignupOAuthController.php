@@ -211,10 +211,14 @@ class SignupOAuthController extends Controller
         }
 
         $r->validate( [
-            'asn'     => 'required|integer|min:1',
-            'consent' => 'accepted',
+            'asn'      => 'required|integer|min:1',
+            'username' => 'required|string|min:3|max:255|regex:/^[a-z0-9\-_\.]{3,255}$/|unique:user,username',
+            'consent'  => 'accepted',
         ], [
-            'consent.accepted' => 'You must agree to the Privacy Policy to continue.',
+            'consent.accepted'  => 'You must agree to the Privacy Policy to continue.',
+            'username.regex'    => 'Username can only contain lowercase letters, digits, dots, hyphens and underscores.',
+            'username.unique'   => 'That username is already taken. Please choose another.',
+            'username.min'      => 'Username must be at least 3 characters.',
         ] );
 
         $asn = (int) $r->input( 'asn' );
@@ -257,6 +261,7 @@ class SignupOAuthController extends Controller
             firstName:        $stash['pdb_first_name'] ?: 'PeeringDB',
             lastName:         $stash['pdb_last_name']  ?: "User {$stash['pdb_user_id']}",
             email:            $stash['pdb_email'],
+            username:         $r->input( 'username' ),
             viaOauth:         true,
             peeringDbUserId:  (int) $stash['pdb_user_id'],
             fireWelcomeEmail: false,  // authenticated via PeeringDB — no set-password step

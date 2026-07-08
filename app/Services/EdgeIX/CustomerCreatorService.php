@@ -38,7 +38,11 @@ class CustomerCreatorService
      *                             safe defaults.
      * @param string $firstName    Signup user's first name.
      * @param string $lastName     Signup user's last name.
-     * @param string $email        Signup user's email (also used as username).
+     * @param string $email        Signup user's email address.
+     * @param string $username     Login handle picked by the user. Caller must
+     *                             have already validated it against IXP-M's
+     *                             regex `/^[a-z0-9\-_\.]{3,255}$/` and uniqueness
+     *                             on `user.username`.
      * @param bool   $viaOauth     True if this signup came through the PeeringDB OAuth path
      *                             — sets cust.peeringdb_oauth=1 and user.peeringdb_id.
      * @param ?int   $peeringDbUserId PeeringDB user ID (set when $viaOauth = true).
@@ -54,6 +58,7 @@ class CustomerCreatorService
         string $firstName,
         string $lastName,
         string $email,
+        string $username,
         bool   $viaOauth         = false,
         ?int   $peeringDbUserId  = null,
         bool   $fireWelcomeEmail = true,
@@ -96,7 +101,7 @@ class CustomerCreatorService
         // an orphaned row behind.
         [ $customer, $user ] = DB::transaction( function () use (
             $customerName, $abbreviated, $pdbNet, $asn, $maxPrefixes4, $maxPrefixes6,
-            $peeringPolicy, $creator, $irrdbId, $viaOauth, $email, $firstName, $lastName, $peeringDbUserId
+            $peeringPolicy, $creator, $irrdbId, $viaOauth, $email, $username, $firstName, $lastName, $peeringDbUserId
         ) {
             // Upstream customer overview views expect these two rows to exist
             // (e.g. details.foil.php dereferences companyRegisteredDetail->id).
@@ -144,11 +149,10 @@ class CustomerCreatorService
                 'company_billing_details_id'   => $billDetail->id,
             ] );
 
-            // User: username = email; password random (welcome email sends reset link
-            // on the manual path; OAuth users authenticate via PeeringDB and can set
-            // a local password later from their profile).
+            // Username is user-picked and validated at the request layer against
+            // IXP-M's regex /^[a-z0-9\-_\.]{3,255}$/ and uniqueness on user.username.
             $user = new User;
-            $user->username     = $email;
+            $user->username     = $username;
             $user->email        = $email;
             $user->password     = Hash::make( Str::random( 32 ) );
             $user->name         = trim( $firstName . ' ' . $lastName );
