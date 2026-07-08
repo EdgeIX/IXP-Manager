@@ -13,7 +13,7 @@ namespace IXP\Services\Akvorado;
 
 use Log;
 
-use Illuminate\Support\Facades\{Cache, Http};
+use Illuminate\Support\Facades\{Cache, DB, Http};
 
 use IXP\Models\{
     Customer,
@@ -606,6 +606,21 @@ class AkvoradoService
         string   $protocol = Graph::PROTOCOL_IPV4,
         string   $category = Graph::CATEGORY_BITS,
     ): array {
+        // Fast path: month and year views need only daily-resolution data,
+        // which the nightly p2p_daily_stats aggregation already stores. Skip
+        // Akvorado entirely for those periods — hundreds of concurrent Akvorado
+        // queries that produce a series we can just SELECT from MySQL is silly.
+        //
+        // Limitations that force fallback to Akvorado:
+        //   - Per-VLAN scope (setVlan) — p2p_daily_stats has no VLAN dimension.
+        //   - CATEGORY_PACKETS — daily stats table only stores bytes, not pps.
+        if( in_array( $period, [ Graph::PERIOD_MONTH, Graph::PERIOD_YEAR ], true )
+            && $vlanId === null
+            && $category === Graph::CATEGORY_BITS
+        ) {
+            return $this->multiP2pTrafficFromDailyStats( $srcCust, $dstCust, $period, $protocol );
+        }
+
         $protocols = ( $protocol === Graph::PROTOCOL_ALL )
             ? [ Graph::PROTOCOL_IPV4, Graph::PROTOCOL_IPV6 ]
             : [ $protocol ];
@@ -740,6 +755,80 @@ class AkvoradoService
             $in  = $inByTs[ $ts ]  ?? 0;
             $out = $outByTs[ $ts ] ?? 0;
             $result[] = [ $ts, $in, $out, $in, $out ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Fast-path multi-p2p from the nightly p2p_daily_stats aggregation.
+     *
+     * The daily job that populates this table stores per (cust_id, peer_id)
+     * per-day totals (bytes) and peaks (bps) with IPv4/IPv6 broken out. For
+     * month and year views daily granularity is fine, so we can serve the
+     * graph directly from the DB in ~1ms instead of firing hundreds of
+     * Akvorado queries.
+     *
+     * Row → grapher standard [ts, avg_in, avg_out, max_in, max_out]:
+     *   ts       = day at 00:00 UTC (unix)
+     *   avg_in   = (v4/v6-selected total_in bytes × 8) / 86400  [bps average]
+     *   avg_out  = same for out
+     *   max_in   = v4/v6-selected max_in [bps peak during the day]
+     *   max_out  = same for out
+     *
+     * Called only when $vlanId is null and $category is bits. Per-VLAN and
+     * packet-rate views must go through Akvorado.
+     */
+    private function multiP2pTrafficFromDailyStats(
+        Customer $srcCust,
+        Customer $dstCust,
+        string   $period,
+        string   $protocol,
+    ): array {
+        $days = ( $period === Graph::PERIOD_YEAR ) ? 365 : 30;
+        $since = date( 'Y-m-d', strtotime( "-{$days} days" ) );
+
+        $rows = DB::table( 'p2p_daily_stats' )
+            ->where( 'cust_id', $srcCust->id )
+            ->where( 'peer_id', $dstCust->id )
+            ->where( 'day', '>=', $since )
+            ->orderBy( 'day' )
+            ->get( [ 'day', 'ipv4_total_in', 'ipv4_total_out', 'ipv6_total_in', 'ipv6_total_out',
+                     'ipv4_max_in', 'ipv4_max_out', 'ipv6_max_in', 'ipv6_max_out' ] );
+
+        Log::debug( sprintf( '[Akvorado] multiP2pTrafficFromDailyStats: %d rows for cust=%d peer=%d period=%s',
+            $rows->count(), $srcCust->id, $dstCust->id, $period ) );
+
+        $wantV4 = $protocol === Graph::PROTOCOL_IPV4 || $protocol === Graph::PROTOCOL_ALL;
+        $wantV6 = $protocol === Graph::PROTOCOL_IPV6 || $protocol === Graph::PROTOCOL_ALL;
+
+        $result = [];
+        foreach( $rows as $row ) {
+            $ts = strtotime( $row->day . ' 00:00:00 UTC' );
+
+            $totalIn  = 0;
+            $totalOut = 0;
+            $maxIn    = 0;
+            $maxOut   = 0;
+
+            if( $wantV4 ) {
+                $totalIn  += (int)( $row->ipv4_total_in  ?? 0 );
+                $totalOut += (int)( $row->ipv4_total_out ?? 0 );
+                $maxIn    += (int)( $row->ipv4_max_in    ?? 0 );
+                $maxOut   += (int)( $row->ipv4_max_out   ?? 0 );
+            }
+            if( $wantV6 ) {
+                $totalIn  += (int)( $row->ipv6_total_in  ?? 0 );
+                $totalOut += (int)( $row->ipv6_total_out ?? 0 );
+                $maxIn    += (int)( $row->ipv6_max_in    ?? 0 );
+                $maxOut   += (int)( $row->ipv6_max_out   ?? 0 );
+            }
+
+            // Bytes over a day → average bits per second across the day.
+            $avgIn  = ( $totalIn  * 8 ) / 86400;
+            $avgOut = ( $totalOut * 8 ) / 86400;
+
+            $result[] = [ $ts, $avgIn, $avgOut, $maxIn, $maxOut ];
         }
 
         return $result;
