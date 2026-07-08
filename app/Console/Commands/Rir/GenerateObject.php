@@ -67,6 +67,8 @@ class GenerateObject extends Command
      * Execute the console command.
      *
      * @throws
+     *
+     * @psalm-return 0|1
      */
     public function handle(): int
     {
@@ -85,9 +87,9 @@ class GenerateObject extends Command
         if( !$this->isVerbosityQuiet() && !$this->option( "force" ) && $obj === $cobj ) {
             $this->warn( "Generated RIR object is identical to cached version, use --force to update anyway." );
         }
-        
+
         if( $this->option( "send-email" ) && ( $this->option( "force" ) || $obj !== $cobj ) ) {
-            $this->sendEmail( $key, $obj );
+            $this->sendEmail( $obj );
         } else if( $this->option( "update-ripe-db" ) && ( $this->option( "force" ) || $obj !== $cobj ) ) {
             $this->updateRipeDb( $gen->generateJson() );
         } else if( !$this->option( "send-email" ) && !$this->option( "update-ripe-db" ) ) {
@@ -134,12 +136,12 @@ class GenerateObject extends Command
     
     /**
      * Send an email with the generated object
-     * @param string $key
      * @param string $obj
      * @return void
      */
-    private function sendEmail( string $key, string $obj ): void {
-        if( !$this->option( "to" ) && !config( 'ixp_api.rir.email.to' )   ){
+    private function sendEmail( string $obj ): void
+    {
+        if( !$this->option( "to" ) && config( 'ixp_api.rir.email.to' ) === null ){
             $this->fail( "Please specify the TO email address" );
         }
 
@@ -153,7 +155,6 @@ class GenerateObject extends Command
         if( !$this->isVerbosityQuiet() ) {
             $this->info( "Email sent." );
         }
-        
     }
     
     

@@ -64,7 +64,6 @@ use IXP\Traits\Observable;
  * @method static Builder|Infrastructure wherePeeringdbIxId($value)
  * @method static Builder|Infrastructure whereShortname($value)
  * @method static Builder|Infrastructure whereUpdatedAt($value)
- * @property int $ixp_id
  * @method static Builder|Infrastructure whereIxpId($value)
  * @property int $exclude_from_ixf_export
  * @method static Builder<static>|Infrastructure whereExcludeFromIxfExport($value)
@@ -87,7 +86,6 @@ class Infrastructure extends Model
      * @var array
      */
     protected $fillable = [
-        'ixp_id',
         'name',
         'shortname',
         'short_code',
@@ -105,6 +103,7 @@ class Infrastructure extends Model
      *
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [
@@ -117,7 +116,7 @@ class Infrastructure extends Model
     /**
      * Get the vlans for the infrastructure
      *
-     * @psalm-return HasMany<Vlan>
+     * @return HasMany<Vlan, Infrastructure>
      */
     public function vlans(): HasMany
     {
@@ -127,7 +126,7 @@ class Infrastructure extends Model
     /**
      * Get the switchers for the infrastructure
      *
-     * @psalm-return HasMany<Switcher>
+     * @return HasMany<Switcher, Infrastructure>
      */
     public function switchers(): HasMany
     {

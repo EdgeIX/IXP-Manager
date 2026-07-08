@@ -60,10 +60,6 @@
                         <li>
                             all peering manager records (peering request emails sent/received, ignored status, etc.);
                         </li>
-                        <li>
-                            all <b><?= $c->patchPanelPorts()->count() ?></b> customer patch panel ports will be be set to awaiting-cease
-                            <em>(if this is non-zero, you should really sort these out before deleting the customer!)</em>;
-                        </li>
 
                         <li>
                             <b><?= $c->consoleServerConnections()->count() ?></b> console server connections;
@@ -82,7 +78,15 @@
                         <li>
                             all route server entries learned from IRRDB for prefixes and origin ASNs as well as prefixes learned from the route servers.
                         </li>
-
+                        <li>
+                            IRRDB update logs
+                        </li>
+                        <li>
+                            <b><?= $c->docstoreCustomerDirectories()->count() ?></b> directories and <b><?= $c->docstoreCustomerFiles()->count() ?></b> files from the customers Document Store;</b>
+                        </li>
+                        <li>
+                            any route server filters (staged or in production)
+                        </li>
                         <li>
                             all Ripe Atlas Probes.
                         </li>

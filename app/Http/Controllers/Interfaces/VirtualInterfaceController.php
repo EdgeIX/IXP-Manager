@@ -63,6 +63,7 @@ use Throwable;
  *
  * @author     Barry O'Donovan <barry@islandbridgenetworks.ie>
  * @author     Yann Robin <yann@islandbridgenetworks.ie>
+ * @author     Thomas Kerin <thomas@islandbridgenetworks.ie>
  * @category   IXP
  * @package    IXP\Http\Controllers\Interfaces
  * @copyright  Copyright (C) 2009 - 2021 Internet Neutral Exchange Association Company Limited By Guarantee
@@ -181,7 +182,7 @@ class VirtualInterfaceController extends Common
      *
      * @return View
      */
-    public function create( Request $r, Customer $cust = null ): View
+    public function create( Request $r, ?Customer $cust = null ): View
     {
         if( $cust ) {
             Former::populate( [

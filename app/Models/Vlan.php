@@ -124,7 +124,7 @@ class Vlan extends Model
     /**
      * Get the vlan interfaces that are in this vlan
      *
-     * @psalm-return HasMany<VlanInterface>
+     * @return HasMany<VlanInterface, Vlan>
      */
     public function vlanInterfaces(): HasMany
     {
@@ -134,7 +134,7 @@ class Vlan extends Model
     /**
      * Get the vlan interfaces that are in this vlan
      *
-     * @psalm-return HasMany<Router>
+     * @return HasMany<Router, Vlan>
      */
     public function routers(): HasMany
     {
@@ -144,7 +144,7 @@ class Vlan extends Model
     /**
      * Get the ipv4addresses for the vlan
      *
-     * @psalm-return HasMany<IPv4Address>
+     * @return HasMany<IPv4Address, Vlan>
      */
     public function ipv4Addresses(): HasMany
     {
@@ -154,7 +154,7 @@ class Vlan extends Model
     /**
      * Get the ipv6addresses for the vlan
      *
-     * @psalm-return HasMany<IPv6Address>
+     * @return HasMany<IPv6Address, Vlan>
      */
     public function ipv6Addresses(): HasMany
     {
@@ -164,7 +164,7 @@ class Vlan extends Model
     /**
      * Get the route server filters for the vlan
      *
-     * @psalm-return HasMany<RouteServerFilter>
+     * @return HasMany<RouteServerFilter, Vlan>
      */
     public function routeServerFilters(): HasMany
     {
@@ -174,7 +174,7 @@ class Vlan extends Model
     /**
      * Get the networks info for the vlan
      *
-     * @psalm-return HasMany<NetworkInfo>
+     * @return HasMany<NetworkInfo, Vlan>
      */
     public function networksInfo(): HasMany
     {
@@ -184,7 +184,7 @@ class Vlan extends Model
     /**
      * Get the atlas run that are in this vlan
      *
-     * @psalm-return HasMany<AtlasRun>
+     * @return HasMany<AtlasRun, Vlan>
      */
     public function atlasRun(): HasMany
     {
@@ -194,7 +194,7 @@ class Vlan extends Model
     /**
      * Get the infrastructure that own the vlan
      *
-     * @psalm-return BelongsTo<Infrastructure>
+     * @return BelongsTo<Infrastructure, Vlan>
      */
     public function infrastructure(): BelongsTo
     {

@@ -33,9 +33,10 @@ use Illuminate\Support\Facades\Log;
 
 
 /**
- * A class to handle RRD files
+ * A class for operations on multiple RRD files
  *
  * @author Barry O'Donovan <barry@opensolutions.ie>
+ * @author     Thomas Kerin <thomas@islandbridgenetworks.ie>
  * @package Grapher
  */
 class MultiRrd
@@ -175,7 +176,7 @@ class MultiRrd
      *
      * @throws FileErrorException
      */
-    private function getLocalFilename( $file, ?string $exten = null ): string
+    private function getLocalFilename( string $file, ?string $exten = null ): string
     {
         $parts = explode( '/', $file );
         $name  = $parts[ array_key_last( $parts ) ];
@@ -311,11 +312,11 @@ class MultiRrd
             }
 
             return $this->dataWindow(
-                $this->graph()->periodStart()->timestamp,
-                $this->graph()->periodEnd()->timestamp
+                (int)$this->graph()->periodStart()->timestamp,
+                (int)$this->graph()->periodEnd()->timestamp
             );
         } else {
-            return $this->dataWindow( time() - self::PERIOD_TIME[ $this->graph()->period() ], time() );
+            return $this->dataWindow( time() - (int)self::PERIOD_TIME[ $this->graph()->period() ], time() );
         }
     }
 
@@ -324,15 +325,13 @@ class MultiRrd
      * as an MRTG log file.
      *
      * @see \IXP\Utils\Grapher\Mrtg::loadMrtgFile()
-     *
+
      * Processing means:
      * - only returning the values for the requested period
      * - MRTG/RRD provides traffic as bytes, change to bits
      *
-     * @return array
-     *
      */
-    public function dataWindow($start, $end): array
+    public function dataWindow(int $start, int $end): array
     {
         [ $indexIn, $indexOut ] = $this->getIndexKeys();
 
@@ -478,6 +477,8 @@ class MultiRrd
         $options[] = 'GPRINT:last_in:\tCur\\: %6.2lf%s\l';
 
         $options[] = 'COMMENT:\s';
+        
+        /** @var false|array $png */
         $png = rrd_graph( $this->getLocalFilename( $this->graph->key(), 'png'), $options );
         if( $png === false ) {
             throw new FileErrorException("Could not open/create RRD/PNG file");
