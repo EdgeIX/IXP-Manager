@@ -151,13 +151,15 @@ class CustomerCreatorService
 
             // Username is user-picked and validated at the request layer against
             // IXP-M's regex /^[a-z0-9\-_\.]{3,255}$/ and uniqueness on user.username.
+            //
+            // NOTE: v7.2.0 dropped user.privs — privileges now live only on the
+            // customer_to_users pivot (set below). Do not write $user->privs here.
             $user = new User;
             $user->username     = $username;
             $user->email        = $email;
             $user->password     = Hash::make( Str::random( 32 ) );
             $user->name         = trim( $firstName . ' ' . $lastName );
             $user->custid       = $customer->id;
-            $user->privs        = User::AUTH_CUSTADMIN;
             $user->creator      = $creator;
             $user->peeringdb_id = $viaOauth ? $peeringDbUserId : null;
             $user->save();
