@@ -120,8 +120,12 @@ class Akvorado extends GrapherBackend implements GrapherBackendContract
             // MultiP2p (v7.2.0) — customer↔customer traffic aggregated across
             // every VLAN both are on, or scoped to a single VLAN when the graph
             // has setVlan() called (used by the /statistics/p2p-per-vlan view).
+            //
+            // Unlike single P2p we accept PROTOCOL_ALL here because the p2p-totals
+            // view defaults to protocol=all — see AkvoradoService::multiP2pTraffic
+            // for the IPv4+IPv6 fan-out.
             'multip2p' => [
-                'protocols'  => $graphProtocols,
+                'protocols'  => Graph::PROTOCOLS,
                 'categories' => [
                     Graph::CATEGORY_BITS    => Graph::CATEGORY_BITS,
                     Graph::CATEGORY_PACKETS => Graph::CATEGORY_PACKETS,

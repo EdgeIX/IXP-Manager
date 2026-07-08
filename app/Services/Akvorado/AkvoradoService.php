@@ -364,6 +364,52 @@ class AkvoradoService
     }
 
     /**
+     * Merge multiple grapher-format series into one by summing at each timestamp.
+     *
+     * Row shape (in and out): [timestamp, avg_in, avg_out, max_in, max_out].
+     * `avg_*` values are summed; `max_*` values take the greater. Missing
+     * timestamps in one series just fall through — no zero-padding needed.
+     *
+     * @param  array[]  $seriesList  Array of grapher-format series arrays.
+     * @return array
+     */
+    private function sumSeriesByTimestamp( array $seriesList ): array
+    {
+        $agg = [];
+
+        foreach( $seriesList as $series ) {
+            foreach( $series as $row ) {
+                $ts = $row[0] ?? null;
+                if( $ts === null ) {
+                    continue;
+                }
+
+                if( !isset( $agg[ $ts ] ) ) {
+                    $agg[ $ts ] = [ 'avg_in' => 0.0, 'avg_out' => 0.0, 'max_in' => 0.0, 'max_out' => 0.0 ];
+                }
+
+                $agg[ $ts ][ 'avg_in'  ] += (float)( $row[1] ?? 0 );
+                $agg[ $ts ][ 'avg_out' ] += (float)( $row[2] ?? 0 );
+                $agg[ $ts ][ 'max_in'  ]  = max( $agg[ $ts ][ 'max_in'  ], (float)( $row[3] ?? 0 ) );
+                $agg[ $ts ][ 'max_out' ]  = max( $agg[ $ts ][ 'max_out' ], (float)( $row[4] ?? 0 ) );
+            }
+        }
+
+        if( empty( $agg ) ) {
+            return [];
+        }
+
+        ksort( $agg );
+
+        $result = [];
+        foreach( $agg as $ts => $vals ) {
+            $result[] = [ $ts, $vals['avg_in'], $vals['avg_out'], $vals['max_in'], $vals['max_out'] ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Get multi-VLAN P2P traffic between two customers.
      *
      * Aggregates traffic across every VLAN both customers share. Used by the
@@ -400,6 +446,17 @@ class AkvoradoService
         string   $protocol = Graph::PROTOCOL_IPV4,
         string   $category = Graph::CATEGORY_BITS,
     ): array {
+        // PROTOCOL_ALL — the p2p-totals view's default. Akvorado only queries
+        // one EType at a time, so fan out to IPv4 + IPv6 and sum the resulting
+        // series. Empty series from either side (e.g. v6 not deployed) are
+        // handled naturally by the aggregation loop below.
+        if( $protocol === Graph::PROTOCOL_ALL ) {
+            return $this->sumSeriesByTimestamp( [
+                $this->multiP2pTraffic( $srcCust, $dstCust, $vlanId, $period, Graph::PROTOCOL_IPV4, $category ),
+                $this->multiP2pTraffic( $srcCust, $dstCust, $vlanId, $period, Graph::PROTOCOL_IPV6, $category ),
+            ] );
+        }
+
         // Find every VLAN both customers are present on.
         $sharedVlanIds = VlanInterfaceAggregator::findVlansBetweenCustomers( $srcCust, $dstCust );
 
