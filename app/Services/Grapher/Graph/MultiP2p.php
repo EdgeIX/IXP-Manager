@@ -104,11 +104,20 @@ class MultiP2p extends Graph
      * A unique identifier for this 'graph type'
      *
      * E.g. for an IXP, it might be ixpxxx where xxx is the database id
+     *
+     * Must include the VLAN filter — Graph::cacheKey() is composed from this
+     * identifier + protocol + category + period + type, so without vlan every
+     * per-VLAN card on /statistics/p2p-per-vlan/{src}/{dst} would share one
+     * cache key and render the first VLAN's data across all cards.
+     * (EdgeIX fix — worth upstreaming.)
      */
     #[\Override]
     public function identifier(): string
     {
-        return sprintf( "multip2p-scid%05d-dcid%05d", $this->srcCustomer()->id, $this->dstCustomer()->id );
+        $vlanPart = $this->getVlan() !== null ? sprintf( "-vlan%05d", $this->getVlan() ) : '';
+        return sprintf( "multip2p-scid%05d-dcid%05d%s",
+            $this->srcCustomer()->id, $this->dstCustomer()->id, $vlanPart
+        );
     }
 
     /**
