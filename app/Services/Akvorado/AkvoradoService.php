@@ -663,12 +663,20 @@ class AkvoradoService
             $dstMacsAll  = array_keys( $dstMacsAll );
             $dstVlanTags = array_keys( $dstVlanTags );
             if( empty( $dstMacsAll ) ) {
+                Log::info( sprintf(
+                    '[Akvorado] multiP2p: skipping shared VLAN %d — dst customer %d has no configured MACs on this VLAN',
+                    $sharedVlanId, $dstCust->id
+                ) );
                 continue;
             }
 
             foreach( $srcVlis as $svli ) {
                 $srcMacs = $this->resolveMACs( $svli );
                 if( empty( $srcMacs ) ) {
+                    Log::info( sprintf(
+                        '[Akvorado] multiP2p: skipping src VLI %d on shared VLAN %d — no configured MACs',
+                        $svli->id, $sharedVlanId
+                    ) );
                     continue;
                 }
                 $srcVlan = $this->resolveVlan( $svli );
