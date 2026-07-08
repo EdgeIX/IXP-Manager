@@ -16,9 +16,12 @@ use Log;
 use Illuminate\Support\Facades\{Cache, Http};
 
 use IXP\Models\{
+    Customer,
     Vlan,
     VlanInterface as VlanInterfaceModel
 };
+
+use IXP\Models\Aggregators\VlanInterfaceAggregator;
 
 use IXP\Services\Grapher\Graph;
 
@@ -355,6 +358,100 @@ class AkvoradoService
             $in  = $inByVli[ $vliId ]  ?? [ 't' => [], 'points' => [] ];
             $out = $outByVli[ $vliId ] ?? [ 't' => [], 'points' => [] ];
             $result[ $vliId ] = $this->mergeDirectionalData( $in, $out );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get multi-VLAN P2P traffic between two customers.
+     *
+     * Aggregates traffic across every VLAN both customers share. Used by the
+     * MultiP2p graph type introduced in upstream v7.2.0.
+     *
+     * When $vlanId is provided, only that VLAN's contribution is returned —
+     * this is the per-VLAN breakdown case used by /statistics/p2p-per-vlan/*.
+     * When $vlanId is null, all shared VLANs are summed — the totals case
+     * used by /statistics/p2p-totals/*.
+     *
+     * Implementation: iterates the shared VLAN set, calls p2pTraffic() per
+     * (srcVli, dstVli) pair, and sums avg values / maxes max values into a
+     * single time series keyed by timestamp. p2pBatchTraffic could reduce
+     * API calls for very high-fan-out customers but complicates aggregation
+     * across multiple source VLIs, so we keep this straightforward for now.
+     *
+     * Returns data in the grapher standard format:
+     *   [[timestamp, avg_in, avg_out, max_in, max_out], ...]
+     *
+     * @param  Customer  $srcCust   Source customer
+     * @param  Customer  $dstCust   Destination customer
+     * @param  int|null  $vlanId    Optional VLAN filter (null = all shared VLANs)
+     * @param  string    $period    Graph period
+     * @param  string    $protocol  IPv4/IPv6
+     * @param  string    $category  bits/packets
+     *
+     * @return array
+     */
+    public function multiP2pTraffic(
+        Customer $srcCust,
+        Customer $dstCust,
+        ?int     $vlanId   = null,
+        string   $period   = Graph::PERIOD_DAY,
+        string   $protocol = Graph::PROTOCOL_IPV4,
+        string   $category = Graph::CATEGORY_BITS,
+    ): array {
+        // Find every VLAN both customers are present on.
+        $sharedVlanIds = VlanInterfaceAggregator::findVlansBetweenCustomers( $srcCust, $dstCust );
+
+        if( $vlanId !== null ) {
+            $sharedVlanIds = array_intersect( $sharedVlanIds, [ $vlanId ] );
+        }
+
+        if( empty( $sharedVlanIds ) ) {
+            return [];
+        }
+
+        // Aggregated series keyed by timestamp:
+        //   [ ts => [ 'avg_in' => sum, 'avg_out' => sum, 'max_in' => max, 'max_out' => max ], ... ]
+        $agg = [];
+
+        foreach( $sharedVlanIds as $sharedVlanId ) {
+            $srcVlis = $srcCust->vlanInterfaces()->where( 'vlaninterface.vlanid', $sharedVlanId )->get();
+            $dstVlis = $dstCust->vlanInterfaces()->where( 'vlaninterface.vlanid', $sharedVlanId )->get();
+
+            foreach( $srcVlis as $svli ) {
+                foreach( $dstVlis as $dvli ) {
+                    $pairData = $this->p2pTraffic( $svli, $dvli, $period, $protocol, $category );
+
+                    foreach( $pairData as $row ) {
+                        // Row shape: [timestamp, avg_in, avg_out, max_in, max_out]
+                        $ts = $row[0] ?? null;
+                        if( $ts === null ) {
+                            continue;
+                        }
+
+                        if( !isset( $agg[ $ts ] ) ) {
+                            $agg[ $ts ] = [ 'avg_in' => 0.0, 'avg_out' => 0.0, 'max_in' => 0.0, 'max_out' => 0.0 ];
+                        }
+
+                        $agg[ $ts ][ 'avg_in'  ] += (float)( $row[1] ?? 0 );
+                        $agg[ $ts ][ 'avg_out' ] += (float)( $row[2] ?? 0 );
+                        $agg[ $ts ][ 'max_in'  ]  = max( $agg[ $ts ][ 'max_in'  ], (float)( $row[3] ?? 0 ) );
+                        $agg[ $ts ][ 'max_out' ]  = max( $agg[ $ts ][ 'max_out' ], (float)( $row[4] ?? 0 ) );
+                    }
+                }
+            }
+        }
+
+        if( empty( $agg ) ) {
+            return [];
+        }
+
+        ksort( $agg );
+
+        $result = [];
+        foreach( $agg as $ts => $vals ) {
+            $result[] = [ $ts, $vals['avg_in'], $vals['avg_out'], $vals['max_in'], $vals['max_out'] ];
         }
 
         return $result;
