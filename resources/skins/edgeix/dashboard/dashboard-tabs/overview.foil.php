@@ -105,8 +105,14 @@
                             <?= \IXP\IXP::scaleBytes( $p2p->total_traffic() ) ?>
                         </td>
                         <td>
-                            <a class="btn btn-white btn-sm my-auto" href="<?= route( "statistics@p2p-get", [ 'srcVli' => $t->c->virtualInterfaces[0]->vlanInterfaces[0]->id,
-                                         'dstVli' => $p2p->peer->virtualInterfaces[0]->vlanInterfaces[0]->id ] )?>">
+                            <?php
+                                // v7.2.0 switched this link from statistics@p2p-get (single VLI-to-VLI)
+                                // to statistics@p2p-totals (customer-to-customer, aggregates across
+                                // every shared VLAN). Handles peers with multiple VLIs cleanly and
+                                // is what Akvorado's MultiP2p support renders.
+                            ?>
+                            <a class="btn btn-white btn-sm my-auto" href="<?= route( "statistics@p2p-totals", [ 'srcCust' => $t->c->id,
+                                         'dstCust' => $p2p->peer->id ] )?>">
                                 <i class="fa fa-search"></i>
                             </a>
                         </td>
