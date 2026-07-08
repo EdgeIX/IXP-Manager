@@ -2,6 +2,7 @@
 
 namespace IXP\Services\EdgeIX;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -9,6 +10,8 @@ use Illuminate\Support\Str;
 
 use IXP\Events\User\UserCreated as UserCreatedEvent;
 
+use IXP\Models\CompanyBillingDetail;
+use IXP\Models\CompanyRegisteredDetail;
 use IXP\Models\Customer;
 use IXP\Models\CustomerToUser;
 use IXP\Models\IrrdbConfig;
@@ -95,6 +98,23 @@ class CustomerCreatorService
             $customerName, $abbreviated, $pdbNet, $asn, $maxPrefixes4, $maxPrefixes6,
             $peeringPolicy, $creator, $irrdbId, $viaOauth, $email, $firstName, $lastName, $peeringDbUserId
         ) {
+            // Upstream customer overview views expect these two rows to exist
+            // (e.g. details.foil.php dereferences companyRegisteredDetail->id).
+            // Create them with the data we do know from PeeringDB + the signup,
+            // leaving the rest blank for the admin to complete.
+            $regDetail = CompanyRegisteredDetail::create( [
+                'registeredName' => $customerName,
+            ] );
+
+            $billDetail = CompanyBillingDetail::create( [
+                'billingContactName' => trim( $firstName . ' ' . $lastName ),
+                'billingEmail'       => $email,
+                'billingTelephone'   => $pdbNet['noc_phone'] ?? null,
+                'vatRate'            => '10%',
+                'invoiceMethod'      => 'EMAIL',
+                'invoiceEmail'       => $email,
+            ] );
+
             $customer = Customer::create( [
                 'name'                   => $customerName,
                 'abbreviatedName'        => $abbreviated,
@@ -120,6 +140,8 @@ class CustomerCreatorService
                 'MD5Support'             => Customer::MD5_SUPPORT_UNKNOWN,
                 'peeringdb_oauth'        => $viaOauth ? 1 : 0,
                 'terms_version_accepted' => config( 'signup.terms.version' ),
+                'company_registered_detail_id' => $regDetail->id,
+                'company_billing_details_id'   => $billDetail->id,
             ] );
 
             // User: username = email; password random (welcome email sends reset link
@@ -145,6 +167,11 @@ class CustomerCreatorService
 
             return [ $customer, $user ];
         } );
+
+        // Invalidate the superuser top-bar customer dropdown cache — otherwise
+        // admins can't see the new customer for up to an hour (see
+        // IxpServiceProvider::register, cache key 'admin_home_customers').
+        Cache::forget( 'admin_home_customers' );
 
         Log::notice( sprintf(
             '[Signup] Created customer %d (%s, AS%d) with user %d (%s) via %s',
