@@ -664,15 +664,22 @@ class AkvoradoService
                     // Unlike p2pBatchTraffic (which serves the network-wide
                     // p2p list and can't know each peer's ingress VLAN
                     // upfront), for multi-p2p we know exactly which VLAN
-                    // tags the peers hit — so add SrcVlan IN (...) which
-                    // massively reduces Akvorado's ClickHouse scan cost
-                    // and gets year-period queries under the timeout.
-                    $srcVlanList = implode( ',', array_map( 'intval', $dstVlanTags ) );
+                    // tags the peers hit — so constrain SrcVlan to that set
+                    // to reduce Akvorado's ClickHouse scan cost and get
+                    // year-period queries under the timeout.
+                    //
+                    // Akvorado's filter DSL only supports boolean ops (no IN),
+                    // so we OR the equalities same shape as buildMacFilter().
+                    $srcVlanClauses = array_map( fn( $v ) => 'SrcVlan = ' . (int)$v, $dstVlanTags );
+                    $srcVlanFilter  = count( $srcVlanClauses ) === 1
+                        ? $srcVlanClauses[0]
+                        : '(' . implode( ' OR ', $srcVlanClauses ) . ')';
+
                     $descriptors[] = [
                         'key'        => "in_v{$sharedVlanId}_svli{$svli->id}_p{$p}",
                         'filter'     => $this->buildMacFilter( 'SrcMAC', $dstMacsAll )
                                       . ' AND ' . $this->buildMacFilter( 'DstMAC', $srcMacs )
-                                      . " AND SrcVlan IN ({$srcVlanList})"
+                                      . " AND {$srcVlanFilter}"
                                       . $etypeFilter,
                         'period'     => $period,
                         'units'      => $units,
