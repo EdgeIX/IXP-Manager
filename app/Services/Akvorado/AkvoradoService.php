@@ -468,50 +468,34 @@ class AkvoradoService
             return [];
         }
 
-        // Aggregated series keyed by timestamp:
-        //   [ ts => [ 'avg_in' => sum, 'avg_out' => sum, 'max_in' => max, 'max_out' => max ], ... ]
-        $agg = [];
+        // Collect per-pair series across every shared VLAN, then aggregate
+        // via sumSeriesByTimestamp() at the end.
+        //
+        // p2pBatchTraffic runs one src VLI against ALL its destination VLIs
+        // on a given VLAN in just 2 Akvorado calls (OUT with DstMAC grouping,
+        // IN with SrcMAC grouping) — regardless of destination fan-out. So
+        // total calls per (period, protocol) = 2 × (sum of src VLIs across
+        // shared VLANs), which is roughly halves vs a naive pair-wise loop.
+        $seriesList = [];
 
         foreach( $sharedVlanIds as $sharedVlanId ) {
             $srcVlis = $srcCust->vlanInterfaces()->where( 'vlaninterface.vlanid', $sharedVlanId )->get();
             $dstVlis = $dstCust->vlanInterfaces()->where( 'vlaninterface.vlanid', $sharedVlanId )->get();
 
+            if( $srcVlis->isEmpty() || $dstVlis->isEmpty() ) {
+                continue;
+            }
+
             foreach( $srcVlis as $svli ) {
-                foreach( $dstVlis as $dvli ) {
-                    $pairData = $this->p2pTraffic( $svli, $dvli, $period, $protocol, $category );
-
-                    foreach( $pairData as $row ) {
-                        // Row shape: [timestamp, avg_in, avg_out, max_in, max_out]
-                        $ts = $row[0] ?? null;
-                        if( $ts === null ) {
-                            continue;
-                        }
-
-                        if( !isset( $agg[ $ts ] ) ) {
-                            $agg[ $ts ] = [ 'avg_in' => 0.0, 'avg_out' => 0.0, 'max_in' => 0.0, 'max_out' => 0.0 ];
-                        }
-
-                        $agg[ $ts ][ 'avg_in'  ] += (float)( $row[1] ?? 0 );
-                        $agg[ $ts ][ 'avg_out' ] += (float)( $row[2] ?? 0 );
-                        $agg[ $ts ][ 'max_in'  ]  = max( $agg[ $ts ][ 'max_in'  ], (float)( $row[3] ?? 0 ) );
-                        $agg[ $ts ][ 'max_out' ]  = max( $agg[ $ts ][ 'max_out' ], (float)( $row[4] ?? 0 ) );
-                    }
+                // batch returns [ dvli_id => [[t, avg_in, avg_out, max_in, max_out], ...], ... ]
+                $batch = $this->p2pBatchTraffic( $svli, $dstVlis, $period, $protocol, $category );
+                foreach( $batch as $dvliSeries ) {
+                    $seriesList[] = $dvliSeries;
                 }
             }
         }
 
-        if( empty( $agg ) ) {
-            return [];
-        }
-
-        ksort( $agg );
-
-        $result = [];
-        foreach( $agg as $ts => $vals ) {
-            $result[] = [ $ts, $vals['avg_in'], $vals['avg_out'], $vals['max_in'], $vals['max_out'] ];
-        }
-
-        return $result;
+        return $this->sumSeriesByTimestamp( $seriesList );
     }
 
     /**
