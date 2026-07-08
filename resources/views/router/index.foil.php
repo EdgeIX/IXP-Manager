@@ -50,7 +50,7 @@
                             Actions
                         </th>
                     </tr>
-                <thead>
+                </thead>
                 <tbody>
                     <?php foreach( $t->routers as $router ):
                         /** @var $router \IXP\Models\Router */?>
@@ -70,7 +70,7 @@
                                 <?= $t->ee( $router->pair?->handle )?>
                             </td>
                             <td>
-                                <?= $router->peering_ip ?>
+                                <?= $t->ee( $router->peering_ip ) ?>
                             </td>
                             <td>
                                 <?= $router->asn ?>

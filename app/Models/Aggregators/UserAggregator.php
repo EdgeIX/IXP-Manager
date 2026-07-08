@@ -96,6 +96,7 @@ use IXP\Models\{
  * @property string|null $created
  * @method static \Illuminate\Database\Eloquent\Builder|UserAggregator whereCreated($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserAggregator whereLastupdated($value)
+ * @property-read CustomerToUser|null $currentCustomerToUser
  * @mixin \Eloquent
  */
 class UserAggregator extends User
@@ -190,7 +191,6 @@ class UserAggregator extends User
                 $user->peeringdb_id = $pdbuser['id'];
                 $user->username     = $uname;
                 $user->password     = Hash::make( Str::random() );
-                $user->privs        = $priv;
                 $user->creator      = 'OAuth-PeeringDB';
                 $user->save();
 

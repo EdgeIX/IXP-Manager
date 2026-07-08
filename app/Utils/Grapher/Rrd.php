@@ -3,7 +3,7 @@
 namespace IXP\Utils\Grapher;
 
 /*
- * Copyright (C) 2009 - 2021 Internet Neutral Exchange Association Company Limited By Guarantee.
+ * Copyright (C) 2009 - 2026 Internet Neutral Exchange Association Company Limited By Guarantee.
  * All Rights Reserved.
  *
  * This file is part of IXP Manager.
@@ -333,6 +333,30 @@ class Rrd
     }
 
     /**
+     * Open an RRD file, applying a consolidation function on the data.
+     *
+     * @param int $start
+     * @param int $end
+     * @param string $consolidationFunction
+     * @return array
+     * @throws FileErrorException
+     */
+    private function fetchRrdFile( int $start, int $end, string $consolidationFunction): array
+    {
+         $rrd = rrd_fetch( $this->file, [
+            $consolidationFunction,
+            '--start', $start,
+            '--end', $end,
+        ]);
+
+        if( $rrd === false || !is_array( $rrd ) ) {
+            throw new FileErrorException("Could not open RRD file");
+        }
+
+        return $rrd;
+    }
+
+    /**
      * @param integer $start : timestamp
      * @param integer $end : timestamp
      *
@@ -344,49 +368,45 @@ class Rrd
      */
     public function dataWindow( int $start, int $end): array
     {
-        $rrd = rrd_fetch( $this->file, [
-            'AVERAGE',
-            '--start', $start,
-            '--end', $end,
-        ]);
+        $avg = $this->fetchRrdFile( $start, $end, 'AVERAGE' );
+        $max = $this->fetchRrdFile( $start, $end, 'MAX' );
 
-        if( $rrd === false || !is_array( $rrd ) ) {
-            throw new FileErrorException("Could not open RRD file");
-        }
-
-        $this->start = $rrd['start'];
-        $this->end   = $rrd['end'];
-        $this->step  = $rrd['step'];
+        $this->start = $avg['start'];
+        $this->end   = $avg['end'];
+        $this->step  = $avg['step'];
 
         [ $indexIn, $indexOut ] = $this->getIndexKeys();
 
         // we want newest first, so iterate in reverse
         // but.... do, we?
         // $tin = array_reverse( $rrd['data'][ $indexIn ], true );
-        $tin = $rrd['data'][ $indexIn ];
+        $tin = $avg['data'][ $indexIn ];
 
         $values  = [];
 
-        $isBits = ( $this->graph()->category() === Graph::CATEGORY_BITS );
-
-        $i = 0;
-         foreach( $tin as $ts => $v ) {
-            if( is_numeric( $v ) && is_numeric( $rrd['data'][$indexOut][$ts] ) ) {
-                // first couple are often blank
-                if( $ts > time() - $this->step ) {
-                    continue;
-                }
-
-                $values[$i] = [ (int)$ts, (int)$v, (int)$rrd['data'][$indexOut][$ts], (int)$v, (int)$rrd['data'][$indexOut][$ts] ];
-
-                if( $isBits ) {
-                    $values[$i][1] *= 8;
-                    $values[$i][2] *= 8;
-                    $values[$i][3] *= 8;
-                    $values[$i][4] *= 8;
-                }
-                $i++;
+        $unitMultiplier = $this->graph()->category() === Graph::CATEGORY_BITS ? 8 : 1;
+        $now = time();
+        foreach( $tin as $ts => $v ) {
+            // first couple are often blank
+            if( $ts > ($now - $this->step) && is_nan($avg['data'][$indexIn][$ts]) && is_nan($avg['data'][$indexOut][$ts]) && is_nan($max['data'][$indexIn][$ts]) && is_nan($max['data'][$indexOut][$ts]) ) {
+                continue;
             }
+
+            /**
+             * 1st column: The Unix timestamp for the point in time the data on this line is relevant             ($ts)
+             * 2nd column: The average incoming transfer rate in bytes per second.                                ($rrdAverage['data'][$indexIn][$ts] or $v))
+             * 3rd column: The average outgoing transfer rate in bytes per second since the previous measurement. ($rrdAverage['data'][$indexOut][$ts])
+             * 4th column: The maximum incoming transfer rate in bytes per second for the current interval.       ($rrdMax['data'][$indexIn][$ts])
+             * 5th column: The maximum outgoing transfer rate in bytes per second for the current interval.       ($rrdMax['data'][$indexOut][$ts])
+             */
+
+            $values[] = [
+                (int)$ts,
+                is_nan($avg['data'][$indexIn][$ts])  ? 0 : (int)round($avg['data'][$indexIn][$ts] * $unitMultiplier),
+                is_nan($avg['data'][$indexOut][$ts]) ? 0 : (int)round($avg['data'][$indexOut][$ts] * $unitMultiplier),
+                is_nan($max['data'][$indexIn][$ts])  ? 0 : (int)round($max['data'][$indexIn][$ts] * $unitMultiplier),
+                is_nan($max['data'][$indexOut][$ts]) ? 0 : (int)round($max['data'][$indexOut][$ts] * $unitMultiplier),
+            ];
         }
         return $values;
     }

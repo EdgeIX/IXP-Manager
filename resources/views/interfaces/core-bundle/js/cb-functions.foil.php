@@ -16,7 +16,7 @@
             }
 
             if( switchId != null && switchId !== '' ) {
-                let url = "<?= url( '/api/v4/switch' )?>/" + switchId + "/ports";
+                let url = "<?= url( '/admin/api/v4/switch' )?>/" + switchId + "/ports";
 
                 datas = {
                     types : [ <?= \IXP\Models\SwitchPort::TYPE_UNSET ?>, <?= \IXP\Models\SwitchPort::TYPE_CORE ?> ],
@@ -34,7 +34,8 @@
                     let options = `<option value="">Choose a switch port</option>\n`;
 
                     $.each( data.ports, function( key, value ){
-                        options += `<option value="${value.id}">${value.name} (${value.type})</option>\n`;
+                        let swPortName = htmlEntities(value.name);
+                        options += `<option value="${value.id}">${swPortName} (${value.type})</option>\n`;
                     });
 
                     dd_switch_port.html( options );

@@ -599,7 +599,7 @@ abstract class Graph
     }
 
     /**
-     * Return the class name less the IXP\Grapher\Graph\ namespace
+     * Return the class name less the IXP\Services\Grapher\Graph\ namespace
      *
      * @return string
      */
@@ -997,7 +997,7 @@ abstract class Graph
     }
 
     /**
-     * Get parameters in bulk as associative array
+     * Get parameters in bulk as an associative array
      *
      * Base function supports keys: type, protocol, category, period
      *

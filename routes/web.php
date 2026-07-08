@@ -107,6 +107,8 @@ Route::group( [ 'prefix' => 'statistics' ], function() {
     Route::get(  'latency/{vli}/{protocol}',                    'StatisticsController@latency'              )->name( 'statistics@latency'               );
     Route::get(  'core-bundle/{cb}',                            'StatisticsController@coreBundle'           )->name( 'statistics@core-bundle'           );
     Route::get(  'top-n',                                       'StatisticsController@topN'                 )->name( 'statistics@top-n'                 );
+    Route::get(  'p2p-totals/{srcCust}/{dstCust}',              'Statistics\P2pController@p2pTotals'        )->name( 'statistics@p2p-totals'            );
+    Route::get(  'p2p-per-vlan/{srcCust}/{dstCust}',            'Statistics\P2pController@p2pPerVlan'       )->name( 'statistics@p2p-per-vlan'          );
 });
 
 
