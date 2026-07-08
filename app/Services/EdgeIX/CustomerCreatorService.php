@@ -2,6 +2,7 @@
 
 namespace IXP\Services\EdgeIX;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -10,6 +11,7 @@ use IXP\Events\User\UserCreated as UserCreatedEvent;
 
 use IXP\Models\Customer;
 use IXP\Models\CustomerToUser;
+use IXP\Models\IrrdbConfig;
 use IXP\Models\User;
 
 /**
@@ -78,53 +80,71 @@ class CustomerCreatorService
 
         $creator = env( 'SIGNUP_NAME', $viaOauth ? 'signup-peeringdb' : 'signup' );
 
-        $customer = Customer::create( [
-            'name'                   => $customerName,
-            'abbreviatedName'        => $abbreviated,
-            'corpwww'                => $pdbNet['website'] ?? null,
-            'autsys'                 => $asn,
-            'maxprefixes'            => $maxPrefixes4,
-            'maxprefixesv6'          => $maxPrefixes6,
-            'peeringmacro'           => $pdbNet['irr_as_set'] ?? null,
-            'peeringmacrov6'         => $pdbNet['irr_as_set'] ?? null,
-            'peeringpolicy'          => $peeringPolicy,
-            'nocphone'               => $pdbNet['noc_phone'] ?? null,
-            'nocemail'               => $pdbNet['noc_email'] ?? null,
-            'nochours'               => Customer::NOC_HOURS_24x7,
-            'created'                => date( 'Y-m-d H:i:s' ),
-            'datejoin'               => date( 'Y-m-d' ),
-            'dateleave'              => null,
-            'status'                 => Customer::STATUS_NOTCONNECTED,
-            'type'                   => Customer::TYPE_FULL,
-            'activepeeringmatrix'    => 0,
-            'creator'                => $creator,
-            'irrdb'                  => 14,
-            'md5support'             => Customer::MD5_SUPPORT_UNKNOWN,
-            'MD5Support'             => Customer::MD5_SUPPORT_UNKNOWN,
-            'peeringdb_oauth'        => $viaOauth ? 1 : 0,
-            'terms_version_accepted' => config( 'signup.terms.version' ),
-        ] );
+        // Pick an IRRDB config to attach to the new customer. cust.irrdb is a
+        // nullable FK into irrdbconfig; the reference IXP-M seed uses id=14 but
+        // that ID isn't stable across installations. Prefer RADB by source
+        // name (most common IRRDB source), else fall back to the first row,
+        // else leave null (admin can set later).
+        $irrdbId = ( IrrdbConfig::where( 'source', 'RADB' )->first()
+                     ?? IrrdbConfig::orderBy( 'id' )->first() )?->id;
 
-        // User: username = email; password random (welcome email sends reset link
-        // on the manual path; OAuth users authenticate via PeeringDB and can set
-        // a local password later from their profile).
-        $user = new User;
-        $user->username     = $email;
-        $user->email        = $email;
-        $user->password     = Hash::make( Str::random( 32 ) );
-        $user->name         = trim( $firstName . ' ' . $lastName );
-        $user->custid       = $customer->id;
-        $user->privs        = User::AUTH_CUSTADMIN;
-        $user->creator      = $creator;
-        $user->peeringdb_id = $viaOauth ? $peeringDbUserId : null;
-        $user->save();
+        // Wrap the multi-row insert so a partial failure (e.g. FK violation on
+        // Customer, or User save failing after Customer succeeded) can't leave
+        // an orphaned row behind.
+        [ $customer, $user ] = DB::transaction( function () use (
+            $customerName, $abbreviated, $pdbNet, $asn, $maxPrefixes4, $maxPrefixes6,
+            $peeringPolicy, $creator, $irrdbId, $viaOauth, $email, $firstName, $lastName, $peeringDbUserId
+        ) {
+            $customer = Customer::create( [
+                'name'                   => $customerName,
+                'abbreviatedName'        => $abbreviated,
+                'corpwww'                => $pdbNet['website'] ?? null,
+                'autsys'                 => $asn,
+                'maxprefixes'            => $maxPrefixes4,
+                'maxprefixesv6'          => $maxPrefixes6,
+                'peeringmacro'           => $pdbNet['irr_as_set'] ?? null,
+                'peeringmacrov6'         => $pdbNet['irr_as_set'] ?? null,
+                'peeringpolicy'          => $peeringPolicy,
+                'nocphone'               => $pdbNet['noc_phone'] ?? null,
+                'nocemail'               => $pdbNet['noc_email'] ?? null,
+                'nochours'               => Customer::NOC_HOURS_24x7,
+                'created'                => date( 'Y-m-d H:i:s' ),
+                'datejoin'               => date( 'Y-m-d' ),
+                'dateleave'              => null,
+                'status'                 => Customer::STATUS_NOTCONNECTED,
+                'type'                   => Customer::TYPE_FULL,
+                'activepeeringmatrix'    => 0,
+                'creator'                => $creator,
+                'irrdb'                  => $irrdbId,
+                'md5support'             => Customer::MD5_SUPPORT_UNKNOWN,
+                'MD5Support'             => Customer::MD5_SUPPORT_UNKNOWN,
+                'peeringdb_oauth'        => $viaOauth ? 1 : 0,
+                'terms_version_accepted' => config( 'signup.terms.version' ),
+            ] );
 
-        $c2u = new CustomerToUser;
-        $c2u->customer_id      = $customer->id;
-        $c2u->user_id          = $user->id;
-        $c2u->privs            = User::AUTH_CUSTADMIN;
-        $c2u->extra_attributes = [ 'created_by' => [ 'type' => $viaOauth ? 'signup-peeringdb' : 'signup' ] ];
-        $c2u->save();
+            // User: username = email; password random (welcome email sends reset link
+            // on the manual path; OAuth users authenticate via PeeringDB and can set
+            // a local password later from their profile).
+            $user = new User;
+            $user->username     = $email;
+            $user->email        = $email;
+            $user->password     = Hash::make( Str::random( 32 ) );
+            $user->name         = trim( $firstName . ' ' . $lastName );
+            $user->custid       = $customer->id;
+            $user->privs        = User::AUTH_CUSTADMIN;
+            $user->creator      = $creator;
+            $user->peeringdb_id = $viaOauth ? $peeringDbUserId : null;
+            $user->save();
+
+            $c2u = new CustomerToUser;
+            $c2u->customer_id      = $customer->id;
+            $c2u->user_id          = $user->id;
+            $c2u->privs            = User::AUTH_CUSTADMIN;
+            $c2u->extra_attributes = [ 'created_by' => [ 'type' => $viaOauth ? 'signup-peeringdb' : 'signup' ] ];
+            $c2u->save();
+
+            return [ $customer, $user ];
+        } );
 
         Log::notice( sprintf(
             '[Signup] Created customer %d (%s, AS%d) with user %d (%s) via %s',
