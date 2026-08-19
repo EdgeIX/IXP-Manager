@@ -50,7 +50,14 @@ temporarily to test that template's config gen.
 ### Prod deploy runbook (v7.3.0)
 
 1. Announce/freeze; full DB backup + separate `mysqldump ixpmanager api_keys`
-2. `git pull` on `release-v7`
+2. **Add `UNSECURED_API_ACCESS=true` to prod `.env`.** Verified 2026-08-19: all
+   route-server reconfigure scripts (`api-reconfigure-birdv2.sh` on each rs box)
+   call the un-prefixed `/api/v4/router/...` endpoints, and prod `.env` doesn't
+   pin this flag — its default flips true→false in v7.2.0, which would break
+   sync on all 31 route servers at deploy. This env var is TRANSITIONAL:
+   follow-up is to migrate the scripts to `/admin/api/v4/...` URLs, then remove
+   the var to get the v7.2.0 hardening.
+3. `git pull` on `release-v7`
 3. `composer update bluntelk/ixpmanager-xero edgeix/ixpm-pseudowire edgeix/ixpm-mac-sync --with-all-dependencies`
    then `composer install --no-dev --optimize-autoloader` (lock drifts on custom packages)
 4. `php artisan migrate --force` — 4 migrations: `remove_user_privs`, `create_asn_table`,
@@ -107,6 +114,9 @@ zero conflicts). 222 commits over `release-v7`.
 - Skin drift: 97 files behind upstream, top-10 port list in the audit
   (memory: `skin-drift-audit-2026-07-08`) — no security impact
 - rs1-syd-ipv6 stale template migration; wider passive-BFD rollout
+- **Migrate reconfigure scripts to `/admin/api/v4/...` URLs** on all rs boxes
+  (`api-reconfigure-birdv2.sh`, one-line URL change), then remove the
+  transitional `UNSECURED_API_ACCESS=true` from prod `.env`
 - Verify the IPv4-only `[ 4 ]` filter in `UpdateAsnDb` is still doing anything
 - Upstream the MultiP2p identifier fix
 
