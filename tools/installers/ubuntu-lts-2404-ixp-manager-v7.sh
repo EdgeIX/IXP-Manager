@@ -505,7 +505,7 @@ IXP_FE_FRONTEND_DISABLED_LOGO=false
 
 
 #######################################################################################
-### Graphing - see https://ixp-manager.readthedocs.org/en/latest/features/grapher.html
+### Graphing - see https://docs.ixpmanager.org/latest/grapher/introduction/
 
 # Enable the backends you have configured. E.g.:
 # GRAPHER_BACKENDS="mrtg|sflow|smokeping"
@@ -585,7 +585,7 @@ GRAPHER_BACKEND_MRTG_DBTYPE="rrd"
 #######################################################################################
 ### Skinning
 #
-# See https://ixp-manager.readthedocs.io/en/latest/features/skinning.html
+# See https://docs.ixpmanager.org/latest/features/skinning/
 #
 # VIEW_SKIN="myskin"
 
@@ -755,6 +755,7 @@ cat >/etc/apache2/sites-available/000-default.conf <<END_APACHE
     DocumentRoot ${IXPROOT}/public
 
     <Directory ${IXPROOT}/public>
+        Header Set X-Frame-Options "DENY"
         Options FollowSymLinks
         AllowOverride None
         Require all granted
@@ -774,7 +775,7 @@ END_APACHE
 
 log_break && cat /etc/apache2/sites-available/000-default.conf &>> /tmp/ixp-manager-install.log
 a2dismod mpm_worker mpm_event &>> /tmp/ixp-manager-install.log
-a2enmod rewrite php8.4 &>> /tmp/ixp-manager-install.log
+a2enmod headers rewrite php8.4 &>> /tmp/ixp-manager-install.log
 
 service apache2 restart &>> /tmp/ixp-manager-install.log
 echo '[done]'

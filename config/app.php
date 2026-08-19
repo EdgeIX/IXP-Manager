@@ -140,7 +140,7 @@ return [
     |
     */
 
-    'key' => env('APP_KEY', 'SomeRandomString'),
+    'key' => env('APP_KEY'),
 
     'cipher' => 'AES-256-CBC',
 
@@ -222,6 +222,7 @@ return [
         IXP\Providers\GrapherServiceProvider::class,
         IXP\Providers\LookingGlassServiceProvider::class,
         IXP\Providers\FoilServiceProvider::class,
+        IXP\Providers\IrrQuerierServiceProvider::class,
         IXP\Providers\IXFServiceProvider::class,
         IXP\Providers\PeeringDbServiceProvider::class,
         IXP\Providers\IxpServiceProvider::class,

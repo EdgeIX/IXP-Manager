@@ -41,7 +41,7 @@
                                     <select id="adv-search-select-locations" name="location" class="form-control">
                                         <option value="all">All Facilities</option>
                                         <?php foreach( $t->locations as $l ): ?>
-                                            <option value="<?= $l->id ?>"><?= $l->name ?></option>
+                                            <option value="<?= $l->id ?>"><?= $t->ee( $l->name ) ?></option>
                                         <?php endforeach; ?>
                                     </select>
 
@@ -139,7 +139,7 @@
                                 Action
                             </th>
                         </tr>
-                    <thead>
+                    </thead>
                     <tbody>
                         <?php foreach( $t->patchPanels as $pp ):
                             /** @var \IXP\Models\PatchPanel $pp */

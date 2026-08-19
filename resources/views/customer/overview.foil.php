@@ -131,8 +131,8 @@
 
                 <p class="tw-mt-2">
                     <?php if( $c->corpwww ): ?>
-                        <a href="<?= $c->corpwww ?>" target="_blank">
-                            <?= $t->nakedUrl( $c->corpwww ) ?>
+                        <a href="<?= $t->ee( $c->corpwww, "attr" ) ?>" target="_blank">
+                            <?= $t->ee( $t->nakedUrl( $c->corpwww ) ) ?>
                         </a>
                         <span class="tw-text-gray-600">
                             -
@@ -208,14 +208,14 @@
 
                 <?php if( !$c->typeAssociate() && count( $c->virtualInterfaces ) ):?>
                     <li role="ports" class="nav-item ">
-                        <a class="nav-link <?php if( $t->tab === 'ports' ): ?> active <?php endif; ?>" data-toggle="tab" href="#ports" data-toggle="tab">
+                        <a class="nav-link <?php if( $t->tab === 'ports' ): ?> active <?php endif; ?>" data-toggle="tab" href="#ports">
                             Ports
                         </a>
                     </li>
 
                     <?php if( $c->hasPrivateVLANs() ): ?>
                         <li role="private-vlans" class="nav-item ">
-                            <a class="nav-link <?php if( $t->tab === 'private-vlans' ): ?> active <?php endif; ?>" data-toggle="tab" href="#private-vlans" data-toggle="tab">
+                            <a class="nav-link <?php if( $t->tab === 'private-vlans' ): ?> active <?php endif; ?>" data-toggle="tab" href="#private-vlans">
                                 Private VLANs
                             </a>
                         </li>
@@ -223,47 +223,47 @@
                 <?php endif; ?>
 
                 <li role="users" class="nav-item ">
-                    <a class="nav-link <?php if( $t->tab === 'users' ): ?> active <?php endif; ?>" data-toggle="tab" href="#users" data-toggle="tab">
+                    <a class="nav-link <?php if( $t->tab === 'users' ): ?> active <?php endif; ?>" data-toggle="tab" href="#users">
                         Users
                     </a>
                 </li>
 
                 <li role="contacts" class="nav-item ">
-                    <a class="nav-link <?php if( $t->tab === 'contacts' ): ?> active <?php endif; ?>" data-toggle="tab" href="#contacts" data-toggle="tab">
+                    <a class="nav-link <?php if( $t->tab === 'contacts' ): ?> active <?php endif; ?>" data-toggle="tab" href="#contacts">
                         Contacts
                     </a>
                 </li>
 
                 <li role="logins" class="nav-item">
-                    <a class="nav-link <?php if( $t->tab === 'logins' ): ?> active <?php endif; ?>" data-toggle="tab" href="#logins" data-toggle="tab">
+                    <a class="nav-link <?php if( $t->tab === 'logins' ): ?> active <?php endif; ?>" data-toggle="tab" href="#logins">
                         Logins
                     </a>
                 </li>
 
                 <li role="notes" class="nav-item ">
-                    <a class="nav-link <?php if( $t->tab === 'notes' ): ?> active <?php endif; ?>" data-toggle="tab" href="#notes" id="tab-notes" data-toggle="tab">
+                    <a class="nav-link <?php if( $t->tab === 'notes' ): ?> active <?php endif; ?>" data-toggle="tab" href="#notes" id="tab-notes">
                         Notes
                         <?php if( $t->notesInfo[ "unreadNotes"] > 0 ): ?>
-                            <span id="notes-unread-indicator" class="badge badge-success"><?= $t->notesInfo[ "unreadNotes"] ?></span>
+                            <span id="notes-unread-indicator" class="badge badge-success"><?= $t->ee( $t->notesInfo[ "unreadNotes"] ) ?></span>
                         <?php endif ?>
                     </a>
                 </li>
 
                 <li role="cross-connects" class="nav-item ">
-                    <a class="nav-link <?php if( $t->tab === 'cross-connects' ): ?> active <?php endif; ?>" data-toggle="tab" href="#cross-connects" data-toggle="tab">
+                    <a class="nav-link <?php if( $t->tab === 'cross-connects' ): ?> active <?php endif; ?>" data-toggle="tab" href="#cross-connects">
                         Cross Connects
                     </a>
                 </li>
 
                 <li role="peers" class="nav-item">
-                    <a class="nav-link peers-tab <?php if( $t->tab === 'peers' ): ?> active <?php endif; ?>" data-toggle="tab" href="#peers" data-toggle="tab">
+                    <a class="nav-link peers-tab <?php if( $t->tab === 'peers' ): ?> active <?php endif; ?>" data-toggle="tab" href="#peers">
                         Peers
                     </a>
                 </li>
 
                 <?php if( !config( 'ixp_fe.frontend.disabled.console-server-connection' ) && $c->consoleServerConnections->count() ): ?>
                     <li role="console-server-connections" class="nav-item ">
-                        <a class="nav-link <?php if( $t->tab === 'console-server-connections' ): ?>active<?php endif; ?>" data-toggle="tab" href="#console-server-connections" data-toggle="tab">
+                        <a class="nav-link <?php if( $t->tab === 'console-server-connections' ): ?>active<?php endif; ?>" data-toggle="tab" href="#console-server-connections">
                             OOB Access
                         </a>
                     </li>
@@ -304,7 +304,7 @@
 
                     <?php if( config('grapher.backends.sflow.enabled') ) : ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?= route( "statistics@p2ps-get", [ 'customer' => $c->id ] )  ?>">
+                            <a class="nav-link" href="<?= route( "statistics@p2p-table", [ 'custid' => $c->id ] )  ?>">
                               P2P &raquo;
                             </a>
                         </li>

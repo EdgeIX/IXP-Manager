@@ -141,9 +141,19 @@ use PragmaRX\Google2FALaravel\Support\Authenticator as GoogleAuthenticator;
                         My Statistics
                     </a>
 
-                    <?php if( config('grapher.backends.sflow.enabled') ): ?>
-                        <a class="dropdown-item <?= !request()->is( 'statistics/p2p*' ) ?: 'active' ?>" href="<?= route( 'statistics@p2ps-get', ['customer' => Auth::getUser()->custid ] ) ?>">
+                    <?php
+                        // P2P links appear whenever ANY p2p-capable backend is enabled.
+                        // Upstream only checks sflow; we also honour akvorado since our
+                        // Akvorado backend now supports P2p + MultiP2p (v7.2.0 merge).
+                        $p2pEnabled = config('grapher.backends.sflow.enabled')
+                                   || config('grapher.backends.akvorado.enabled');
+                    ?>
+                    <?php if( $p2pEnabled ): ?>
+                        <a class="dropdown-item <?= !request()->is( 'statistics/p2ps*' ) ?: 'active' ?>" href="<?= route( 'statistics@p2ps-get', ['customer' => Auth::getUser()->custid ] ) ?>">
                             My Peer to Peer Traffic
+                        </a>
+                        <a class="dropdown-item <?= !request()->is( 'statistics/p2p-table', 'statistics/p2p-totals*', 'statistics/p2p-per-vlan*' ) ?: 'active' ?>" href="<?= route( 'statistics@p2p-table' ) ?>">
+                            P2P Traffic Matrix
                         </a>
                     <?php endif; ?>
 

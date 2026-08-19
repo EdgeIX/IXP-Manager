@@ -153,26 +153,33 @@ function ixpRandomString( length = 12 ) {
  * @returns {string}
  */
 function htmlEntities(str) {
-    return String(str).replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&quot;');
+    let entityMap = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+    };
+
+    return String(str).replace(/[&<>"'`=\/]/g, function (s) {
+        return entityMap[s];
+    });
 }
 
 
 /**
  * Replaces an AS  Number with some JS magic to invoke a BootBox.
  *
- * @param string asNumber The AS number
+ * @param asNumber The AS number
  *
- * @return html
  */
 function ixpAsnumber( asNumber ) {
     let url = WHOIS_ASN_URL + "/" + asNumber;
-    let content = `<div class="asn-table"><pre class="font-mono text-xs">`;
 
-    let bb = bootbox.dialog({
+    bootbox.dialog({
         message: '<div><p class="text-center"><i class="fa fa-spinner fa-spin text-5xl"></i></p></div>',
         size: "large",
         title: "AS Number Lookup",
@@ -188,17 +195,20 @@ function ixpAsnumber( asNumber ) {
         }
     });
 
-
     $.ajax(url)
         .done(function (data) {
-            content += data + '</pre>';
+            let content = '<div class="asn-table"><pre class="font-mono text-xs">' + htmlEntities(data) + '</pre>';
 
             $('.bootbox-body').html( content ).scrollTop();
         })
-        .fail(function () {
-            alert(`Error running ajax query for ${url}`);
-            throw `Error running ajax query for ${url}`;
-        })
+        .fail(function (resp) {
+            if (resp.status === 404) {
+                $('.bootbox-body').text( "No information found for the requested AS" ).scrollTop();
+            } else {
+                $('.bootbox-body').text( `Error running ajax query for ${url}` ).scrollTop();
+                throw `Error running ajax query for ${url}`;
+            }
+        });
 }
 
 

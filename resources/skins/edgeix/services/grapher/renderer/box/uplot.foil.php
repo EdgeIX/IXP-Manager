@@ -95,8 +95,14 @@
 ?>
 
 <?php if( empty( $data ) ): ?>
-    <div class="alert alert-info">
-        No data available for this graph.
+    <?php // Match the ~380px height of a rendered graph card (300px chart + stats table)
+          // so that a mix of populated and empty cards on the same row keeps its grid alignment. ?>
+    <div class="d-flex align-items-center justify-content-center text-muted"
+         style="min-height: 380px; background: rgba(0,0,0,0.02); border: 1px dashed rgba(0,0,0,0.1); border-radius: 4px;">
+        <div class="text-center">
+            <i class="fa fa-info-circle fa-2x mb-2" style="opacity: 0.4;"></i>
+            <div>No data available for this graph.</div>
+        </div>
     </div>
 <?php else: ?>
 

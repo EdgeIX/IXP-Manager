@@ -83,12 +83,14 @@ abstract class Command extends \Illuminate\Console\Command
      }
 
     /**
-     * Returns the list of customers that the keyword match the ASN or the name
-     *
-     * @param  string|int  $search
-     *
-     * @return array
-     */
+      * Returns the list of customers that the keyword match the ASN or the name
+      *
+      * @param string|int  $search
+      *
+      * @return array
+      *
+      * @psalm-return array<int, mixed>
+      */
      protected function customersViaNameOrASN( string|int $search ): array
      {
          return Customer::selectRaw( 'id,name,autsys' )
@@ -127,27 +129,6 @@ abstract class Command extends \Illuminate\Console\Command
             ->groupBy( 'id', 'name', 'username', 'email' )
             ->orderBy( 'id' )->get()->keyBy( 'id' )->toArray();
     }
-
-    /**
-     * Validate an input.
-     *
-     * @param  mixed   $method
-     * @param  array   $rules
-     *
-     * @return mixed
-     */
-    protected function validate_cmd( mixed $method, array $rules ): mixed
-    {
-        $value = $method();
-        $validate = $this->validateInput( $rules, $value );
-
-        if( $validate !== true ) {
-            $this->warn( $validate );
-            $value = $this->validate_cmd( $method, $rules );
-        }
-        return $value;
-    }
-
 
     /**
      * Simple validator function for validating a single value against a given rule

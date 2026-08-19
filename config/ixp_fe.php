@@ -29,7 +29,7 @@ return [
     |
     */
     'skinning' => [
-        // https://github.com/inex/IXP-Manager/wiki/Skinning :
+        // https://docs.ixpmanager.org/latest/features/skinning/ :
         'smarty' => env( 'VIEW_SMARTY_SKIN', "" ),
     ],
 
@@ -81,6 +81,7 @@ return [
     */
     'frontend' => [
         'disabled' => [
+            'app-passwords'             => env( 'IXP_FE_FRONTEND_DISABLED_APP_PASSWORD',      false ),
             'console-server-connection' => env( 'IXP_FE_FRONTEND_DISABLED_CONSOLE',           false ),
             'cust-kit'                  => env( 'IXP_FE_FRONTEND_DISABLED_CUSTKIT',           false ),
             'docstore'                  => env( 'IXP_FE_FRONTEND_DISABLED_DOCSTORE',          false ),
@@ -228,12 +229,49 @@ return [
    */
     'api_keys' => [
 
-        // when an API key is created it is only shown once in the UI and there after it is hidden.
-        // set IXP_FE_API_KEYS_SHOW=true in .env to show the keys
-        'show_keys'       => env( 'IXP_FE_API_KEYS_SHOW', false ),
-
         // maximum API keys per user
         'max_keys'        => env( 'IXP_FE_API_KEYS_MAX', 10 ),
+
+        // History retention in days
+        'history_retention_days' => env('IXP_FE_API_KEYS_HISTORY_RETENTION_DAYS', 90),
+
+        // Maximum duration for api key expiry (e.g. '30 days', '12 months')
+        'max_expires_duration' => env('IXP_FE_API_KEYS_MAX_EXPIRES_DURATION', '1 year' ),
+
+    ],
+
+    /*
+   |--------------------------------------------------------------------------
+   | App Passwords
+   |--------------------------------------------------------------------------
+   |
+   */
+    'app_passwords' => [
+
+        // maximum app passwords per user
+        'max_passwords'        => env( 'IXP_FE_APP_PASSWORDS_MAX', 50 ),
+
+        // encryption scheme
+        'encryption' => [
+            // Available algorithms the user can choose from (if allowed to change)
+            'available_algorithms' => [
+                'bcrypt'   => 'Bcrypt',
+                'argon'    => 'Argon2i',
+                'argon2id' => 'Argon2id',
+                'sha256'   => 'SHA256',
+            ],
+            // Default algorithm to use
+            'default_algorithm' => env('IXP_FE_APP_PASSWORDS_DEFAULT_ALGO', 'bcrypt'),
+            
+            // Can the user change the algorithm on creation?
+            'user_can_change'   => env('IXP_FE_APP_PASSWORDS_USER_CAN_CHANGE', false),
+        ],
+
+        // History retention in days
+        'history_retention_days' => env('IXP_FE_APP_PASSWORDS_HISTORY_RETENTION_DAYS', 90),
+
+        // Maximum duration for password expiry (e.g. '30 days', '12 months')
+        'max_expires_duration' => env('IXP_FE_APP_PASSWORDS_MAX_EXPIRES_DURATION', '1 year' ),
     ],
 
     /*
