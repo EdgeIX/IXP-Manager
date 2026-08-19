@@ -26,11 +26,21 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
 - [x] Multi-p2p graphs end-to-end (see Akvorado notes below)
 - [x] Signup end-to-end (welcome email, set-password link, recovery chain, admin list visibility)
 - [x] bgpq4 vs bgpq3 A/B — identical prefix/ASN output
-- [ ] Router config generation — one per template flavour (matrix below), validate with `bird -p -c`
-- [ ] API-key consumers: config agent, mac-sync webhook, Nagios scripts,
-      `get-switch-config-RESOLD.py`, IX-F/member-export, any script using `?apikey=` URL
-      params (v7.3.0 rewrote the API auth middleware)
-- [ ] `php artisan schedule:list` sanity (new v7.3.0 jobs: API key + app password expiry reminders)
+- [x] Router config generation — all template flavours generate correctly
+- [x] Router sync endpoints — `/admin/api/v4/router/{get-update-lock,gen-config,release-update-lock}`
+      all 200 with header API key under the new middleware
+- [x] Consumer APIs — provisioner layer2interfaces (200), nagios customers (200),
+      member-export with `?access_key=` GET param (200; dev sets
+      `IXP_API_JSONEXPORTSCHEMA_PUBLIC=false`, prod should stay public for PeeringDB/IXPDB).
+      Un-prefixed `/api/v4/...` consumer URLs 404 on dev — exactly the prod failure mode the
+      runbook's `UNSECURED_API_ACCESS=true` step prevents
+- [x] `php artisan schedule:list` — new v7.3.0 jobs registered (expunge-api-keys,
+      expunge-app-passwords, both expiry reminders); existing fleet intact.
+      Notes: `grapher:prune-daily-p2p` scheduled twice (harmless dupe, tidy later);
+      `router:check-stale` is env-gated — set `ROUTER_STALE_ALERT_EMAIL` in prod `.env`
+
+Reconfigure apply-loop (rs boxes pulling + `birdc configure`) is verified during the
+prod smoke test — dev cannot be reached by the prod route servers.
 
 ### Router template matrix (prod, 2026-08-19)
 
@@ -50,7 +60,10 @@ temporarily to test that template's config gen.
 ### Prod deploy runbook (v7.3.0)
 
 1. Announce/freeze; full DB backup + separate `mysqldump ixpmanager api_keys`
-2. **Add `UNSECURED_API_ACCESS=true` to prod `.env`.** Verified 2026-08-19: all
+2. Prod `.env` additions: `ROUTER_STALE_ALERT_EMAIL=<ops email>` (enables
+   `router:check-stale` hourly alerts), and — **required, see below** —
+   `UNSECURED_API_ACCESS=true`.
+   **Why `UNSECURED_API_ACCESS=true` is required:** Verified 2026-08-19: all
    route-server reconfigure scripts (`api-reconfigure-birdv2.sh` on each rs box)
    call the un-prefixed `/api/v4/router/...` endpoints, and prod `.env` doesn't
    pin this flag — its default flips true→false in v7.2.0, which would break
