@@ -127,11 +127,45 @@ zero conflicts). 222 commits over `release-v7`.
 - Skin drift: 97 files behind upstream, top-10 port list in the audit
   (memory: `skin-drift-audit-2026-07-08`) — no security impact
 - rs1-syd-ipv6 stale template migration; wider passive-BFD rollout
-- **Migrate reconfigure scripts to `/admin/api/v4/...` URLs** on all rs boxes
-  (`api-reconfigure-birdv2.sh`, one-line URL change), then remove the
-  transitional `UNSECURED_API_ACCESS=true` from prod `.env`
+- **Secure the API: migrate every consumer to `/admin/api/v4/...`, then remove
+  `UNSECURED_API_ACCESS=true`** — see "API securing plan" section below
 - Verify the IPv4-only `[ 4 ]` filter in `UpdateAsnDb` is still doing anything
 - Upstream the MultiP2p identifier fix
+
+## API securing plan (post-v7.3.0-deploy)
+
+Goal: remove the transitional `UNSECURED_API_ACCESS=true` from prod `.env` so the
+v7.2.0 hardening (secured APIs only under `/admin/` prefix, auth required) is
+actually in effect. While touching each consumer, also move any `?apikey=` GET
+params to the `X-IXP-Manager-API-Key` header — that auth style is deprecated
+and will be removed upstream too. One pass, two deprecations retired.
+
+1. **Inventory consumers from prod access logs** (don't guess — measure).
+   After deploy, let it run a full week (some consumers are weekly crons), then:
+   ```
+   grep -hE "GET|POST" /var/log/apache2/*access*log* \
+     | grep -E "/api/v4/(router|nagios|provisioner|grapher)" \
+     | grep -v "/admin/api" \
+     | awk '{print $1, $7}' | sort | uniq -c | sort -rn
+   ```
+   Every (source IP, endpoint) pair is a consumer needing migration. Also grep
+   for `apikey=` in URLs to catch GET-param auth users.
+2. **Migrate route-server reconfigure scripts** — `api-reconfigure-birdv2.sh`
+   on every rs box (~15) + as112 boxes if they sync the same way:
+   `sed -i 's|/api/v4/router|/admin/api/v4/router|' api-reconfigure-birdv2.sh`
+   Roll one box first, watch a sync cycle, then fleet.
+3. **Migrate the provisioner consumer** — `get-switch-config-RESOLD.py`
+   (layer2interfaces): URL prefix + header auth if on GET params.
+4. **Migrate Nagios config updater** (and smokeping/tacacs updaters if in use).
+5. **Migrate anything else the log inventory surfaced** (monitoring/exporters etc).
+6. **Verify quiesced**: re-run the step-1 log grep over several days — zero
+   un-prefixed hits on gated endpoints (member-export is NOT gated; it stays
+   un-prefixed by design).
+7. **Flip**: remove `UNSECURED_API_ACCESS=true` from prod `.env`,
+   `php artisan config:clear`. The un-prefixed routes disappear (404).
+8. **Watch**: router last-updated timestamps advancing, `router:check-stale`
+   quiet, Nagios config fresh, provisioner tooling working. Rollback is
+   re-adding the env var.
 
 ## Planned — v7.4.0 (+ v7.3.1)
 
