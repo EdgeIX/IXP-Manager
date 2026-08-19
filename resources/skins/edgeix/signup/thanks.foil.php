@@ -35,7 +35,10 @@ $this->layout( 'layouts/ixpv4' );
                     </p>
 
                     <p class="tw-text-xs tw-text-gray-500 tw-mb-6">
-                        Didn't get the email? Check your spam folder, or contact
+                        Didn't get the email? Check your spam folder, then
+                        <a href="<?= route( 'forgot-password@show-form' ) ?>">request a new link</a>
+                        &mdash; the set-password email works exactly like a password reset.
+                        Still stuck? Contact
                         <a href="mailto:support@edgeix.net.au">support@edgeix.net.au</a>.
                     </p>
 
