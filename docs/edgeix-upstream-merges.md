@@ -39,6 +39,15 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
       Notes: `grapher:prune-daily-p2p` scheduled twice (harmless dupe, tidy later);
       `router:check-stale` is env-gated — set `ROUTER_STALE_ALERT_EMAIL` in prod `.env`
 
+- [x] Deletion lifecycle (2026-09-08, full decommission workflow verified):
+      pseudowire teardown → port delete → peer delete. Three bugs found + fixed
+      first: PI deletable under a live pseudowire (new guard observer in the pw
+      package, friendly alert), customer delete blocked by the log.user_id FK
+      (CustomerAggregator now preserves audit rows to laravel.log like
+      UserController does), and the admin overview's "Manage Pseudowires"
+      linking the customer-scoped (empty) dashboard (now deep-links
+      `pw-admin@list?cust=`).
+
 Reconfigure apply-loop (rs boxes pulling + `birdc configure`) is verified during the
 prod smoke test — dev cannot be reached by the prod route servers.
 
