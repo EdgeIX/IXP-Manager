@@ -496,6 +496,20 @@ class CustomerAggregator extends Customer
 
                 // Delete User, if that user only have the customer that we want to delete
                 if( $nbCust === 1 ) {
+                    // EdgeIX fix: the log table has an FK on user_id, so a user with
+                    // audit entries can't be deleted directly. Mirror the
+                    // preserve-and-delete handling upstream already does in
+                    // UserController@delete but forgot here — without this the
+                    // whole customer delete rolls back with a QueryException.
+                    foreach( \IXP\Models\Log::whereUserId( $user->id )->orderBy( 'id', 'ASC' )->get() as $l ) {
+                        \Illuminate\Support\Facades\Log::info( "[CUST DEL - PRESERVING LOG {$l->id}] {$l->model}:{$l->model_id}:{$l->action} ::: {$l->message} ::: " . json_encode( $l->models ) . " ::: {$l->created_at->format('Y-m-d H:i:s')} :::ENDS:::" );
+                        $l->delete();
+                    }
+
+                    // ...and their API keys — no FK blocks this, but UserController@delete
+                    // removes them and leaving dead keys with dangling user_ids is worse.
+                    $user->apiKeys()->delete();
+
                     $user->delete();
                     $user->refresh();
                 } elseif( $user->custid === $cust->id ) {
