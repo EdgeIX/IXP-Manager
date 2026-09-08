@@ -70,20 +70,31 @@ temporarily to test that template's config gen.
    sync on all 31 route servers at deploy. This env var is TRANSITIONAL:
    follow-up is to migrate the scripts to `/admin/api/v4/...` URLs, then remove
    the var to get the v7.2.0 hardening.
-3. `git pull` on `release-v7`
-3. `composer update bluntelk/ixpmanager-xero edgeix/ixpm-pseudowire edgeix/ixpm-mac-sync --with-all-dependencies`
+3. **Pre-window, one-off:** set up composer GitHub auth on prod so the deploy
+   doesn't stall at an interactive prompt:
+   `composer config -g github-oauth.github.com <NO-SCOPE public read-only token>`
+   (mint at github.com/settings/tokens/new with NO scopes). Needed for public
+   repo API metadata (barryo/Purifier). The private EdgeIX packages are pinned
+   to git/SSH deploy keys via `no-api` in composer.json — do NOT use a
+   repo-scope token, and do NOT store tokens in `/srv/ixpmanager/auth.json`
+   (not gitignored; global `/root/.config/composer/auth.json` only).
+4. `git pull` on `release-v7`
+5. `composer update bluntelk/ixpmanager-xero edgeix/ixpm-pseudowire edgeix/ixpm-mac-sync --with-all-dependencies`
    then `composer install --no-dev --optimize-autoloader` (lock drifts on custom packages)
-4. `php artisan migrate --force` — 4 migrations: `remove_user_privs`, `create_asn_table`,
+6. `php artisan migrate --force` — 4 migrations: `remove_user_privs`, `create_asn_table`,
    `create_app_passwords_table` ×2, `set_api_keys_expires_not_nullable`
    (renames api_keys columns to snake_case, backfills expiry to +12 months)
-5. `php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear`
-6. Apache security headers: `a2enmod headers` + X-Frame-Options vhost directive
+7. `php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear`
+8. Apache security headers: `a2enmod headers` + X-Frame-Options vhost directive
    (see upstream `tools/installers/ubuntu-lts-2404-ixp-manager-v7.sh`), reload
-7. Restart Apache (OPcache)
-8. `php artisan utils:asn-update` (one-off bgp.tools ASN populate; scheduler maintains it)
-9. Smoke test: login, admin + customer overviews, port wizard, config gen,
-   signup page, p2p-totals graph, Xero tab; verify every external API consumer
-10. Unfreeze
+9. Restart Apache (OPcache)
+10. `php artisan utils:asn-update` (one-off bgp.tools ASN populate; scheduler maintains it)
+11. Smoke test: login, admin + customer overviews, port wizard, config gen,
+    signup page, p2p-totals graph, Xero tab; verify every external API consumer.
+    Include the two pre-prod bug fixes: PI delete blocked under live pseudowire
+    (409 naming circuits); customer delete succeeds with audit logs preserved
+    to laravel.log (`[CUST DEL - PRESERVING LOG ...]`)
+12. Unfreeze
 
 Decisions during window: enable bgpq4 on prod (`IXP_IRRDB_UTILITY=bgpq4`,
 needs `apt install bgpq4`) — stable on dev since 2026-07. If a p2p graph is
