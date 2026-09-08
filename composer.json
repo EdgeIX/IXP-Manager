@@ -24,15 +24,18 @@
         },
         {
             "type": "vcs",
-            "url": "git@github.com:EdgeIX/ixpm-pseudowire.git"
+            "url": "git@github.com:EdgeIX/ixpm-pseudowire.git",
+            "no-api": true
         },
         {
             "type": "vcs",
-            "url": "git@github.com:EdgeIX/ixpm-mac-sync.git"
+            "url": "git@github.com:EdgeIX/ixpm-mac-sync.git",
+            "no-api": true
         },
         {
             "type": "vcs",
-            "url": "git@github.com:EdgeIX/ixpmanager-xero.git"
+            "url": "git@github.com:EdgeIX/ixpmanager-xero.git",
+            "no-api": true
         }
     ],
     "require": {
