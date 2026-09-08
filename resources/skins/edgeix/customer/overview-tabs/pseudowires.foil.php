@@ -93,12 +93,21 @@
                     Start by enabling opt-in on your ports, then request a new pseudowire.
                 </p>
                 <div>
-                    <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-outline-primary mr-2">
-                        <i class="fa fa-cog"></i> Configure Port Settings
-                    </a>
-                    <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-success">
-                        <i class="fa fa-plus"></i> Request New Pseudowire
-                    </a>
+                    <?php if( $isSuperUser ): ?>
+                        <a href="<?= route( 'pw-admin@opt-ins' ) ?>" class="btn btn-outline-primary mr-2">
+                            <i class="fa fa-cog"></i> Opt-Ins (Admin)
+                        </a>
+                        <a href="<?= route( 'pw-admin@create' ) ?>" class="btn btn-success">
+                            <i class="fa fa-plus"></i> Create Pseudowire
+                        </a>
+                    <?php else: ?>
+                        <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-outline-primary mr-2">
+                            <i class="fa fa-cog"></i> Configure Port Settings
+                        </a>
+                        <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-success">
+                            <i class="fa fa-plus"></i> Request New Pseudowire
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -107,32 +116,66 @@
             <div class="alert alert-warning d-flex align-items-center mb-3">
                 <i class="fa fa-exclamation-triangle fa-lg mr-3"></i>
                 <div class="flex-grow-1">
-                    <strong>You have <?= $incomingCount ?> incoming pseudowire <?= $incomingCount === 1 ? 'request' : 'requests' ?> awaiting your approval.</strong>
+                    <strong><?= $isSuperUser ? 'This customer has' : 'You have' ?> <?= $incomingCount ?> incoming pseudowire <?= $incomingCount === 1 ? 'request' : 'requests' ?> awaiting <?= $isSuperUser ? 'their' : 'your' ?> approval.</strong>
                 </div>
-                <a href="<?= route( 'pw@dashboard', [ 'tab' => 'incoming' ] ) ?>" class="btn btn-warning ml-3">
-                    <i class="fa fa-inbox"></i> Review Incoming Requests
-                </a>
-            </div>
-        <?php endif; ?>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
-                    <i class="fa fa-cog"></i> Port Settings
-                </a>
-                <a href="<?= route( 'pw@dashboard' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
-                    <i class="fa fa-exchange-alt"></i> Manage Pseudowires
-                </a>
-                <?php if( $pendingCount > 0 ): ?>
-                    <a href="<?= route( 'pw@dashboard', [ 'tab' => 'pending' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
-                        <i class="fa fa-clock"></i> Pending
-                        <span class="badge badge-warning"><?= $pendingCount ?></span>
+                <?php if( $isSuperUser ): ?>
+                    <a href="<?= route( 'pw-admin@list', [ 'cust' => $c->id, 'state' => 'pending_approval' ] ) ?>" class="btn btn-warning ml-3">
+                        <i class="fa fa-inbox"></i> View Incoming Requests
+                    </a>
+                <?php else: ?>
+                    <a href="<?= route( 'pw@dashboard', [ 'tab' => 'incoming' ] ) ?>" class="btn btn-warning ml-3">
+                        <i class="fa fa-inbox"></i> Review Incoming Requests
                     </a>
                 <?php endif; ?>
             </div>
-            <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
-                <i class="fa fa-plus"></i> Request New Pseudowire
-            </a>
-        </div>
+        <?php endif; ?>
+        <?php if( $isSuperUser ): ?>
+            <?php
+                // Admin context (customer overview): the customer-scoped routes
+                // (pw@dashboard etc.) would resolve to the ADMIN'S OWN customer
+                // and show an empty list — deep-link the admin views for THIS
+                // customer instead.
+            ?>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <a href="<?= route( 'pw-admin@opt-ins' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
+                        <i class="fa fa-cog"></i> Opt-Ins (Admin)
+                    </a>
+                    <a href="<?= route( 'pw-admin@list', [ 'cust' => $c->id ] ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+                        <i class="fa fa-exchange-alt"></i> Manage Pseudowires
+                    </a>
+                    <?php if( $pendingCount > 0 ): ?>
+                        <a href="<?= route( 'pw-admin@list', [ 'cust' => $c->id, 'state' => 'pending_approval' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
+                            <i class="fa fa-clock"></i> Pending
+                            <span class="badge badge-warning"><?= $pendingCount ?></span>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <a href="<?= route( 'pw-admin@create' ) ?>" class="btn btn-sm btn-success">
+                    <i class="fa fa-plus"></i> Create Pseudowire
+                </a>
+            </div>
+        <?php else: ?>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <a href="<?= route( 'pw-opt-in@list' ) ?>" class="btn btn-sm btn-outline-primary mr-1">
+                        <i class="fa fa-cog"></i> Port Settings
+                    </a>
+                    <a href="<?= route( 'pw@dashboard' ) ?>" class="btn btn-sm btn-outline-secondary mr-1">
+                        <i class="fa fa-exchange-alt"></i> Manage Pseudowires
+                    </a>
+                    <?php if( $pendingCount > 0 ): ?>
+                        <a href="<?= route( 'pw@dashboard', [ 'tab' => 'pending' ] ) ?>" class="btn btn-sm btn-outline-warning mr-1">
+                            <i class="fa fa-clock"></i> Pending
+                            <span class="badge badge-warning"><?= $pendingCount ?></span>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <a href="<?= route( 'pw-request@create' ) ?>" class="btn btn-sm btn-success">
+                    <i class="fa fa-plus"></i> Request New Pseudowire
+                </a>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 <?php else: ?>
     <div class="alert alert-info mb-3">
