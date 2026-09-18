@@ -807,6 +807,31 @@ If running with aggressive OPcache (e.g. `validate_timestamps=0`), restart your 
 - Sflow P2P replacement
 - Exportable graph images (server-side PNG via headless rendering)
 
+## Known behaviours
+
+### Infrastructure RX/TX asymmetry at extended-peering sites (investigated 2026-09-18)
+
+The infrastructure/switch aggregate graphs sum **member ports only** (the
+recording rules contain only enriched member ports). On an isolated fabric,
+aggregate RX ≈ TX always holds. At a site fed by **extended peering** it does
+not — and that is correct, not a bug.
+
+Investigated for Darwin (pe1drw1): members send ~45 Mbps but receive ~1.1 Gbps.
+The difference arrives over four inter-site transport ports (Eth25/1+26/1 and
+Eth29/1+30/1 — two diverse paths carrying the *same* ~1.1 Gbps extended-peering
+feed, one forwarded, the redundant copy discarded at ingress for protection).
+
+Why we deliberately do NOT add transport ports to the aggregate:
+1. The redundant protection feed would double-count inbound (In ≈ 2.3 Gbps
+   against Out ≈ 1.1 Gbps) — even less truthful.
+2. The member-only view answers the question the graph asks: "what do this
+   site's members exchange".
+3. Transport-link visibility belongs to core-bundle graphs.
+
+During the investigation the Darwin transport links were found unmodelled in
+IXP-Manager; they have since been added as core bundles (2026-09-18), so
+per-link transport visibility is available via the core-bundle graphs.
+
 ## License
 
 Same license as IXP Manager (GPL v2.0).
