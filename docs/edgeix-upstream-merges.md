@@ -9,14 +9,31 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
 
 ---
 
-## Current state (2026-08-19)
+## Current state (2026-09-22)
 
 | What | Where |
 |---|---|
-| `release-v7` (mainline) | v7.2.0 + v7.3.0 merged — commit `7c522d8ae`, tag `edgeix-v7.3.0-merge-2026-08-19`, pushed |
-| Dev VM | Running the merged code, all migrations applied, bgpq4 enabled |
-| **Prod** | **NOT yet deployed** — still pre-v7.2.0. Deploy runbook below |
-| v7.4.0 + v7.3.1 | Released upstream, **not merged yet** — planned as a fresh cycle after prod is on v7.3.0 |
+| `release-v7` (mainline) | v7.2.0 + v7.3.0 merged — merge commit `7c522d8ae` + pre-prod fixes, tag `edgeix-v7.3.0-merge-2026-08-19` |
+| Dev VM | Tracks `release-v7` (moved off the finished `merge/v7.3.0` branch 2026-09-08) |
+| **Prod** | **✅ DEPLOYED 2026-09-22.** All 5 migrations applied, route-server sync verified across all template flavours, X-Frame-Options serving, ASN DB populated (122k), IX-F export restored (see window notes below) |
+| v7.4.0 + v7.3.1 | Released upstream, **not merged yet** — next merge cycle. Runbook additions from the v7.3.0 window are flagged below |
+| API securing sweep | **Log-collection clock started 2026-09-22** — gather ≥1 week of prod access logs, then run the 8-step plan |
+
+### v7.3.0 deploy window notes (2026-09-22) — carry into the v7.4.0 runbook
+
+1. **Stale bootstrap cache vs `--no-dev`:** first `composer install --no-dev` on a box
+   whose caches were built with dev deps present leaves `bootstrap/cache/packages.php`
+   referencing dev-only providers (`Laravel\Boost\BoostServiceProvider` here) — every
+   artisan command then dies before boot. Fix: `rm -f bootstrap/cache/{packages,services,config}.php
+   && php artisan package:discover`. Add to any future `--no-dev` deploy.
+2. **`composer.lock` drift on the box:** `git checkout -- composer.lock` (or stash+drop)
+   before `git pull` — never pop a stashed lock back over the regenerated one.
+3. **IX-F export requires `infrastructure.ixf_ix_id` on EVERY non-excluded infra**
+   (schema ≥v0.7 enforcement, new in this upstream code): one missing ID 500s the whole
+   export — PeeringDB/IXPDB polls fail. New sites without an IXPDB-issued ID yet must set
+   `exclude_from_ixf_export=1` until the ID arrives (done for Canberra 2026-09-22 —
+   **remember to set the ID + unexclude when IXPDB responds; it's on the Canberra
+   go-live checklist**).
 
 ### Pre-prod test status (dev)
 
