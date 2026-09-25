@@ -17,7 +17,7 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
 | Dev VM | Tracks `release-v7` (moved off the finished `merge/v7.3.0` branch 2026-09-08) |
 | **Prod** | **✅ DEPLOYED 2026-09-22.** All 5 migrations applied, route-server sync verified across all template flavours, X-Frame-Options serving, ASN DB populated (122k), IX-F export restored (see window notes below) |
 | v7.4.0 + v7.3.1 | Released upstream, **not merged yet** — next merge cycle. Runbook additions from the v7.3.0 window are flagged below |
-| API securing sweep | **Log-collection clock started 2026-09-22** — gather ≥1 week of prod access logs, then run the 8-step plan |
+| API securing sweep | Log clock started 2026-09-22. **Step 5 done 2026-09-23:** `ixpmanager_exporter` v1.2.0 on `/admin/api/v4` in prod (new `ixpm_` key). **Step 2 queued:** RS reconfigure scripts updated to `/admin` URLs in the new playbooks, fleet rollout pending. 07:20 log sample still shows rs1-adl, rs2-drw and 7 others un-prefixed |
 
 ### v7.3.0 deploy window notes (2026-09-22) — carry into the v7.4.0 runbook
 

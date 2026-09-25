@@ -9,7 +9,7 @@
     $vli        = $vlis[ 0 ] ?? 0 /** @var $vli \IXP\Models\VlanInterface */;
     $pis        = $t->vi->physicalInterfaces;
     $countPis   = $pis->count();
-    $firstPi    = $pis[ 0 ] ?? 0 /** @var $firstPi \IXP\Models\PhysicalInterface */;
+    $firstPi    = $pis[ 0 ] ?? null /** @var $firstPi \IXP\Models\PhysicalInterface|null */; // null (not 0) so ?-> chains short-circuit on VIs with no physical interface
     $isLAG      = $countPis > 1 ? 1 : 0;
 ?>
 
