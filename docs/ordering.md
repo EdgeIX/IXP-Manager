@@ -13,7 +13,7 @@ the current state of implementation.
 - **"Order Port" button** in the customer admin nav — orange CTA on the right
   side, next to My Account.
 - Clicking it goes to `/order` → a "Coming Soon" page describing the three
-  planned flows and a `sales@edgeix.net.au` fallback for now.
+  planned flows and a `sales@edgeix.net` fallback for now.
 - No MSA gate is enforced yet. Phase 2 will wrap the order routes in an
   `EnsureMsaSigned` middleware that redirects to the MSA sign flow if the
   customer hasn't signed.
@@ -83,7 +83,7 @@ IPv6) need to swing across to the new port. This means:
 
 ## Cancellations
 
-Not in the self-service UI. Customers email `sales@edgeix.net.au` with a
+Not in the self-service UI. Customers email `sales@edgeix.net` with a
 cancellation request; billing terms are governed by their signed MSA (Schedule
 A / General Terms).
 

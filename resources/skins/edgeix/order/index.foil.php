@@ -24,7 +24,7 @@ $cust = $t->cust ?? null;
                     <p class="tw-text-gray-700 tw-max-w-lg tw-mx-auto">
                         We're building a self-service order flow into the portal.
                         In the meantime, please email
-                        <a href="mailto:sales@edgeix.net.au"><strong>sales@edgeix.net.au</strong></a>
+                        <a href="mailto:sales@edgeix.net"><strong>sales@edgeix.net</strong></a>
                         with your order details and our team will get you provisioned.
                     </p>
                 </div>
@@ -64,7 +64,7 @@ $cust = $t->cust ?? null;
                 <div class="card-body">
                     <p class="tw-text-sm tw-text-gray-600 mb-0">
                         Cancellations are handled via email at
-                        <a href="mailto:sales@edgeix.net.au">sales@edgeix.net.au</a>
+                        <a href="mailto:sales@edgeix.net">sales@edgeix.net</a>
                         and are subject to the billing terms in your Master Service Agreement.
                     </p>
                 </div>
