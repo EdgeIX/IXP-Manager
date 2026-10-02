@@ -17,7 +17,7 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
 | Dev VM | Tracks `release-v7` (moved off the finished `merge/v7.3.0` branch 2026-09-08) |
 | **Prod** | **✅ DEPLOYED 2026-09-22.** All 5 migrations applied, route-server sync verified across all template flavours, X-Frame-Options serving, ASN DB populated (122k), IX-F export restored (see window notes below) |
 | v7.4.0 + v7.3.1 | Released upstream, **not merged yet** — next merge cycle. Runbook additions from the v7.3.0 window are flagged below |
-| API securing sweep | Log clock started 2026-09-22. **Step 5 done 2026-09-23:** `ixpmanager_exporter` v1.2.0 on `/admin/api/v4` in prod (new `ixpm_` key). **Step 2 queued:** RS reconfigure scripts updated to `/admin` URLs in the new playbooks, fleet rollout pending. 07:20 log sample still shows rs1-adl, rs2-drw and 7 others un-prefixed |
+| API securing sweep | Log clock started 2026-09-22. **Step 5 done 2026-09-23:** `ixpmanager_exporter` v1.2.0 on `/admin/api/v4` in prod (new `ixpm_` key). **Step 2 (RS scripts) rides the RS modernisation program** (2026-10-01 decision): the `/admin`-URL scripts ship box-by-box with the new RS deployments (`edgeix-rs-modernisation.md`), so **`UNSECURED_API_ACCESS=true` removal is gated on that fleet rollout completing** — re-run the log inventory after the last box to confirm quiesced, then flip. Other consumers (nagios updater, provisioner tooling) still need their own migration pass per the log inventory |
 
 ### v7.3.0 deploy window notes (2026-09-22) — carry into the v7.4.0 runbook
 
@@ -31,9 +31,8 @@ Process reference: create `merge/vX.Y.Z` off `release-v7`, `git merge vX.Y.Z`
 3. **IX-F export requires `infrastructure.ixf_ix_id` on EVERY non-excluded infra**
    (schema ≥v0.7 enforcement, new in this upstream code): one missing ID 500s the whole
    export — PeeringDB/IXPDB polls fail. New sites without an IXPDB-issued ID yet must set
-   `exclude_from_ixf_export=1` until the ID arrives (done for Canberra 2026-09-22 —
-   **remember to set the ID + unexclude when IXPDB responds; it's on the Canberra
-   go-live checklist**).
+   `exclude_from_ixf_export=1` until the ID arrives (Canberra: excluded 2026-09-22,
+   **ID set + unexcluded 2026-10-01 — resolved**).
 
 ### Pre-prod test status (dev)
 

@@ -1,17 +1,21 @@
 # Managing Signup Terms & Consent
 
-> **Note (2026-07-08):** Active development of signup / MSA / ordering features
-> is on hold pending the merge of upstream IXP-Manager v7.2.0 into our fork.
-> Phase 1 (manual signup) and Phase 1b (PeeringDB OAuth signup) are deployed
-> and functional. Phase 2 (MSA e-sign gate) resumes after the merge lands.
-> See `memory/v720-merge-plan.md` for context.
-
 The public signup form at `/signup` shows a consent checkbox with a link to your
 Privacy Policy. This page explains how to manage that link and how consent is
 tracked over time.
 
 (Other legal terms like the MSA are dealt with separately at service-order time
-— see Phase 2 in the project plan. Signup only collects Privacy Policy consent.)
+— see `docs/ordering.md` for the MSA gate. Signup only collects Privacy Policy
+consent.)
+
+> **Data-integrity note (2026-10-01):** between Phase 1 going live and
+> 2026-10-01, `terms_version_accepted` was missing from the Customer model's
+> `$fillable`, so `Customer::create()` in `CustomerCreatorService` silently
+> discarded the stamp — customers who signed up in that window have `NULL` in
+> `cust.terms_version_accepted` despite having consented. Fixed in the model
+> on 2026-10-01. For the affected rows, the signup log entries (see "Audit
+> trail" below) remain the proof of consent; the stamp can be backfilled from
+> them with a direct update if legal ever needs the column to be complete.
 
 ## Where to change the URL
 
@@ -134,9 +138,11 @@ Socialite provider — no changes needed there.
 Only networks where the OAuth user has update permission (`perms & 0x02`) are
 offered — a read-only affiliate can't create an account on the network's behalf.
 
-## Future work (Phase 2 — MSA gate)
+## Future work — re-consent at the MSA gate
 
-When the MSA e-signature flow is added, it will:
+The order-time MSA gate is live (see `docs/ordering.md`), but the
+terms-version re-consent hook is **not yet wired in**. When it is, the gate
+will additionally:
 
 1. Compare the customer's `terms_version_accepted` against the current
    `SIGNUP_TERMS_VERSION` at every order attempt.
@@ -144,5 +150,8 @@ When the MSA e-signature flow is added, it will:
    proceed.
 3. Refresh the stamp to the current version on successful re-consent.
 
+Customers with a **custom** MSA (`cust.msa_type = 'custom'`) are exempt —
+their negotiated terms don't track `SIGNUP_TERMS_VERSION`.
+
 Nothing to configure for this in advance — bumping `SIGNUP_TERMS_VERSION`
-today already produces the right data shape for the Phase 2 flow to use.
+today already produces the right data shape for the hook to use.

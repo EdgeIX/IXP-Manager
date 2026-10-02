@@ -245,6 +245,15 @@ class Customer extends Model
         //'in_manrs',
         //'in_peeringdb',
 
+        // EdgeIX: signup terms stamping + MSA tracking (see docs/ordering.md)
+        'terms_version_accepted',
+        'msa_status',
+        'msa_type',
+        'msa_signed_at',
+        'msa_signed_by_user_id',
+        'msa_document_id',
+        'msa_signature_provider_id',
+        'msa_notes',
     ];
 
     /**
@@ -254,7 +263,8 @@ class Customer extends Model
      */
     protected $casts = [
         'datejoin' => 'datetime',
-        'dateleave' => 'datetime'
+        'dateleave' => 'datetime',
+        'msa_signed_at' => 'datetime',
     ];
 
     /**
@@ -354,6 +364,46 @@ class Customer extends Model
         self::MD5_SUPPORT_PREFERRED => 'Yes - Preferred',
         self::MD5_SUPPORT_NO        => 'No'
     ];
+
+    // EdgeIX: MSA tracking. 'pending' = e-sign started but not completed.
+    // Custom MSAs are negotiated/executed externally and admin-recorded only.
+    public const MSA_STATUS_UNSIGNED = 'unsigned';
+    public const MSA_STATUS_PENDING  = 'pending';
+    public const MSA_STATUS_SIGNED   = 'signed';
+    public const MSA_STATUS_DECLINED = 'declined';
+
+    public const MSA_TYPE_STANDARD = 'standard';
+    public const MSA_TYPE_CUSTOM   = 'custom';
+
+    /**
+     * EdgeIX: does this customer have an executed MSA on record (standard or
+     * custom)? This is what the EnsureMsaSigned order gate checks.
+     */
+    public function msaSigned(): bool
+    {
+        return $this->msa_status === self::MSA_STATUS_SIGNED;
+    }
+
+    /**
+     * EdgeIX: the docstore file holding the executed MSA PDF, if uploaded.
+     *
+     * @return BelongsTo<DocstoreCustomerFile, Customer>
+     */
+    public function msaDocument(): BelongsTo
+    {
+        return $this->belongsTo( DocstoreCustomerFile::class, 'msa_document_id' );
+    }
+
+    /**
+     * EdgeIX: the portal user who completed the e-sign flow (null for
+     * admin-recorded paper/custom MSAs — signatory goes in msa_notes).
+     *
+     * @return BelongsTo<User, Customer>
+     */
+    public function msaSignedBy(): BelongsTo
+    {
+        return $this->belongsTo( User::class, 'msa_signed_by_user_id' );
+    }
 
     /**
      * Get the customer equipments for the customer

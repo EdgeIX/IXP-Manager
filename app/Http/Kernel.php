@@ -162,6 +162,7 @@ class Kernel extends HttpKernel
         'eloquent2Frontend'     => Middleware\Eloquent2Frontend::class,
         'grapher'               => Middleware\Services\Grapher::class,
         'guest'                 => Middleware\RedirectIfAuthenticated::class,
+        'msa'                   => Middleware\EnsureMsaSigned::class,       // EdgeIX: order-time MSA gate
         'rs-prefixes'           => Middleware\RsPrefixes::class,
         'signed'                => Middleware\ValidateSignature::class,
         'throttle'              => ThrottleRequests::class,

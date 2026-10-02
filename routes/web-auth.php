@@ -47,10 +47,21 @@ if( !config('ixp_fe.frontend.disabled.logo' ) ) {
 ///
 /// EdgeIX customer ordering — Phase 3 placeholder.
 /// The real order flows (new port, add-to-LAG, upgrade) will hang off this
-/// route group once Phase 2 (MSA gate) is in place. See docs/ordering.md.
+/// route group. The 'msa' middleware is the Phase 2 order-time MSA gate:
+/// no executed MSA on record → redirected to /msa. See docs/ordering.md.
 ///
-Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'order' ], function() {
+Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'order', 'middleware' => 'msa' ], function() {
     Route::get( '/', 'OrderController@index' )->name( 'order@index' );
+} );
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// EdgeIX MSA status / acceptance page — where the order gate redirects to.
+/// Deliberately NOT behind the 'msa' middleware.
+///
+Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'msa' ], function() {
+    Route::get( '/', 'MsaController@index' )->name( 'msa@index' );
 } );
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

@@ -76,6 +76,13 @@
                     <?php endif; ?>
                 </a>
 
+                <a class="dropdown-item" href="<?= route( 'msa-admin@edit', [ 'cust' => $c->id ] ) ?>">
+                    Record MSA...
+                    <?php if( !$c->msaSigned() ): ?>
+                        <span class="badge badge-warning">unsigned</span>
+                    <?php endif; ?>
+                </a>
+
                 <?php if( !config( 'ixp_fe.frontend.disabled.docstore_customer' ) ): ?>
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item" href="<?= route( 'docstore-c-dir@list', [ 'cust' => $c->id ] ) ?>">

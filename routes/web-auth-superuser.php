@@ -277,6 +277,18 @@ Route::group( [ 'namespace' => 'Customer'  ], function() {
 /////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ///
+/// EdgeIX: record / upload an executed MSA for a customer (order-time MSA
+/// gate — see docs/ordering.md). Handles historic paper MSAs and custom
+/// negotiated agreements.
+///
+Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'admin/customer' ], function() {
+    Route::get(  'msa/{cust}', 'MsaAdminController@edit'   )->name( 'msa-admin@edit'   );
+    Route::post( 'msa/{cust}', 'MsaAdminController@update' )->name( 'msa-admin@update' );
+});
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+///
 /// User
 ///
 Route::group( [ 'namespace' => 'User' ], function() {
