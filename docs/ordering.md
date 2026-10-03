@@ -601,6 +601,24 @@ All read via config files — run `php artisan config:clear` after changing.
 | `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |
 | `PORT_STOCK_ALERT_EMAIL` | `porttype.low_stock_alert_email` | unset | Recipient for the daily low-stock digest. Unset = job not scheduled. |
 
+## Catalogue seeds: adding shipped types to an existing install
+
+The canonical port-type seed rows live in
+`database/seeders/PortTypeSeeder.php` (the create migration calls it too).
+It is **idempotent by name and non-destructive**: it inserts types that
+don't exist yet and never modifies existing rows, so admin edits (patterns
+added via the UI, thresholds, active flags) are always preserved. When a
+release ships new catalogue types:
+
+```
+php artisan db:seed --class=PortTypeSeeder
+php artisan switch:detect-transceivers   # re-map with the new rows
+```
+
+Do NOT use `migrate:rollback` to refresh the catalogue — once orders and
+per-port overrides exist, a re-seed assigns fresh ids and silently remaps
+`port_order.port_type_id` / `switchport.port_type_override_id`.
+
 ## Testing the pipeline (pre-wizard)
 
 Until the order wizard lands, `PortOrderService` has no UI caller — test the
