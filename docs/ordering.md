@@ -309,9 +309,17 @@ Prerequisite work list, in no particular order:
 - [x] "Sellable" semantics: sellable = active peering switch port +
       effective port type + no physical interface + panel port PREWIRED.
       Reserved/internal panel states are excluded naturally.
-- [ ] Low-stock alerting (AGREED 2026-10-02): threshold field + stock-page
-      badges exist; the admin *notification* job does not yet.
-      Per (DC × port type) threshold
+- [x] Low-stock alerting (BUILT 2026-10-03): `port-stock:check-levels` —
+      daily digest email (mirrors `router:check-stale`) to
+      `PORT_STOCK_ALERT_EMAIL`, scheduled 09:00 from Kernel when the env
+      var is set. Alerts per (location × type) where the type has a
+      threshold AND the location actually deploys that type (any port of
+      that type on site, in service or not — sites that never stock a type
+      stay silent); also nags unmatched optics so unclassified SKUs can't
+      hide from stock. Detection itself is scheduled daily 05:20
+      (`switch:detect-transceivers`). Stock/sellable definitions live in
+      `PortStockService`, shared with the admin page and (later) the order
+      form's availability logic. Per (DC × port type) threshold
       — notify admins when stock drops *below N*, not only at zero, so
       prewiring happens before orders are blocked. Plus: order placed against
       an out-of-stock DC → immediate admin notification + customer-facing
@@ -519,6 +527,11 @@ production-proven.
   `switch:detect-transceivers {switch?} {--nosave} {--debug}`.
 - `app/Http/Controllers/EdgeIX/PortTypeController.php` — catalogue CRUD.
 - `app/Http/Controllers/EdgeIX/PortStockController.php` — stock view.
+- `app/Services/EdgeIX/PortStockService.php` — shared stock/sellable logic.
+- `app/Console/Commands/EdgeIX/CheckPortStockLevels.php` —
+  `port-stock:check-levels` low-stock digest (env `PORT_STOCK_ALERT_EMAIL`).
+- `config/porttype.php` — stock settings (deliberately SNMP-only, no
+  switch API config).
 - `app/Http/Controllers/EdgeIX/SwitchXcvrController.php` — live detect
   preview/apply + stored per-port view + override editing.
 - `resources/skins/edgeix/porttype/{index,edit,stock}.foil.php` — admin views.

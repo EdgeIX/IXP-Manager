@@ -75,6 +75,13 @@ class Kernel extends ConsoleKernel
             $schedule->command( 'router:check-stale' )->hourly();
         }
 
+        // EdgeIX ordering: transceiver detection (ENTITY-MIB + MAU → port
+        // type catalogue) + low-stock digest. See docs/ordering.md.
+        $schedule->command( 'switch:detect-transceivers' )->dailyAt( '5:20' )->withoutOverlapping();
+        if( config( 'porttype.low_stock_alert_email' ) ) {
+            $schedule->command( 'port-stock:check-levels' )->dailyAt( '9:00' );
+        }
+
 
 
         // https://docs.ixpmanager.org/latest/features/peeringdb/#existence-of-peeringdb-records
