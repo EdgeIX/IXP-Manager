@@ -53,9 +53,13 @@ class OrderController extends Controller
     {
         $cust = $r->user()->customer;
 
+        $maintenance = (bool)config( 'ordering.maintenance' );
+
         return view( 'order.index', [
             'orderCust'         => $cust,
-            'orderAvailability' => $stock->availability( $stock->rows() ),
+            'orderMaintenance'  => $maintenance,
+            'orderMaintMessage' => (string)config( 'ordering.maintenance_message' ),
+            'orderAvailability' => $maintenance ? [] : $stock->availability( $stock->rows() ),
             'orderMyOrders'     => PortOrder::where( 'custid', $cust->id )
                 ->with( [ 'location', 'portType' ] )
                 ->orderByDesc( 'id' )->limit( 25 )->get(),
@@ -64,6 +68,13 @@ class OrderController extends Controller
 
     public function store( Request $r, PortOrderService $orders ): RedirectResponse
     {
+        // Server-side guard, not just hidden UI — maintenance means no
+        // placements, full stop (ORDER_MAINTENANCE).
+        if( config( 'ordering.maintenance' ) ) {
+            AlertContainer::push( e( config( 'ordering.maintenance_message' ) ), Alert::WARNING );
+            return redirect()->route( 'order@index' );
+        }
+
         $cust = $r->user()->customer;
 
         $data = $r->validate( [

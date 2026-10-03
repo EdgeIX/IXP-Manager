@@ -6,6 +6,13 @@
  */
 return [
 
+    // Maintenance mode: true disables customer order PLACEMENT (the wizard
+    // shows a notice; the store endpoint rejects server-side). Customers
+    // can still view their existing orders; the admin queue is unaffected.
+    // For slow production rollout and operational pauses.
+    'maintenance'         => (bool)env( 'ORDER_MAINTENANCE', false ),
+    'maintenance_message' => env( 'ORDER_MAINTENANCE_MESSAGE', 'Online ordering is temporarily unavailable. Please email sales@edgeix.net with your order details and our team will get you provisioned.' ),
+
     // Approval policy: 'all' = every order auto-approves at placement
     // (zero-touch default), 'existing' = auto only for customers with
     // existing services, 'none' = every order waits for an admin.

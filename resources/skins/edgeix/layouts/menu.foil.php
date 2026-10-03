@@ -390,10 +390,34 @@
                 <?php endif; ?>
             <?php endif; ?>
 
-            <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) || Route::has( 'mac-sync@index' ) ): ?>
+            <?php if( Route::has( 'pw-admin@dashboard' ) || Route::has( 'xero.auth.success' ) || Route::has( 'mac-sync@index' ) || Route::has( 'port-stock@index' ) ): ?>
                 <h6>
                     <span>EDGEIX</span>
                 </h6>
+            <?php endif; ?>
+
+            <?php if( Route::has( 'port-stock@index' ) ): ?>
+                <li class="<?= !( request()->is( 'admin/port-stock*' ) || request()->is( 'admin/port-order*' ) || request()->is( 'admin/port-type*' ) ) ?: 'active' ?>">
+                    <a href="<?= route( 'port-stock@index' ) ?>" class="nav-link">
+                        <i class="fa fa-cubes"></i>
+                        Port Stock
+                    </a>
+                </li>
+
+                <?php if( request()->is( 'admin/port-stock*' ) || request()->is( 'admin/port-order*' ) || request()->is( 'admin/port-type*' ) ): ?>
+                    <ul>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'admin/port-order*' ) ?: 'active' ?>">
+                            <a href="<?= route( 'port-order-admin@index' ) ?>" class="nav-link">
+                                Order Queue
+                            </a>
+                        </li>
+                        <li class="nav-sub-menu-item <?= !request()->is( 'admin/port-type*' ) ?: 'active' ?>">
+                            <a href="<?= route( 'port-type@index' ) ?>" class="nav-link">
+                                Port Types
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif; ?>
             <?php endif; ?>
 
             <?php if( Route::has( 'mac-sync@index' ) ): ?>

@@ -583,6 +583,8 @@ All read via config files — run `php artisan config:clear` after changing.
 
 | Env var | Config | Default | Meaning |
 |---|---|---|---|
+| `ORDER_MAINTENANCE` | `ordering.maintenance` | `false` | `true` disables customer order placement — wizard shows a maintenance notice and the store endpoint rejects server-side. Customers can still view existing orders; admin queue unaffected. For slow prod rollout / operational pauses. |
+| `ORDER_MAINTENANCE_MESSAGE` | `ordering.maintenance_message` | email-sales text | Customer-facing text on the maintenance notice. |
 | `ORDER_AUTO_APPROVE` | `ordering.auto_approve` | `all` | `all` = zero-touch; `existing` = auto only for customers with services; `none` = every order waits for admin Approve. Rollout plan: prod starts `none` → `existing` → `all` as confidence grows; test box runs `all`. |
 | `ORDER_HOLD_DAYS` | `ordering.hold_days` | `14` | Days an unapproved (submitted) order holds its port reservation before `port-order:expire-holds` releases it. |
 | `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |

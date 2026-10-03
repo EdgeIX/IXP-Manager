@@ -5,6 +5,8 @@ $this->layout( 'layouts/ixpv4' );
 use IXP\Models\PortOrder;
 
 $orderCust         = $t->orderCust;
+$orderMaintenance  = $t->orderMaintenance;
+$orderMaintMessage = $t->orderMaintMessage;
 $orderAvailability = $t->orderAvailability;
 $orderMyOrders     = $t->orderMyOrders;
 
@@ -41,6 +43,19 @@ $stateBadge = [
                 <?php endif; ?>
             <?php endif; ?>
 
+            <?php if( $orderMaintenance ): ?>
+                <div class="card mb-4 border-warning">
+                    <div class="card-body text-center py-5">
+                        <div class="tw-text-yellow-500 tw-text-5xl tw-mb-3">
+                            <i class="fa fa-wrench"></i>
+                        </div>
+                        <h3 class="mb-3">Ordering temporarily unavailable</h3>
+                        <p class="tw-text-gray-700 tw-max-w-lg tw-mx-auto mb-0">
+                            <?= $t->ee( $orderMaintMessage ) ?>
+                        </p>
+                    </div>
+                </div>
+            <?php else: ?>
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="fa fa-plug tw-text-blue-500"></i> New Peering Port
@@ -164,6 +179,7 @@ $stateBadge = [
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; /* orderMaintenance */ ?>
 
             <?php if( count( $orderMyOrders ) ): ?>
                 <div class="card mb-4">
