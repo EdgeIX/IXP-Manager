@@ -41,7 +41,7 @@ $portTypes = $t->portTypes;
                                 <th>Priority</th>
                                 <th>Match patterns (regex, one per line)</th>
                                 <th>Low-stock threshold</th>
-                                <th>Mapped ports</th>
+                                <th title="Every switch port whose detected optic classifies as this type — all states (in service, free, core). For sellable availability see Port Stock.">Detected ports (fleet total)</th>
                                 <th></th>
                             </tr>
                         </thead>

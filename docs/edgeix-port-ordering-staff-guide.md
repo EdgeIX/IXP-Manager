@@ -95,10 +95,12 @@ override wins over detection permanently until cleared.
 ## Low-stock alerting
 
 Set a **low-stock threshold** on each port type we actively sell (Port
-Types → edit). Every morning at 09:00, if any DC has fewer sellable ports of
-a type than its threshold, a digest email goes to the stock alert address —
-that's your "go pre-wire more" trigger. Locations that never stock a type
-don't alert. The email also nags about unmatched optics.
+Types → edit). The threshold is one number per type but it is checked
+**per DC**: every morning at 09:00, each DC that has fewer sellable ports
+of a type than the threshold gets its own line in the digest email (e.g.
+"NEXTDC P1 — 10G — sellable: 1, threshold 2"), and the Port Stock matrix
+shows a red *low* badge on that exact DC cell. Locations that never stock
+a type don't alert. The email also nags about unmatched optics.
 
 **Pre-wire before it alerts at zero** — ordering is self-service, so stock
 gets consumed without anyone phoning first.
