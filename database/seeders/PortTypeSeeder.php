@@ -40,6 +40,11 @@ class PortTypeSeeder extends Seeder
         [ 'name' => '25GBASE-LR',               'speed' => 25000,  'active' => 0, 'priority' => 20, 'match_patterns' => "25G-?BASE-?LR\n25G-?LR", 'notes' => 'Not sold yet — enable when 25G launches' ],
         [ 'name' => '1GBASE-LX',                'speed' => 1000,   'active' => 0, 'priority' => 20, 'match_patterns' => "1G(BASE)?-?LX\nSFP1G-LX\n1000Base-?LX", 'notes' => 'Legacy 1G — classified for inventory, not sold' ],
         [ 'name' => '10G DWDM (core)',          'speed' => 10000,  'active' => 0, 'priority' => 15, 'match_patterns' => "^AXSD", 'notes' => '10G DWDM 80km optics (AXSD52/56-192-xx) — core/transport, never customer stock' ],
+        [ 'name' => '100GBASE-ER4',             'speed' => 100000, 'active' => 0, 'priority' => 10, 'match_patterns' => "100G-?(BASE-?)?ER4\n^Q\\.161HG\\.40", 'notes' => '40km long-reach 100G (Q.161HG.40) — special-case customer ports arranged by sales, not standard stock' ],
+        [ 'name' => '100GBASE-SR4',             'speed' => 100000, 'active' => 0, 'priority' => 10, 'match_patterns' => "100G-?(BASE-?)?SR4(?![0-9])\n^Q\\.851HG", 'notes' => '850nm multimode (Q.851HG.02) — one same-rack peer edge case (pe1bne1 Et32/1), to be removed; never standard stock' ],
+        [ 'name' => '10GBASE-ZR',               'speed' => 10000,  'active' => 0, 'priority' => 10, 'match_patterns' => "10G(BASE)?-?ZR\n^P\\.1696", 'notes' => '80km 1570nm (P.1696.23.P) — long-range customer edge case, arranged by sales; not standard stock' ],
+        [ 'name' => '40G DAC (legacy)',         'speed' => 40000,  'active' => 0, 'priority' => 10, 'match_patterns' => "QSFP-?H40G-?CU\n40G-?(BASE-?)?CR4", 'notes' => 'Direct-attach copper to legacy devices (QSFP-H40G-CU1M = 40GBASE-CR4) — never customer stock' ],
+        [ 'name' => '100G SR10 (MXP legacy)',   'speed' => 100000, 'active' => 0, 'priority' => 15, 'match_patterns' => "100G(BASE)?-?SR10", 'notes' => 'MXP ports on pe1hba1 Et49-52 (MAU-only detection) — device scheduled for replacement, interfaces unused' ],
     ];
 
     public function run(): void
