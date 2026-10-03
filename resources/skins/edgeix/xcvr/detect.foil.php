@@ -58,7 +58,12 @@ $xcvrEntities = $t->xcvrEntities;
                             ?>
                                 <tr>
                                     <td><?= $t->ee( $sp->ifName ) ?></td>
-                                    <td><code class="tw-text-xs"><?= $t->ee( $d['xcvr'] ) ?></code></td>
+                                    <td>
+                                        <code class="tw-text-xs"><?= $t->ee( $d['xcvr'] ) ?></code>
+                                        <?php if( ( $d['source'] ?? 'entity' ) === 'mau' ): ?>
+                                            <span class="badge badge-secondary" title="No ENTITY-MIB entry for this port — value from the MAU MIB the core poller stores">via MAU</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php if( $d['type'] ): ?>
                                             <?= $t->ee( $d['type']->name ) ?>

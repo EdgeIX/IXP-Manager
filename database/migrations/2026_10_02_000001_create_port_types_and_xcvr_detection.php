@@ -53,13 +53,13 @@ return new class extends Migration
         // "100G-LR4" never falls through to the "100G-LR" type.
         $now = now();
         DB::table( 'port_type' )->insert( [
-            [ 'name' => '10GBASE-LR',           'speed' => 10000,  'active' => 1, 'priority' => 10, 'match_patterns' => "10G-?BASE-?LR(?![0-9M])\n10G-?LR(?![0-9M])", 'low_stock_threshold' => null, 'notes' => null, 'created_at' => $now, 'updated_at' => $now ],
+            [ 'name' => '10GBASE-LR',           'speed' => 10000,  'active' => 1, 'priority' => 10, 'match_patterns' => "10G-?BASE-?LR(?![0-9M])\n10G-?LR(?![0-9M])\n10Gig-?Base-?LR(?![0-9M])", 'low_stock_threshold' => null, 'notes' => null, 'created_at' => $now, 'updated_at' => $now ],
             [ 'name' => '40GBASE-LR4',          'speed' => 40000,  'active' => 1, 'priority' => 10, 'match_patterns' => "40G-?BASE-?LR4\n40G-?LR4", 'low_stock_threshold' => null, 'notes' => null, 'created_at' => $now, 'updated_at' => $now ],
             [ 'name' => '100GBASE-LR4',         'speed' => 100000, 'active' => 1, 'priority' => 10, 'match_patterns' => "100G-?BASE-?LR4\n100G-?LR4", 'low_stock_threshold' => null, 'notes' => null, 'created_at' => $now, 'updated_at' => $now ],
             [ 'name' => '100GBASE-LR/FR',       'speed' => 100000, 'active' => 1, 'priority' => 20, 'match_patterns' => "100G-?BASE-?(LR|FR)(?![0-9])\n100G-?(LR|FR)(?![0-9])\n100G-?DR", 'low_stock_threshold' => null, 'notes' => 'Single-lambda 100G (LR/FR/DR)', 'created_at' => $now, 'updated_at' => $now ],
             [ 'name' => '400GBASE-LR4',         'speed' => 400000, 'active' => 1, 'priority' => 10, 'match_patterns' => "400G-?BASE-?LR4\n400G-?LR4", 'low_stock_threshold' => null, 'notes' => null, 'created_at' => $now, 'updated_at' => $now ],
-            [ 'name' => '10G (PSM4 breakout)',  'speed' => 10000,  'active' => 1, 'priority' => 15, 'match_patterns' => "40G-?PSM4\n40G-?PLR4", 'low_stock_threshold' => null, 'notes' => '4x10G legs of a 40G PSM4/PLR4 in a QSFP cage — each leg is a sellable 10G port', 'created_at' => $now, 'updated_at' => $now ],
-            [ 'name' => '25G (PSM4 breakout)',  'speed' => 25000,  'active' => 0, 'priority' => 15, 'match_patterns' => "100G-?PSM4\n100G-?PLR4", 'low_stock_threshold' => null, 'notes' => 'Not sold yet — enable when 25G launches', 'created_at' => $now, 'updated_at' => $now ],
+            [ 'name' => '10G (PSM4 breakout)',  'speed' => 10000,  'active' => 1, 'priority' => 15, 'match_patterns' => "40G-?(BASE-?)?PSM4\n40G-?(BASE-?)?PLR4", 'low_stock_threshold' => null, 'notes' => '4x10G legs of a 40G PSM4/PLR4 in a QSFP cage — each leg is a sellable 10G port', 'created_at' => $now, 'updated_at' => $now ],
+            [ 'name' => '25G (PSM4 breakout)',  'speed' => 25000,  'active' => 0, 'priority' => 15, 'match_patterns' => "100G-?(BASE-?)?PSM4\n100G-?(BASE-?)?PLR4", 'low_stock_threshold' => null, 'notes' => 'Not sold yet — enable when 25G launches', 'created_at' => $now, 'updated_at' => $now ],
             [ 'name' => '25GBASE-LR',           'speed' => 25000,  'active' => 0, 'priority' => 20, 'match_patterns' => "25G-?BASE-?LR\n25G-?LR", 'low_stock_threshold' => null, 'notes' => 'Not sold yet — enable when 25G launches', 'created_at' => $now, 'updated_at' => $now ],
         ] );
     }

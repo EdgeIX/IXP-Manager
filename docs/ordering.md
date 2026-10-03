@@ -400,6 +400,22 @@ review: port type (10G LR, 40G LR, 100G LR4, 100G LR, 400G LR4, later 25G…)
 should be *automatically determined*, with an admin-managed catalogue of
 sellable port types layered on top. Direction:
 
+- **Relationship to upstream's Optic Inventory (checked 2026-10-03):**
+  IXP-Manager already ships "Optic Inventory" / "Unused Optics" / "Optic
+  List" pages — but they are built entirely on `switchport.mauType`
+  (`GROUP BY mauType`, gated on `switch.mauSupported`), i.e. the MAU MIB we
+  ruled out as the source of truth: no entries for 400G at all (verified
+  against OSS_SNMP's MAU type table), `(empty)` for unregistered optics,
+  switches without mauSupported invisible, and no mapping to sellable
+  types, breakout legs, overrides or stock. NOT a duplication — but to
+  avoid parallel wheels, **the detector consumes mauType as a fallback
+  source through the same catalogue**: where the ENTITY walk yields nothing
+  for a port but the core poller has stored a MAU string (`10GigBaseLR`,
+  `40GbasePSM4`, …), that string is matched against the same patterns
+  (seeds updated to match MAU spellings). ENTITY wins when both exist;
+  MAU-sourced values are flagged "via MAU" in the UI/CLI, and their
+  freshness follows the core snmp-poll cadence. Upstream's pages remain
+  useful as MAU-level procurement counts.
 - **Detection: SNMP ENTITY-MIB**, not the MAU MIB. Arista populates
   `entPhysicalModelName`/`entPhysicalDescr` for every inserted transceiver
   (e.g. `QSFP-100G-LR4`) regardless of link state, and it rides the same SNMP

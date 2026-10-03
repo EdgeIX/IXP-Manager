@@ -86,6 +86,7 @@ class DetectTransceivers extends Command
                 $rows[] = [
                     $d['port']->ifName,
                     $d['xcvr'],
+                    $d['source'],
                     $d['type']?->name ?? '** NO CATALOGUE MATCH **',
                 ];
                 if( !$d['type'] ) {
@@ -94,7 +95,7 @@ class DetectTransceivers extends Command
             }
 
             if( !$this->isVerbosityQuiet() ) {
-                $this->table( [ 'Port', 'Detected transceiver', 'Port type' ], $rows );
+                $this->table( [ 'Port', 'Detected transceiver', 'Source', 'Port type' ], $rows );
 
                 foreach( $results['unmapped'] as $u ) {
                     $this->warn( "    Unmapped optic (no switch port found): entity {$u['entity']} [{$u['xcvr']}]"

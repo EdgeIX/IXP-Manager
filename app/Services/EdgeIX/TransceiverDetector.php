@@ -101,8 +101,30 @@ class TransceiverDetector
                 if( isset( $detected[ $port->id ] ) && $iface !== $port->ifName ) {
                     continue;
                 }
-                $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'type' => $type ];
+                $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'type' => $type, 'source' => 'entity' ];
             }
+        }
+
+        // Fallback source: the MAU MIB the core poller already stores
+        // (switchport.mauType — what upstream's own Optic Inventory pages
+        // are built on). Where a port got nothing from the ENTITY walk but
+        // MAU data exists, feed the MAU string through the same catalogue
+        // mapping — one pipeline, two sources. ENTITY always wins when both
+        // are present.
+        foreach( $ports as $port ) {
+            if( isset( $detected[ $port->id ] ) ) {
+                continue;
+            }
+            $mau = trim( (string)$port->mauType );
+            if( $mau === '' || $mau === '(empty)' || strtolower( $mau ) === 'unknown' ) {
+                continue;
+            }
+            $detected[ $port->id ] = [
+                'port'   => $port,
+                'xcvr'   => $mau,
+                'type'   => PortType::matchXcvr( $mau ),
+                'source' => 'mau',
+            ];
         }
 
         return [ 'detected' => $detected, 'unmapped' => $unmapped ];
