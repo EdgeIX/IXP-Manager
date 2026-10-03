@@ -83,8 +83,23 @@ class TransceiverDetector
         // PHYSICAL switch ports only, indexed by ifName. Sub-interfaces
         // (Ethernet1/2.190 — dot1q units) are logical and never carry an
         // optic; without this filter a cage entity fans out onto them.
+        //
+        // Also exclude STALE rows: ports in the DB with no matching port on
+        // the switch (the core poller warns about these every run). Their
+        // lastSnmpPoll froze when the port disappeared, so anything clearly
+        // older than the switch's lastPolled is a ghost — otherwise a cage
+        // entity ("Ethernet12") fans its optic onto DB-only legs
+        // (Ethernet12/2-4) that don't exist on the switch. Null timestamps
+        // are kept (benefit of the doubt). Deleting the stale rows is still
+        // the real fix — they pollute stock counts too.
+        $staleCutoff = $switch->lastPolled
+            ? \Carbon\Carbon::parse( $switch->lastPolled )->subHours( 2 )
+            : null;
+
         $ports = $switch->switchPorts()->get()
             ->filter( fn( SwitchPort $p ) => $p->ifName && !str_contains( $p->ifName, '.' ) )
+            ->filter( fn( SwitchPort $p ) => !$staleCutoff || !$p->lastSnmpPoll
+                || \Carbon\Carbon::parse( $p->lastSnmpPoll )->gte( $staleCutoff ) )
             ->keyBy( 'ifName' );
 
         $detected = [];
