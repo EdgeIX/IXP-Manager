@@ -1,7 +1,9 @@
 # EdgeIX Customer Ordering — Workflow Spec
 
 This document describes the planned customer self-service ordering flows and
-the current state of implementation.
+the current state of implementation. It is the ENGINEERING spec — for the
+operational how-to (ops/admin staff), see
+`docs/edgeix-port-ordering-staff-guide.md`.
 
 ## Current state (Phase 2 MSA gate — 2026-10-01)
 
