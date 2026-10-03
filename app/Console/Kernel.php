@@ -81,6 +81,7 @@ class Kernel extends ConsoleKernel
         if( config( 'porttype.low_stock_alert_email' ) ) {
             $schedule->command( 'port-stock:check-levels' )->dailyAt( '9:00' );
         }
+        $schedule->command( 'port-order:expire-holds' )->hourly();
 
 
 

@@ -5,6 +5,8 @@ namespace IXP\Services\EdgeIX;
 use Illuminate\Support\Collection;
 
 use IXP\Models\PatchPanelPort;
+use IXP\Models\PortOrder;
+use IXP\Models\PortOrderPort;
 use IXP\Models\SwitchPort;
 
 /**
@@ -24,16 +26,22 @@ class PortStockService
      */
     public function rows(): Collection
     {
+        // Switch ports held by an OPEN order are reserved — not sellable.
+        $reserved = PortOrderPort::whereHas( 'portOrder', fn( $q ) =>
+                $q->whereIn( 'state', PortOrder::OPEN_STATES ) )
+            ->pluck( 'switchportid' )->flip();
+
         return SwitchPort::with( [ 'switcher.cabinet.location', 'patchPanelPort.patchPanel', 'physicalInterface', 'portType', 'portTypeOverride' ] )
             ->where( 'active', true )
             ->where( 'type', SwitchPort::TYPE_PEERING )
             ->whereHas( 'switcher', fn( $q ) => $q->where( 'active', true ) )
             ->get()
-            ->map( function( SwitchPort $sp ) {
+            ->map( function( SwitchPort $sp ) use ( $reserved ) {
                 $type = $sp->effectivePortType();
                 $ppp  = $sp->patchPanelPort;
                 $free = !$sp->physicalInterface;
-                $prewired = $ppp && (int)$ppp->state === PatchPanelPort::STATE_PREWIRED;
+                $prewired   = $ppp && (int)$ppp->state === PatchPanelPort::STATE_PREWIRED;
+                $isReserved = isset( $reserved[ $sp->id ] );
 
                 return (object)[
                     'sp'        => $sp,
@@ -41,11 +49,12 @@ class PortStockService
                     'type'      => $type,
                     'free'      => $free,
                     'prewired'  => $prewired,
+                    'reserved'  => $isReserved,
                     'ppp'       => $ppp,
                     // sellable = what the order form may offer
-                    'sellable'  => $free && $type && $type->active && $prewired,
+                    'sellable'  => $free && $type && $type->active && $prewired && !$isReserved,
                     // hygiene: free port with a sellable type but panel side not prewired
-                    'needsPrewireFlag' => $free && $type && $type->active && !$prewired,
+                    'needsPrewireFlag' => $free && $type && $type->active && !$prewired && !$isReserved,
                     // hygiene: optic detected but no catalogue match, port free
                     'unmatchedOptic'   => $free && !$type && $sp->detected_xcvr,
                 ];

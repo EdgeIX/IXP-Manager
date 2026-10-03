@@ -139,7 +139,17 @@ Model constants + helpers on `Customer`: `MSA_STATUS_*`, `MSA_TYPE_*`,
 ## Planned order sub-flows
 
 The `/order` landing page will branch into three distinct sub-flows. Each has
-different data capture, validation, and provisioning steps.
+different data capture, validation, and provisioning steps — but all three
+run on the SAME orders chassis (`port_order.kind` = `new_port` | `add_lag` |
+`upgrade`, with `target_virtual_interface_id` pointing at the existing
+service for the latter two): one table, one state machine, one reservation
+engine, one LOA path. What differs per kind (2026-10-03):
+
+| | new_port (built) | add_lag | upgrade |
+|---|---|---|---|
+| Port picker | diversity-preferred across switches | **constrained to the LAG's own switch** | new type, prefer same switch |
+| Provisioning | full recipe (VI+PI+VLI+IPs) | add PI(s) to the existing VI — no new IPs/VLI | new PI + IP swing + cutover window + old port decommission |
+| Service impact | none | none when already LACP (conversion case shrinks as single ports ship as single-member LAGs) | peering interrupted during the swing |
 
 ### 1. New Port
 
@@ -325,13 +335,61 @@ Prerequisite work list, in no particular order:
       an out-of-stock DC → immediate admin notification + customer-facing
       lead-time messaging.
 
+### Orders data model (designed/built 2026-10-03)
+
+Tables (`port_order` — "order" is an SQL reserved word — and
+`port_order_port`):
+
+- `port_order`: cust_id, user_id (who placed), `state`, location_id,
+  port_type_id, quantity (2+ = LACP LAG, same switch), tagged + vlan_tag,
+  macs (JSON, ≤2 per Schedule A, nullable = "provide later"),
+  delivery_contact, po_number, preferred_golive, reserved_until (hold
+  expiry while awaiting approval), per-transition timestamps
+  (approved_at/by, provisioned_at, loa_issued_at, activated_at,
+  cancelled_at + reason), virtual_interface_id (set by provisioning).
+- `port_order_port`: one row per reserved switch port (+ its patch panel
+  port at reservation time). The reservation IS these rows: the stock
+  query excludes switch ports held by any open order.
+
+**States:** `submitted → approved → provisioned → awaiting_xconnect →
+active`, terminal `cancelled` / `expired`. Open (= holds its reservation):
+submitted/approved/provisioned/awaiting_xconnect. `reserved_until` only
+applies in `submitted` (an approval gate, if policy enables one, must not
+hold stock forever); `port-order:expire-holds` (hourly) expires overdue
+submitted orders and frees the ports.
+
+**Reservation:** `PortOrderService::place()` — single DB transaction,
+`lockForUpdate` over sellable candidates (active peering port, effective
+type = requested, no physical interface, panel PREWIRED, same switch for
+LAG quantity, not held by an open order) so two concurrent orders can
+never take the same last port. No stock → exception surfaced to the
+caller (order form shows lead-time path instead).
+
+**Switch diversity (2026-10-03):** the picker prefers switches where the
+customer has NO existing or reserved ports — so "two single-port services
+at one DC for router redundancy" (two separate quantity-1 orders, each
+its own LAG/VI/IPs — the correct shape for redundancy) automatically
+lands on two different switches when stock allows, no customer input
+needed. Falls back to a shared switch when that's all that's left.
+
+**Approval policy** (`ORDER_AUTO_APPROVE` = `all` | `existing` | `none`,
+default `all` per the zero-touch decision): `all` → auto-approved at
+placement; `existing` → auto only when the customer already has services;
+`none` → every order waits for an admin. Every placement emails
+`ORDER_NOTIFY_EMAIL` regardless — awareness ≠ approval, and it's the
+manual-billing trigger.
+
 **Order workflow:**
-- [ ] Orders table + state machine: submitted → approved → provisioned +
-      LOA issued → awaiting x-connect → active; cancelled / expired. Orders
-      missing a MAC can reach "awaiting x-connect" but are flagged
-      incomplete until the MAC is supplied.
-- [ ] Port **reservation at submit time** with a hold expiry — two concurrent
-      orders must not be able to take the same last prewired port.
+- [x] Orders table + state machine (BUILT 2026-10-03): `port_order` +
+      `port_order_port`, `PortOrder` model with state constants,
+      `PortOrderService` (place / approve / cancel / expireHolds). See
+      "Orders data model" above. MAC-missing is a derived flag
+      (`macMissing()`), nag-not-block as decided.
+- [x] Port **reservation at submit time** (BUILT 2026-10-03): placement
+      locks sellable candidates FOR UPDATE in one transaction, LAG
+      quantities constrained to a single switch; stock queries exclude
+      ports held by open orders; `port-order:expire-holds` (hourly)
+      releases overdue unapproved holds (`ORDER_HOLD_DAYS`, default 14).
 - [x] Approval model (DECIDED): full automation end-to-end, zero-touch by
       default — see "Approval model" above. Gates are toggleable policy, not
       the design.
@@ -484,6 +542,44 @@ sellable port types layered on top. Direction:
 **Status: OPEN — no code written.** Decision needed before the Phase 3
 availability service (`PortAvailabilityService` or similar) is designed.
 
+## Configuration (env vars)
+
+All read via config files — run `php artisan config:clear` after changing.
+
+| Env var | Config | Default | Meaning |
+|---|---|---|---|
+| `ORDER_AUTO_APPROVE` | `ordering.auto_approve` | `all` | `all` = zero-touch; `existing` = auto only for customers with services; `none` = every order waits for admin Approve. Rollout plan: prod starts `none` → `existing` → `all` as confidence grows; test box runs `all`. |
+| `ORDER_HOLD_DAYS` | `ordering.hold_days` | `14` | Days an unapproved (submitted) order holds its port reservation before `port-order:expire-holds` releases it. |
+| `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |
+| `PORT_STOCK_ALERT_EMAIL` | `porttype.low_stock_alert_email` | unset | Recipient for the daily low-stock digest. Unset = job not scheduled. |
+
+## Testing the pipeline (pre-wizard)
+
+Until the order wizard lands, `PortOrderService` has no UI caller — test the
+core from tinker on the test box (after migrating):
+
+```php
+$svc  = app(\IXP\Services\EdgeIX\PortOrderService::class);
+$cust = \IXP\Models\Customer::find( <test cust id> );
+$type = \IXP\Models\PortType::where( 'name', '10GBASE-LR' )->first();
+
+$order = $svc->place( $cust, null, [
+    'locationid' => <location id>, 'port_type_id' => $type->id,
+    'quantity' => 1, 'tagged' => false,
+] );
+$order->state;                      // approved (if auto_approve=all) or submitted
+$order->portOrderPorts->first()->switchPort->ifName;
+```
+
+Verify against the checklist: `/admin/port-stock` shows the reserved port
+gone from sellable; a second `place()` picks a different switch (diversity)
+or different port; an oversized quantity throws
+`InsufficientPortStockException`; `ORDER_NOTIFY_EMAIL` receives the
+placement email; with `ORDER_AUTO_APPROVE=none`, the order stays
+`submitted` and `php artisan port-order:expire-holds` expires it once
+`reserved_until` passes (set it into the past manually to test); cancel via
+`$svc->cancel( $order, 'testing' )` returns the port to sellable.
+
 ## Cancellations
 
 Not in the self-service UI. Customers email `sales@edgeix.net` with a
@@ -528,6 +624,13 @@ production-proven.
 - `app/Http/Controllers/EdgeIX/PortTypeController.php` — catalogue CRUD.
 - `app/Http/Controllers/EdgeIX/PortStockController.php` — stock view.
 - `app/Services/EdgeIX/PortStockService.php` — shared stock/sellable logic.
+- `app/Models/PortOrder.php`, `app/Models/PortOrderPort.php` — orders +
+  reservations (migration `2026_10_03_000001_create_port_orders.php`).
+- `app/Services/EdgeIX/PortOrderService.php` — place/approve/cancel/expire;
+  locked reservation; approval policy; admin notify email.
+- `app/Console/Commands/EdgeIX/ExpirePortOrderHolds.php` — hourly hold expiry.
+- `config/ordering.php` — `ORDER_AUTO_APPROVE`, `ORDER_HOLD_DAYS`,
+  `ORDER_NOTIFY_EMAIL`.
 - `app/Console/Commands/EdgeIX/CheckPortStockLevels.php` —
   `port-stock:check-levels` low-stock digest (env `PORT_STOCK_ALERT_EMAIL`).
 - `config/porttype.php` — stock settings (deliberately SNMP-only, no
