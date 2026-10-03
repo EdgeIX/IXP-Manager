@@ -51,12 +51,13 @@ class TransceiverDetector
     {
         $entity = $host->useEntity();
 
-        $models  = $entity->physicalModelName();
-        $descrs  = $entity->physicalDescription();
-        $names   = $entity->physicalName();
-        $aliases = $entity->physicalAlias();
-        $parents = $entity->physicalContainedIndex();
-        $classes = $entity->physicalClass();
+        $models   = $entity->physicalModelName();
+        $descrs   = $entity->physicalDescription();
+        $names    = $entity->physicalName();
+        $aliases  = $entity->physicalAlias();
+        $parents  = $entity->physicalContainedIndex();
+        $classes  = $entity->physicalClass();
+        $vendors  = $entity->physicalVendorType();
 
         $this->entities = [];
         foreach( $models as $idx => $model ) {
@@ -66,12 +67,17 @@ class TransceiverDetector
                 'alias'       => trim( (string)( $aliases[ $idx ] ?? '' ) ),
                 'model'       => trim( (string)$model ),
                 'descr'       => trim( (string)( $descrs[ $idx ] ?? '' ) ),
+                'vendorType'  => trim( (string)( $vendors[ $idx ] ?? '' ) ),
                 'containedIn' => isset( $parents[ $idx ] ) ? (int)$parents[ $idx ] : null,
             ];
         }
 
-        // Switch ports indexed by ifName for mapping.
-        $ports = $switch->switchPorts()->get()->keyBy( 'ifName' );
+        // PHYSICAL switch ports only, indexed by ifName. Sub-interfaces
+        // (Ethernet1/2.190 — dot1q units) are logical and never carry an
+        // optic; without this filter a cage entity fans out onto them.
+        $ports = $switch->switchPorts()->get()
+            ->filter( fn( SwitchPort $p ) => $p->ifName && !str_contains( $p->ifName, '.' ) )
+            ->keyBy( 'ifName' );
 
         $detected = [];
         $unmapped = [];
@@ -101,30 +107,41 @@ class TransceiverDetector
                 if( isset( $detected[ $port->id ] ) && $iface !== $port->ifName ) {
                     continue;
                 }
-                $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'type' => $type, 'source' => 'entity' ];
+                $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'mau' => null, 'type' => $type, 'source' => 'entity' ];
             }
         }
 
-        // Fallback source: the MAU MIB the core poller already stores
-        // (switchport.mauType — what upstream's own Optic Inventory pages
-        // are built on). Where a port got nothing from the ENTITY walk but
-        // MAU data exists, feed the MAU string through the same catalogue
-        // mapping — one pipeline, two sources. ENTITY always wins when both
-        // are present.
+        // Second source: the MAU MIB the core poller already stores in
+        // switchport.mauType. Third-party optics usually report their vendor
+        // PART NUMBER in entPhysicalModelName (e.g. "Q.1340G.10") — useless
+        // for classification — while Arista's private MAU OIDs carry the
+        // actual media type ("40GbasePLR4", the same string EOS shows as
+        // "Media type" in `show int ... transceiver hardware`). So: when the
+        // ENTITY strings didn't match the catalogue, try the MAU string
+        // through the same catalogue; and when ENTITY found nothing at all,
+        // MAU alone can establish the detection. The ENTITY part number is
+        // kept as the displayed/stored optic string either way.
         foreach( $ports as $port ) {
-            if( isset( $detected[ $port->id ] ) ) {
-                continue;
-            }
             $mau = trim( (string)$port->mauType );
             if( $mau === '' || $mau === '(empty)' || strtolower( $mau ) === 'unknown' ) {
                 continue;
             }
-            $detected[ $port->id ] = [
-                'port'   => $port,
-                'xcvr'   => $mau,
-                'type'   => PortType::matchXcvr( $mau ),
-                'source' => 'mau',
-            ];
+
+            if( isset( $detected[ $port->id ] ) ) {
+                $detected[ $port->id ]['mau'] = $mau;
+                if( !$detected[ $port->id ]['type'] && ( $mauType = PortType::matchXcvr( $mau ) ) ) {
+                    $detected[ $port->id ]['type']   = $mauType;
+                    $detected[ $port->id ]['source'] = 'entity+mau';
+                }
+            } else {
+                $detected[ $port->id ] = [
+                    'port'   => $port,
+                    'xcvr'   => $mau,
+                    'mau'    => $mau,
+                    'type'   => PortType::matchXcvr( $mau ),
+                    'source' => 'mau',
+                ];
+            }
         }
 
         return [ 'detected' => $detected, 'unmapped' => $unmapped ];
@@ -184,7 +201,7 @@ class TransceiverDetector
         $e = $this->entities[ $idx ];
 
         foreach( [ $e['name'], $e['alias'], $e['descr'] ] as $field ) {
-            if( preg_match( '/\b(Ethernet[0-9]+(?:\/[0-9]+)*(?:\.[0-9]+)?)\b/i', $field, $m ) ) {
+            if( preg_match( '/\b(Ethernet[0-9]+(?:\/[0-9]+)*)\b/i', $field, $m ) ) {
                 return $m[1];
             }
         }
@@ -198,8 +215,9 @@ class TransceiverDetector
 
     /**
      * Resolve an interface name to switch port(s). Exact ifName match wins;
-     * a parent-cage name with no exact port fans out to its breakout legs
-     * (Ethernet49 → Ethernet49/1../4).
+     * a parent-cage name with no exact port fans out to its PHYSICAL
+     * breakout legs only (Ethernet49 → Ethernet49/1../4 — a single
+     * digits-only step, never dot1q sub-interfaces).
      *
      * @param \Illuminate\Support\Collection<string, SwitchPort> $ports keyed by ifName
      */
@@ -209,8 +227,10 @@ class TransceiverDetector
             return collect( [ $exact ] );
         }
 
+        $legRegex = '/^' . preg_quote( $iface, '/' ) . '\/\d+$/i';
+
         return $ports->filter(
-            fn( SwitchPort $p ) => str_starts_with( (string)$p->ifName, $iface . '/' )
+            fn( SwitchPort $p ) => preg_match( $legRegex, (string)$p->ifName )
         )->values();
     }
 }

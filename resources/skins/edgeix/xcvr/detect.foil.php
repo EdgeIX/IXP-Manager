@@ -60,8 +60,13 @@ $xcvrEntities = $t->xcvrEntities;
                                     <td><?= $t->ee( $sp->ifName ) ?></td>
                                     <td>
                                         <code class="tw-text-xs"><?= $t->ee( $d['xcvr'] ) ?></code>
+                                        <?php if( !empty( $d['mau'] ) && $d['mau'] !== $d['xcvr'] ): ?>
+                                            <br><small class="tw-text-gray-500">MAU: <code class="tw-text-xs"><?= $t->ee( $d['mau'] ) ?></code></small>
+                                        <?php endif; ?>
                                         <?php if( ( $d['source'] ?? 'entity' ) === 'mau' ): ?>
                                             <span class="badge badge-secondary" title="No ENTITY-MIB entry for this port — value from the MAU MIB the core poller stores">via MAU</span>
+                                        <?php elseif( ( $d['source'] ?? '' ) === 'entity+mau' ): ?>
+                                            <span class="badge badge-secondary" title="ENTITY-MIB gave a vendor part number only — the media type was classified from the MAU MIB string">type via MAU</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -128,7 +133,7 @@ $xcvrEntities = $t->xcvrEntities;
                     <div class="card-body">
                         <table class="table table-sm table-striped tw-text-xs">
                             <thead class="thead-dark">
-                                <tr><th>entIdx</th><th>class</th><th>name</th><th>alias</th><th>model</th><th>descr</th><th>containedIn</th></tr>
+                                <tr><th>entIdx</th><th>class</th><th>name</th><th>alias</th><th>model</th><th>descr</th><th>vendorType</th><th>containedIn</th></tr>
                             </thead>
                             <tbody>
                                 <?php foreach( $xcvrEntities as $idx => $e ): ?>
@@ -139,6 +144,7 @@ $xcvrEntities = $t->xcvrEntities;
                                         <td><?= $t->ee( $e['alias'] ) ?></td>
                                         <td><?= $t->ee( $e['model'] ) ?></td>
                                         <td><?= $t->ee( $e['descr'] ) ?></td>
+                                        <td><?= $t->ee( $e['vendorType'] ?? '' ) ?></td>
                                         <td><?= $e['containedIn'] !== null ? (int)$e['containedIn'] : '—' ?></td>
                                     </tr>
                                 <?php endforeach; ?>

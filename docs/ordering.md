@@ -408,14 +408,20 @@ sellable port types layered on top. Direction:
   against OSS_SNMP's MAU type table), `(empty)` for unregistered optics,
   switches without mauSupported invisible, and no mapping to sellable
   types, breakout legs, overrides or stock. NOT a duplication — but to
-  avoid parallel wheels, **the detector consumes mauType as a fallback
-  source through the same catalogue**: where the ENTITY walk yields nothing
-  for a port but the core poller has stored a MAU string (`10GigBaseLR`,
-  `40GbasePSM4`, …), that string is matched against the same patterns
-  (seeds updated to match MAU spellings). ENTITY wins when both exist;
-  MAU-sourced values are flagged "via MAU" in the UI/CLI, and their
-  freshness follows the core snmp-poll cadence. Upstream's pages remain
-  useful as MAU-level procurement counts.
+  avoid parallel wheels, **the detector consumes mauType as a second
+  source through the same catalogue**. Lesson from the first real-switch
+  run (pe1per1): third-party optics report their vendor PART NUMBER in
+  `entPhysicalModelName` (e.g. `Q.1340G.10`), while the media type EOS
+  prints as "Media type" (`40GBASE-PLR4`) surfaces via Arista's private
+  MAU OIDs, which the core poller already stores as `40GbasePLR4`.
+  Resolution order per port: ENTITY strings → catalogue; no match → stored
+  `mauType` → same catalogue; the ENTITY part number is kept as the
+  displayed/stored optic string. Sources are flagged in UI/CLI
+  (`entity` / `mau` / `entity+mau`); MAU freshness follows the core
+  snmp-poll cadence. Known hard cases — single-lambda types MAU lacks
+  (100GBASE-DR) and optics EOS itself can't name (`UnknownOptical400G`):
+  classify via a vendor-P/N pattern in the catalogue or the per-port
+  override. Upstream's pages remain useful as MAU-level procurement counts.
 - **Detection: SNMP ENTITY-MIB**, not the MAU MIB. Arista populates
   `entPhysicalModelName`/`entPhysicalDescr` for every inserted transceiver
   (e.g. `QSFP-100G-LR4`) regardless of link state, and it rides the same SNMP

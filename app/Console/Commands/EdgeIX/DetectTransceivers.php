@@ -71,10 +71,10 @@ class DetectTransceivers extends Command
 
             if( $this->option( 'debug' ) ) {
                 $this->table(
-                    [ 'entIdx', 'class', 'name', 'alias', 'model', 'descr', 'containedIn' ],
+                    [ 'entIdx', 'class', 'name', 'alias', 'model', 'descr', 'vendorType', 'containedIn' ],
                     collect( $detector->entities )->map( fn( $e, $idx ) => [
                         $idx, $e['class'], $e['name'], $e['alias'], $e['model'],
-                        mb_substr( $e['descr'], 0, 48 ), $e['containedIn'],
+                        mb_substr( $e['descr'], 0, 40 ), $e['vendorType'] ?? '', $e['containedIn'],
                     ] )->all()
                 );
             }
