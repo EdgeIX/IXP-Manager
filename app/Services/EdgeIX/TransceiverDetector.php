@@ -113,7 +113,6 @@ class TransceiverDetector
             }
 
             $matchString = trim( $e['model'] . ' ' . $e['descr'] );
-            $type = PortType::matchXcvr( $matchString );
 
             foreach( $targets as $port ) {
                 // Never let a parent-cage entity overwrite a more specific
@@ -121,6 +120,10 @@ class TransceiverDetector
                 if( isset( $detected[ $port->id ] ) && $iface !== $port->ifName ) {
                     continue;
                 }
+                // Type is per PORT, not per optic: the port's configured
+                // speed (ifHighSpeed) disambiguates breakout legs vs a
+                // straight run of the same optic family.
+                $type = PortType::matchXcvr( $matchString, (int)$port->ifHighSpeed ?: null );
                 $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'mau' => null, 'type' => $type, 'source' => 'entity' ];
             }
         }
@@ -150,9 +153,11 @@ class TransceiverDetector
                 continue;
             }
 
+            $portSpeed = (int)$port->ifHighSpeed ?: null;
+
             if( isset( $detected[ $port->id ] ) ) {
                 $detected[ $port->id ]['mau'] = $mau;
-                if( !$detected[ $port->id ]['type'] && ( $mauType = PortType::matchXcvr( $mau ) ) ) {
+                if( !$detected[ $port->id ]['type'] && ( $mauType = PortType::matchXcvr( $mau, $portSpeed ) ) ) {
                     $detected[ $port->id ]['type']   = $mauType;
                     $detected[ $port->id ]['source'] = 'entity+mau';
                 }
@@ -161,7 +166,7 @@ class TransceiverDetector
                     'port'   => $port,
                     'xcvr'   => $mau,
                     'mau'    => $mau,
-                    'type'   => PortType::matchXcvr( $mau ),
+                    'type'   => PortType::matchXcvr( $mau, $portSpeed ),
                     'source' => 'mau',
                 ];
             }

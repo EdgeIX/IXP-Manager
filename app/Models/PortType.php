@@ -75,23 +75,41 @@ class PortType extends Model
     }
 
     /**
-     * Map a detected transceiver string to the first matching type, in
-     * priority order. Null = unmatched (surface on the report, never
-     * silently become stock).
+     * Map a detected transceiver string to a catalogue type. Null =
+     * unmatched (surface on the report, never silently become stock).
+     *
+     * $portSpeed (Mbps, usually the switch port's ifHighSpeed) breaks ties
+     * when several types match: breakout-or-not is a property of the PORT
+     * CONFIG, not the optic — a PLR4 runs as 4x10G legs (ifHighSpeed
+     * 10000 → "10G (PSM4 breakout)") or as one straight 40G link
+     * (40000 → "40GBASE-LR4"), and MAU reports the same optic family
+     * either way. With no speed hint, lowest priority wins as before.
      *
      * Deliberately matches INACTIVE types too: classification and
      * sellability are different things. E.g. 100G CWDM4 is used on core
      * links (same-rack) — it should classify cleanly for inventory, while
      * `active=false` keeps it out of sellable stock and the order form.
      */
-    public static function matchXcvr( string $xcvr ): ?self
+    public static function matchXcvr( string $xcvr, ?int $portSpeed = null ): ?self
     {
-        foreach( self::orderBy( 'priority' )->orderBy( 'id' )->get() as $pt ) {
-            if( $pt->matches( $xcvr ) ) {
-                return $pt;
+        static $catalogue = null;
+        $catalogue ??= self::orderBy( 'priority' )->orderBy( 'id' )->get();
+
+        $matches = $catalogue->filter( fn( self $pt ) => $pt->matches( $xcvr ) )->values();
+
+        if( $matches->isEmpty() ) {
+            return null;
+        }
+
+        if( $portSpeed ) {
+            foreach( $matches as $pt ) {
+                if( (int)$pt->speed === $portSpeed ) {
+                    return $pt;
+                }
             }
         }
-        return null;
+
+        return $matches->first();
     }
 
     /**
