@@ -385,6 +385,16 @@ class Customer extends Model
     }
 
     /**
+     * EdgeIX: does this customer need an MSA at all? Internal and pro-bono
+     * accounts (config ordering.msa_exempt_cust_types) have no commercial
+     * agreement to execute — the order gate waves them through.
+     */
+    public function msaRequired(): bool
+    {
+        return !in_array( (int)$this->type, config( 'ordering.msa_exempt_cust_types', [] ), true );
+    }
+
+    /**
      * EdgeIX: the docstore file holding the executed MSA PDF, if uploaded.
      *
      * @return BelongsTo<DocstoreCustomerFile, Customer>

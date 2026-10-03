@@ -39,7 +39,8 @@ class EnsureMsaSigned
         /** @var Customer|null $cust */
         $cust = $user?->customer;
 
-        if( $cust && $cust->msaSigned() ) {
+        // Exempt types (internal, pro-bono) have no MSA to execute.
+        if( $cust && ( !$cust->msaRequired() || $cust->msaSigned() ) ) {
             return $next( $request );
         }
 

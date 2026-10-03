@@ -5,6 +5,7 @@ $this->layout( 'layouts/ixpv4' );
 // Snapshot template vars to locals up front (Foil $t-> access is unreliable
 // for generic names later in a template — see project notes).
 $msaCust     = $t->msaCust;
+$msaExempt   = $t->msaExempt;
 $msaSigned   = $t->msaSigned;
 $msaIsCustom = $t->msaIsCustom;
 // Foil throws on vars passed as null — try/catch snapshot, not `?? null`.
@@ -22,7 +23,26 @@ try { $msaSignedBy = $t->msaSignedBy; } catch( \RuntimeException $e ) { $msaSign
 
             <?= $t->alerts() ?>
 
-            <?php if( $msaSigned ): ?>
+            <?php if( $msaExempt ): ?>
+
+                <div class="card mb-4 border-success">
+                    <div class="card-body text-center py-5">
+                        <div class="tw-text-green-500 tw-text-5xl tw-mb-3">
+                            <i class="fa fa-check-circle"></i>
+                        </div>
+                        <h3 class="mb-3">No agreement required</h3>
+                        <p class="tw-text-gray-700 tw-max-w-lg tw-mx-auto">
+                            No Master Services Agreement is required for
+                            <strong><?= $t->ee( $msaCust->name ) ?></strong>'s account type —
+                            ordering is enabled.
+                        </p>
+                        <a class="btn btn-primary" href="<?= route( 'order@index' ) ?>">
+                            Continue to ordering <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+            <?php elseif( $msaSigned ): ?>
 
                 <div class="card mb-4 border-success">
                     <div class="card-body text-center py-5">

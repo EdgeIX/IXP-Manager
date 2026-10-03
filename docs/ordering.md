@@ -142,6 +142,17 @@ end state** — local executed PDF + stamped cust columns — so the order
 gate, the `/msa` status page and the audit trail never care which route
 an agreement took.
 
+### Exempt customer types (2026-10-03)
+
+**Internal** and **pro-bono** customers have no commercial agreement to
+execute, so the gate waves them through: `Customer::msaRequired()` returns
+false for the types in `config('ordering.msa_exempt_cust_types')` (defaults:
+`TYPE_INTERNAL`, `TYPE_PROBONO`). Exempt customers visiting `/msa` see a
+"no agreement required" panel; the customer-overview dropdown shows an
+*exempt* badge instead of *unsigned*; the admin Record MSA screen notes the
+exemption (recording an agreement for the file is still possible — it just
+isn't what enables ordering).
+
 ### Custom MSAs
 
 Some customers negotiate custom terms (`cust.msa_type = 'custom'`). These are

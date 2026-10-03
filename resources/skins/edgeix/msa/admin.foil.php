@@ -24,6 +24,15 @@ $msaSigned = $msaCust->msaSigned();
 
             <?= $t->alerts() ?>
 
+            <?php if( !$msaCust->msaRequired() ): ?>
+                <div class="alert alert-info">
+                    <strong><?= $t->ee( $msaCust->name ) ?> is exempt from the MSA order gate</strong>
+                    (account type: <?= $t->ee( \IXP\Models\Customer::$CUST_TYPES_TEXT[ $msaCust->type ] ?? (string)$msaCust->type ) ?>)
+                    — ordering is enabled regardless of what's recorded here. You can still record
+                    an agreement below for the file.
+                </div>
+            <?php endif; ?>
+
             <?php if( $errors = session( 'errors' ) ): ?>
                 <?php if( $errors->any() ): ?>
                     <div class="alert alert-danger">

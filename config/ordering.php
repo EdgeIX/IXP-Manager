@@ -26,4 +26,12 @@ return [
     // and the manual-billing trigger). Blank = no emails.
     'notify_email' => env( 'ORDER_NOTIFY_EMAIL' ),
 
+    // Customer types exempt from the MSA order gate (Customer::TYPE_*
+    // values). Internal (3) and pro-bono (4) accounts have no commercial
+    // agreement to execute.
+    'msa_exempt_cust_types' => [
+        \IXP\Models\Customer::TYPE_INTERNAL,
+        \IXP\Models\Customer::TYPE_PROBONO,
+    ],
+
 ];

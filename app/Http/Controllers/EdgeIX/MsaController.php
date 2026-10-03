@@ -40,6 +40,7 @@ class MsaController extends Controller
 
         return view( 'msa.index', [
             'msaCust'     => $cust,
+            'msaExempt'   => $cust ? !$cust->msaRequired() : false,
             'msaSigned'   => $cust?->msaSigned() ?? false,
             'msaIsCustom' => $cust?->msa_type === Customer::MSA_TYPE_CUSTOM,
             'msaDocument' => $cust?->msaDocument,

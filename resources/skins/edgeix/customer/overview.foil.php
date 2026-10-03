@@ -78,7 +78,9 @@
 
                 <a class="dropdown-item" href="<?= route( 'msa-admin@edit', [ 'cust' => $c->id ] ) ?>">
                     Record MSA...
-                    <?php if( !$c->msaSigned() ): ?>
+                    <?php if( !$c->msaRequired() ): ?>
+                        <span class="badge badge-secondary">exempt</span>
+                    <?php elseif( !$c->msaSigned() ): ?>
                         <span class="badge badge-warning">unsigned</span>
                     <?php endif; ?>
                 </a>
