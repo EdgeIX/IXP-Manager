@@ -275,15 +275,43 @@ Prerequisite work list, in no particular order:
 
 **Stock / detection:**
 - [ ] Switch ports patched + marked pre-wired consistently
-      (`PatchPanelPort::STATE_PREWIRED` — confirm current usage).
-- [ ] Automatic port-type detection (ENTITY-MIB walk → `detected_xcvr` →
-      catalogue mapping; see the design issue below), incl. PSM/breakout legs
-      as individual stock items.
-- [ ] Admin port-type catalogue CRUD (add/change sellable types, e.g. 25G
-      later, without code).
-- [ ] "Sellable" semantics: reserved/internal prewired ports excluded from
-      stock counts.
-- [ ] Low-stock alerting (AGREED 2026-10-02): per (DC × port type) threshold
+      (`PatchPanelPort::STATE_PREWIRED`). The Port Stock page's hygiene list
+      ("free typed ports NOT marked prewired") shows exactly what needs
+      fixing — work the list down to zero.
+- [x] Automatic port-type detection (BUILT 2026-10-03, **pending fleet
+      validation**): `artisan switch:detect-transceivers` — ENTITY-MIB walk
+      via OSS_SNMP's bundled Entity MIB, maps optics to switch ports by
+      interface name (own fields, then containment parents), fans parent-cage
+      optics out to breakout legs, matches against the catalogue, stamps
+      `switchport.detected_xcvr` / `port_type_id`. Validate per platform
+      with `--nosave --debug` before cronning it.
+- [x] Detection in the switch UI (BUILT 2026-10-03): the per-switch dropdown
+      (skinned `switches/list-row-menu.foil.php`) gains **"Detect
+      Transceivers"** under SNMP Actions — a live ENTITY-MIB walk preview
+      (detected optics, catalogue matches, will-update diff vs stored
+      values, unmapped optics, collapsible raw entity rows = the CLI's
+      `--debug`) with a "Save to database" button sharing the command's
+      persist path — and **"Port Transceivers"** under Database Actions:
+      stored detection per port with per-port **admin override editing**.
+      Workflow for a new switch: add switch → add ports via the SNMP
+      "View / Edit Ports" action (ports must exist in the DB first) →
+      "Detect Transceivers" from the same dropdown; cron keeps it current
+      thereafter.
+- [x] Admin port-type catalogue CRUD (BUILT 2026-10-03): `/admin/port-type/list`
+      — name, speed, priority-ordered regex match patterns, active flag,
+      low-stock threshold. Seeded with 10G LR, 40G LR4, 100G LR4, 100G LR/FR,
+      400G LR4, 10G PSM4-breakout (+ inactive 25G rows ready to enable).
+      Per-port admin override column (`port_type_override_id`) wins over
+      detection for lying optics.
+- [x] Stock visibility (BUILT 2026-10-03): `/admin/port-stock` — sellable
+      counts per (location × type) with low-stock badges, sellable port
+      list, and the two hygiene lists (not-prewired, unmatched optics).
+- [x] "Sellable" semantics: sellable = active peering switch port +
+      effective port type + no physical interface + panel port PREWIRED.
+      Reserved/internal panel states are excluded naturally.
+- [ ] Low-stock alerting (AGREED 2026-10-02): threshold field + stock-page
+      badges exist; the admin *notification* job does not yet.
+      Per (DC × port type) threshold
       — notify admins when stock drops *below N*, not only at zero, so
       prewiring happens before orders are blocked. Plus: order placed against
       an out-of-stock DC → immediate admin notification + customer-facing
@@ -443,7 +471,22 @@ production-proven.
 - `resources/skins/edgeix/msa/admin.foil.php` — admin Record MSA form.
 - `resources/skins/edgeix/layouts/menus/custadmin.foil.php` — nav button.
 - `routes/web-auth.php` — `order` (gated) + `msa` route groups.
-- `routes/web-auth-superuser.php` — `admin/customer/msa/{cust}` routes.
+- `routes/web-auth-superuser.php` — `admin/customer/msa/{cust}`,
+  `admin/port-type/*`, `admin/port-stock` routes.
+- `app/Models/PortType.php` — sellable port-type catalogue model.
+- `app/Services/EdgeIX/TransceiverDetector.php` — ENTITY-MIB walk + mapping.
+- `app/Console/Commands/EdgeIX/DetectTransceivers.php` —
+  `switch:detect-transceivers {switch?} {--nosave} {--debug}`.
+- `app/Http/Controllers/EdgeIX/PortTypeController.php` — catalogue CRUD.
+- `app/Http/Controllers/EdgeIX/PortStockController.php` — stock view.
+- `app/Http/Controllers/EdgeIX/SwitchXcvrController.php` — live detect
+  preview/apply + stored per-port view + override editing.
+- `resources/skins/edgeix/porttype/{index,edit,stock}.foil.php` — admin views.
+- `resources/skins/edgeix/xcvr/{detect,index}.foil.php` — switch UI pages.
+- `resources/skins/edgeix/switches/list-row-menu.foil.php` — per-switch
+  dropdown (skin override of upstream file; re-check on merges).
+- Migration `2026_10_02_000001_create_port_types_and_xcvr_detection.php` —
+  `port_type` table (+seed) and `switchport` detection columns.
 
 ## Related documentation
 

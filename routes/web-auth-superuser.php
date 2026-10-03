@@ -289,6 +289,32 @@ Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'admin/customer' ], functio
 /////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ///
+/// EdgeIX ordering Phase 3: sellable port-type catalogue + port stock view.
+/// See docs/ordering.md.
+///
+Route::group( [ 'namespace' => 'EdgeIX' ], function() {
+    Route::group( [ 'prefix' => 'admin/port-type' ], function() {
+        Route::get(    'list',              'PortTypeController@index'  )->name( 'port-type@index'  );
+        Route::get(    'create',            'PortTypeController@create' )->name( 'port-type@create' );
+        Route::post(   'store',             'PortTypeController@store'  )->name( 'port-type@store'  );
+        Route::get(    'edit/{portType}',   'PortTypeController@edit'   )->name( 'port-type@edit'   );
+        Route::post(   'update/{portType}', 'PortTypeController@update' )->name( 'port-type@update' );
+        Route::post(   'delete/{portType}', 'PortTypeController@delete' )->name( 'port-type@delete' );
+    });
+
+    Route::get( 'admin/port-stock', 'PortStockController@index' )->name( 'port-stock@index' );
+
+    Route::group( [ 'prefix' => 'admin/switch-xcvr' ], function() {
+        Route::get(  'detect/{switch}',    'SwitchXcvrController@detect'      )->name( 'switch-xcvr@detect'       );
+        Route::post( 'apply/{switch}',     'SwitchXcvrController@apply'       )->name( 'switch-xcvr@apply'        );
+        Route::get(  'list/{switch}',      'SwitchXcvrController@list'        )->name( 'switch-xcvr@list'         );
+        Route::post( 'override/{sp}',      'SwitchXcvrController@setOverride' )->name( 'switch-xcvr@set-override' );
+    });
+});
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+///
 /// User
 ///
 Route::group( [ 'namespace' => 'User' ], function() {

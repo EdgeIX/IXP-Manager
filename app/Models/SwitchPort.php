@@ -235,6 +235,34 @@ class SwitchPort extends Model
     }
 
     /**
+     * EdgeIX: port type detected from the transceiver (switch:detect-transceivers)
+     *
+     * @return BelongsTo<PortType, SwitchPort>
+     */
+    public function portType(): BelongsTo
+    {
+        return $this->belongsTo( PortType::class, 'port_type_id' );
+    }
+
+    /**
+     * EdgeIX: admin-set port type override — wins over detection
+     *
+     * @return BelongsTo<PortType, SwitchPort>
+     */
+    public function portTypeOverride(): BelongsTo
+    {
+        return $this->belongsTo( PortType::class, 'port_type_override_id' );
+    }
+
+    /**
+     * EdgeIX: the effective sellable port type — override if set, else detected.
+     */
+    public function effectivePortType(): ?PortType
+    {
+        return $this->portTypeOverride ?? $this->portType;
+    }
+
+    /**
      * Turn the database integer representation of the type into text as
      * defined in the self::$TYPES array (or 'Unknown')
      *
