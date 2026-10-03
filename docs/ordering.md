@@ -422,6 +422,13 @@ sellable port types layered on top. Direction:
   (100GBASE-DR) and optics EOS itself can't name (`UnknownOptical400G`):
   classify via a vendor-P/N pattern in the catalogue or the per-port
   override. Upstream's pages remain useful as MAU-level procurement counts.
+- **Hard constraint (2026-10-03): detection is SNMP-only.** IXP-Manager has
+  read-only SNMP access to the switches and deliberately holds NO switch
+  API credentials (eAPI/gNMI) — that access boundary is the point of the
+  separate config agent. An eAPI-based media-type source was prototyped and
+  reverted for this reason. If SNMP + catalogue patterns + overrides ever
+  prove insufficient, the escalation path is a read-only endpoint on the
+  config agent, never direct switch API access from IXP-Manager.
 - **Detection: SNMP ENTITY-MIB**, not the MAU MIB. Arista populates
   `entPhysicalModelName`/`entPhysicalDescr` for every inserted transceiver
   (e.g. `QSFP-100G-LR4`) regardless of link state, and it rides the same SNMP

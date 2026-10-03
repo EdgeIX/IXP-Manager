@@ -41,8 +41,16 @@ class TransceiverDetector
     /**
      * Walk the switch and return per-switchport detection results.
      *
+     * SNMP-only by design: IXP-Manager has READ-ONLY SNMP access to the
+     * switches and deliberately no API (eAPI/gNMI) credentials — any
+     * richer switch access belongs to the config agent, not here.
+     * Classification order: ENTITY model/descr → stored mauType, both
+     * through the same catalogue. Gaps the two MIBs can't name (e.g.
+     * optics EOS itself reports as UnknownOptical400G) are handled by
+     * vendor-P/N catalogue patterns or the per-port admin override.
+     *
      * @return array{
-     *     detected: array<int, array{port: SwitchPort, xcvr: string, type: PortType|null}>,
+     *     detected: array<int, array{port: SwitchPort, xcvr: string, mau: string|null, type: PortType|null, source: string}>,
      *     unmapped: array<int, array{entity: int, xcvr: string, iface: string|null}>,
      * }  'detected' is keyed by switchport id; 'unmapped' holds optics we
      *     couldn't tie to a port (data for the report, not an error).
@@ -111,19 +119,28 @@ class TransceiverDetector
             }
         }
 
-        // Second source: the MAU MIB the core poller already stores in
-        // switchport.mauType. Third-party optics usually report their vendor
-        // PART NUMBER in entPhysicalModelName (e.g. "Q.1340G.10") — useless
-        // for classification — while Arista's private MAU OIDs carry the
-        // actual media type ("40GbasePLR4", the same string EOS shows as
-        // "Media type" in `show int ... transceiver hardware`). So: when the
-        // ENTITY strings didn't match the catalogue, try the MAU string
-        // through the same catalogue; and when ENTITY found nothing at all,
-        // MAU alone can establish the detection. The ENTITY part number is
+        // Second source: the MAU MIB (ifMauType). Third-party optics usually
+        // report their vendor PART NUMBER in entPhysicalModelName (e.g.
+        // "Q.1340G.10") — useless for classification — while ifMauType
+        // carries the actual media type ("40GbasePLR4", "100GbaseDR"…).
+        //
+        // We walk it RAW here and translate with our own table rather than
+        // using the core poller's stored switchport.mauType: OSS_SNMP's
+        // bundled translation stops at ~2014 (nothing past 100GbaseLR4), so
+        // modern IANA values (100GbaseDR=126, FR1/LR1, the 400G set — the
+        // registry is actively maintained, last updated 2026-07) come back
+        // as "*** UNKNOWN ***" in the stored column. Stored mauType remains
+        // the fallback when the live walk yields nothing for a port.
+        //
+        // When the ENTITY strings didn't match the catalogue, the MAU string
+        // goes through the same catalogue; when ENTITY found nothing at all,
+        // MAU alone establishes the detection. The ENTITY part number is
         // kept as the displayed/stored optic string either way.
+        $mauByIfIndex = $this->walkMauTypes( $host );
+
         foreach( $ports as $port ) {
-            $mau = trim( (string)$port->mauType );
-            if( $mau === '' || $mau === '(empty)' || strtolower( $mau ) === 'unknown' ) {
+            $mau = $mauByIfIndex[ $port->ifIndex ] ?? trim( (string)$port->mauType );
+            if( $mau === '' || $mau === '(empty)' || strtolower( $mau ) === 'unknown' || $mau === '*** UNKNOWN ***' ) {
                 continue;
             }
 
@@ -171,6 +188,75 @@ class TransceiverDetector
             ->whereNotIn( 'id', $detectedIds ?: [ 0 ] )
             ->whereNotNull( 'detected_xcvr' )
             ->update( [ 'detected_xcvr' => null, 'detected_xcvr_at' => null, 'port_type_id' => null ] );
+    }
+
+    /**
+     * IANA MAU types OSS_SNMP's bundled table predates (it stops at
+     * 100GbaseLR4 = .77 plus some Arista private OIDs). Values from the
+     * live IANA-MAU-MIB registry (iana.org/assignments/ianamau-mib,
+     * revision 2026-07-15). Fiber/optic types only — that's what ports
+     * stock is made of. Extend here as IEEE mints new PHYs.
+     */
+    private const IANA_MAU_EXTRA = [
+        '.1.3.6.1.2.1.26.4.93'  => '25GbaseSR',
+        '.1.3.6.1.2.1.26.4.114' => '25GbaseLR',
+        '.1.3.6.1.2.1.26.4.115' => '25GbaseER',
+        '.1.3.6.1.2.1.26.4.95'  => '40GbaseER4',
+        '.1.3.6.1.2.1.26.4.101' => '100GbaseR',
+        '.1.3.6.1.2.1.26.4.102' => '100GbaseSR4',
+        '.1.3.6.1.2.1.26.4.125' => '100GbaseSR2',
+        '.1.3.6.1.2.1.26.4.126' => '100GbaseDR',
+        '.1.3.6.1.2.1.26.4.145' => '100GbaseFR1',
+        '.1.3.6.1.2.1.26.4.146' => '100GbaseLR1',
+        '.1.3.6.1.2.1.26.4.194' => '100GbaseZR',
+        '.1.3.6.1.2.1.26.4.231' => '100GbaseSR1',
+        '.1.3.6.1.2.1.26.4.127' => '200GbaseR',
+        '.1.3.6.1.2.1.26.4.128' => '200GbaseDR4',
+        '.1.3.6.1.2.1.26.4.129' => '200GbaseFR4',
+        '.1.3.6.1.2.1.26.4.130' => '200GbaseLR4',
+        '.1.3.6.1.2.1.26.4.135' => '400GbaseR',
+        '.1.3.6.1.2.1.26.4.136' => '400GbaseSR16',
+        '.1.3.6.1.2.1.26.4.137' => '400GbaseDR4',
+        '.1.3.6.1.2.1.26.4.138' => '400GbaseFR8',
+        '.1.3.6.1.2.1.26.4.139' => '400GbaseLR8',
+        '.1.3.6.1.2.1.26.4.140' => '400GbaseER8',
+        '.1.3.6.1.2.1.26.4.147' => '400GbaseFR4',
+        '.1.3.6.1.2.1.26.4.148' => '400GbaseLR46',
+        '.1.3.6.1.2.1.26.4.149' => '400GbaseSR8',
+        '.1.3.6.1.2.1.26.4.150' => '400GbaseSR4p2',
+        '.1.3.6.1.2.1.26.4.219' => '400GbaseDR42',
+    ];
+
+    /**
+     * Live ifMauType walk, keyed by ifIndex, translated through OSS_SNMP's
+     * table merged with IANA_MAU_EXTRA. An OID neither table knows is kept
+     * RAW (never "*** UNKNOWN ***") — visible to admins, and a catalogue
+     * pattern can match the OID string itself as a last resort. Returns []
+     * when the switch doesn't answer the MAU MIB.
+     *
+     * @return array<int|string, string>
+     */
+    private function walkMauTypes( SNMP $host ): array
+    {
+        try {
+            $raw = $host->useMAU()->types( false );
+        } catch( \Exception $e ) {
+            return [];
+        }
+
+        $map = self::IANA_MAU_EXTRA + \OSS_SNMP\MIBS\MAU::$TYPES;
+
+        $out = [];
+        foreach( $raw as $ifIndex => $oid ) {
+            $oid = trim( (string)$oid );
+            // zeroDotZero / none = empty cage
+            if( $oid === '' || $oid === '.0.0' || $oid === '0.0' || str_ends_with( $oid, '.26.4.1' ) || str_ends_with( $oid, '.26.4.2' ) ) {
+                continue;
+            }
+            $out[ $ifIndex ] = $map[ $oid ] ?? $oid;
+        }
+
+        return $out;
     }
 
     /**
