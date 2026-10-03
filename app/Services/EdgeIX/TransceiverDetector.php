@@ -117,11 +117,12 @@ class TransceiverDetector
             $targets = $iface ? $this->portsForIface( $iface, $ports ) : collect();
 
             if( $targets->isEmpty() ) {
-                // Chassis (class 3) and slot containers (class 5) routinely
-                // mention QSFP/Xcvr in their strings without being optics —
-                // e.g. "DCS-7280QR-C36" or "Xcvr Slot 1". Don't report them
-                // as unmapped; real optics live on module/port entities.
-                if( !in_array( (int)( $e['class'] ?? 0 ), [ 3, 5 ], true ) ) {
+                // Chassis (3), containers (5), PSUs (6), fans (7) and
+                // sensors (8) routinely mention QSFP/Xcvr in their strings
+                // without being optics ("DCS-7280QR-C36", "Xcvr Slot 1",
+                // "PwrCon4 Rail2 POS3V3_QSFP"). Don't report them as
+                // unmapped; real optics live on module/port entities.
+                if( !in_array( (int)( $e['class'] ?? 0 ), [ 3, 5, 6, 7, 8 ], true ) ) {
                     $unmapped[] = [ 'entity' => $idx, 'xcvr' => $xcvr, 'iface' => $iface ];
                 }
                 continue;
@@ -290,11 +291,26 @@ class TransceiverDetector
      */
     private function looksLikeTransceiver( array $e ): bool
     {
+        // Older platforms (7050SX seen in the wild) stamp the CHASSIS model
+        // into per-port transceiver entities — an Arista chassis model is
+        // never an optic.
+        if( preg_match( '/^(DCS|CCS)-/i', $e['model'] ) ) {
+            return false;
+        }
+
+        // Entities with no model whose description is just the lane/cage
+        // naming ("Lane 0 for Xcvr for Ethernet1") identify nothing — skip
+        // them; the MAU stage carries those ports with a meaningful string.
+        if( $e['model'] === '' && preg_match( '/^(lane \d+ for )?xcvr for /i', $e['descr'] ) ) {
+            return false;
+        }
+
         $haystack = $e['model'] . ' ' . $e['descr'] . ' ' . $e['name'];
 
         if( preg_match( '/xcvr|transceiver|sfp|qsfp|osfp|cfp|[0-9]+G(BASE)?-/i', $haystack ) ) {
-            // ...but not obvious non-optics that mention module names.
-            return !preg_match( '/power supply|fan|sensor|chassis|supervisor/i', $haystack );
+            // ...but not obvious non-optics that mention module names
+            // (power rails/sensors like "Pol POS3V3_QSFP" included).
+            return !preg_match( '/power supply|fan|sensor|chassis|supervisor|pwrcon|pos3v3|rail\b/i', $haystack );
         }
 
         return false;
