@@ -6,9 +6,10 @@ use IXP\Models\Customer;
 
 // Snapshot template vars to locals up front (Foil $t-> access is unreliable
 // for generic names later in a template — see project notes).
-$msaCust     = $t->msaCust;
-$msaDocument = $t->msaDocument;
-$msaSignedBy = $t->msaSignedBy;
+$msaCust = $t->msaCust;
+// Foil throws on vars passed as null — try/catch snapshot, not `?? null`.
+try { $msaDocument = $t->msaDocument; } catch( \RuntimeException $e ) { $msaDocument = null; }
+try { $msaSignedBy = $t->msaSignedBy; } catch( \RuntimeException $e ) { $msaSignedBy = null; }
 
 $msaSigned = $msaCust->msaSigned();
 ?>

@@ -102,7 +102,13 @@ class TransceiverDetector
             $targets = $iface ? $this->portsForIface( $iface, $ports ) : collect();
 
             if( $targets->isEmpty() ) {
-                $unmapped[] = [ 'entity' => $idx, 'xcvr' => $xcvr, 'iface' => $iface ];
+                // Chassis (class 3) and slot containers (class 5) routinely
+                // mention QSFP/Xcvr in their strings without being optics —
+                // e.g. "DCS-7280QR-C36" or "Xcvr Slot 1". Don't report them
+                // as unmapped; real optics live on module/port entities.
+                if( !in_array( (int)( $e['class'] ?? 0 ), [ 3, 5 ], true ) ) {
+                    $unmapped[] = [ 'entity' => $idx, 'xcvr' => $xcvr, 'iface' => $iface ];
+                }
                 continue;
             }
 

@@ -444,6 +444,17 @@ sellable port types layered on top. Direction:
   flag. Detection maps `detected_xcvr` → catalogue entry; unmatched optics
   surface on a report instead of silently becoming stock. Adding 25G later =
   add a catalogue row, no code.
+  - **`active` means sellable, not classifiable** (2026-10-03): detection
+    matches inactive catalogue rows too — classification and sellability
+    are different things. 100G CWDM4 lives on core links (same-rack): its
+    row is inactive, so those optics classify cleanly for inventory but
+    never count as customer stock (core switch ports are also excluded by
+    `type = PEERING` anyway).
+  - **Optic self-description can lie** (2026-10-03): e.g. our third-party
+    10km 100G LR SKU (`Q.13S1HG`) is EEPROM-coded as `100GBASE-DR` for
+    switch compatibility. Irrelevant to the pipeline: the catalogue maps
+    per-SKU part-number patterns to what WE sell the port as — the optic's
+    claim only needs to be consistent, not true.
 - **Manual override per switchport** stays (the original Option A field) for
   lying third-party optics and odd cases — override wins over detection.
 - **PSM / breakouts**: the optic model identifies a PSM4, but the sellable

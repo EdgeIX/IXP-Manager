@@ -2,8 +2,10 @@
 /** @var Foil\Template\Template $t */
 $this->layout( 'layouts/ixpv4' );
 
-$portType = $t->portType;
-$editing  = (bool)$portType;
+// Foil throws on vars passed as null ("X is not defined") — the project's
+// documented safe pattern is a try/catch snapshot, not `?? null`.
+try { $portType = $t->portType; } catch( \RuntimeException $e ) { $portType = null; }
+$editing = (bool)$portType;
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>
@@ -100,7 +102,7 @@ $editing  = (bool)$portType;
                                     <input type="hidden" name="active" value="0">
                                     <input type="checkbox" class="custom-control-input" id="active" name="active" value="1"
                                         <?= old( 'active', $portType?->active ?? true ) ? 'checked' : '' ?>>
-                                    <label class="custom-control-label" for="active">Active (offered by detection mapping and, later, the order form)</label>
+                                    <label class="custom-control-label" for="active">Active — counts as sellable stock and (later) appears on the order form. Inactive types still classify detected optics, for inventory only (e.g. core-link CWDM4, not-yet-launched 25G).</label>
                                 </div>
                             </div>
                         </div>

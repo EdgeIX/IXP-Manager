@@ -7,8 +7,9 @@ $this->layout( 'layouts/ixpv4' );
 $msaCust     = $t->msaCust;
 $msaSigned   = $t->msaSigned;
 $msaIsCustom = $t->msaIsCustom;
-$msaDocument = $t->msaDocument;
-$msaSignedBy = $t->msaSignedBy;
+// Foil throws on vars passed as null — try/catch snapshot, not `?? null`.
+try { $msaDocument = $t->msaDocument; } catch( \RuntimeException $e ) { $msaDocument = null; }
+try { $msaSignedBy = $t->msaSignedBy; } catch( \RuntimeException $e ) { $msaSignedBy = null; }
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>

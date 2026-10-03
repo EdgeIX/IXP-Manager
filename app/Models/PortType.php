@@ -75,13 +75,18 @@ class PortType extends Model
     }
 
     /**
-     * Map a detected transceiver string to the first matching active type,
-     * in priority order. Null = unmatched (surface on the report, never
+     * Map a detected transceiver string to the first matching type, in
+     * priority order. Null = unmatched (surface on the report, never
      * silently become stock).
+     *
+     * Deliberately matches INACTIVE types too: classification and
+     * sellability are different things. E.g. 100G CWDM4 is used on core
+     * links (same-rack) — it should classify cleanly for inventory, while
+     * `active=false` keeps it out of sellable stock and the order form.
      */
     public static function matchXcvr( string $xcvr ): ?self
     {
-        foreach( self::active()->orderBy( 'priority' )->orderBy( 'id' )->get() as $pt ) {
+        foreach( self::orderBy( 'priority' )->orderBy( 'id' )->get() as $pt ) {
             if( $pt->matches( $xcvr ) ) {
                 return $pt;
             }
