@@ -75,6 +75,43 @@ class PortStockService
     }
 
     /**
+     * Availability tree for the order form: only what a customer may
+     * order. [ locationId => [ 'name', 'types' => [ typeId => [ 'name',
+     * 'speed', 'speedLabel', 'maxSameSwitch' (largest same-switch pool —
+     * caps the LAG quantity selector), 'total' ] ] ] ].
+     */
+    public function availability( Collection $rows ): array
+    {
+        $out = [];
+
+        foreach( $rows->where( 'sellable', true ) as $r ) {
+            if( !$r->location ) {
+                continue;
+            }
+            $out[ $r->location->id ]['name'] ??= $r->location->name;
+            $out[ $r->location->id ]['types'][ $r->type->id ]['ports'][] = $r->sp->switchid;
+        }
+
+        foreach( $out as $locId => &$loc ) {
+            foreach( $loc['types'] as $typeId => &$t ) {
+                $type = $rows->first( fn( $r ) => $r->type?->id === $typeId )->type;
+                $bySwitch = collect( $t['ports'] )->countBy();
+                $t = [
+                    'name'          => $type->name,
+                    'speed'         => (int)$type->speed,
+                    'speedLabel'    => $type->speedLabel(),
+                    'maxSameSwitch' => (int)$bySwitch->max(),
+                    'total'         => count( $t['ports'] ),
+                ];
+            }
+            unset( $t );
+        }
+        unset( $loc );
+
+        return $out;
+    }
+
+    /**
      * Low-stock shortfalls: one entry per (location × type) where the type
      * has a threshold, the location actually DEPLOYS that type (any port of
      * that effective type exists there, in service or not — so locations

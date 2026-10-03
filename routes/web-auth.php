@@ -51,7 +51,9 @@ if( !config('ixp_fe.frontend.disabled.logo' ) ) {
 /// no executed MSA on record → redirected to /msa. See docs/ordering.md.
 ///
 Route::group( [ 'namespace' => 'EdgeIX', 'prefix' => 'order', 'middleware' => 'msa' ], function() {
-    Route::get( '/', 'OrderController@index' )->name( 'order@index' );
+    Route::get(  '/',              'OrderController@index' )->name( 'order@index' );
+    Route::post( 'place',          'OrderController@store' )->name( 'order@store' );
+    Route::get(  'view/{order}',   'OrderController@view'  )->name( 'order@view'  );
 } );
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

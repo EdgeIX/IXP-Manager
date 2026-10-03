@@ -304,6 +304,13 @@ Route::group( [ 'namespace' => 'EdgeIX' ], function() {
 
     Route::get( 'admin/port-stock', 'PortStockController@index' )->name( 'port-stock@index' );
 
+    Route::group( [ 'prefix' => 'admin/port-order' ], function() {
+        Route::get(  'list',             'PortOrderAdminController@index'   )->name( 'port-order-admin@index'   );
+        Route::get(  'view/{order}',     'PortOrderAdminController@view'    )->name( 'port-order-admin@view'    );
+        Route::post( 'approve/{order}',  'PortOrderAdminController@approve' )->name( 'port-order-admin@approve' );
+        Route::post( 'cancel/{order}',   'PortOrderAdminController@cancel'  )->name( 'port-order-admin@cancel'  );
+    });
+
     Route::group( [ 'prefix' => 'admin/switch-xcvr' ], function() {
         Route::get(  'detect/{switch}',    'SwitchXcvrController@detect'      )->name( 'switch-xcvr@detect'       );
         Route::post( 'apply/{switch}',     'SwitchXcvrController@apply'       )->name( 'switch-xcvr@apply'        );

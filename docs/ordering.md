@@ -118,6 +118,30 @@ date.
 - `msa_signed_by_user_id` / `msa_signature_provider_id` are reserved for the
   e-sign flow — manual records keep the signatory in notes.
 
+### E-signature integration (planned — blocked on provider account)
+
+When the e-sign provider (SignNow or similar) is wired in, the standard
+unsigned panel on `/msa` becomes an embedded signing flow:
+
+1. Create a document from the pre-uploaded MSA template with prefilled
+   fields (company name, rep, ASN, date); embed the signing URL.
+2. On the provider's completion webhook, **the API pulls down the executed
+   PDF and stores it locally** in the customer's docstore under
+   *Agreements* (min_privs custadmin) — the exact same storage path the
+   admin Record MSA screen uses. The provider is a signing ceremony, NOT
+   the system of record: we never depend on the provider's portal to
+   retrieve an executed agreement later.
+3. Stamp the same columns as a manual record — `msa_status=signed`,
+   `msa_signed_at`, `msa_document_id` — plus the two reserved for e-sign:
+   `msa_signed_by_user_id` (the portal user who signed) and
+   `msa_signature_provider_id` (the provider's document reference, for
+   audit cross-checks).
+
+**Invariant: both paths (staff upload / e-sign) converge on the identical
+end state** — local executed PDF + stamped cust columns — so the order
+gate, the `/msa` status page and the audit trail never care which route
+an agreement took.
+
 ### Custom MSAs
 
 Some customers negotiate custom terms (`cust.msa_type = 'custom'`). These are
@@ -393,9 +417,20 @@ manual-billing trigger.
 - [x] Approval model (DECIDED): full automation end-to-end, zero-touch by
       default — see "Approval model" above. Gates are toggleable policy, not
       the design.
-- [ ] Customer comms: order confirmation email, portal order-status page
-      (incl. MAC-missing nag), LOA PDF emailed + downloadable from the
-      order; admin order queue UI.
+- [x] New Port wizard (BUILT 2026-10-03): `/order` is now the real form —
+      stock-driven selects (only locations/types with sellable stock;
+      quantity capped at the largest same-switch pool), tagged/VLAN, MACs
+      optional with the provisioning warning, delivery contact/PO/go-live.
+      Custadmin+ only. Out-of-stock placement → lead-time message, no
+      order created. Customer order-status page (`/order/view/{id}`) with
+      MAC-missing nag and "what happens next". Reserved port identities
+      are NOT shown to the customer pre-LOA.
+- [x] Admin order queue (BUILT 2026-10-03): `/admin/port-order/list` —
+      state filters, Approve (for policy-gated orders), Cancel with
+      reason (releases ports), order detail incl. reserved ports + panel
+      links + timeline. Linked from Port Stock.
+- [ ] Customer comms: order confirmation email to the customer, LOA PDF
+      emailed + downloadable from the order (admin notify email exists).
 - [x] Billing hook (DECIDED 2026-10-02): **stays manual for now** — lots of
       trial periods make automated billing premature. Admin order
       notifications are the billing trigger. Xero hook-in is a later,
@@ -629,6 +664,11 @@ production-proven.
 - `app/Services/EdgeIX/PortOrderService.php` — place/approve/cancel/expire;
   locked reservation; approval policy; admin notify email.
 - `app/Console/Commands/EdgeIX/ExpirePortOrderHolds.php` — hourly hold expiry.
+- `app/Http/Controllers/EdgeIX/OrderController.php` — New Port wizard +
+  customer order status (replaces the placeholder).
+- `app/Http/Controllers/EdgeIX/PortOrderAdminController.php` — admin queue.
+- `resources/skins/edgeix/order/{index,view}.foil.php` — wizard + status.
+- `resources/skins/edgeix/portorder/{index,view}.foil.php` — admin queue.
 - `config/ordering.php` — `ORDER_AUTO_APPROVE`, `ORDER_HOLD_DAYS`,
   `ORDER_NOTIFY_EMAIL`.
 - `app/Console/Commands/EdgeIX/CheckPortStockLevels.php` —
