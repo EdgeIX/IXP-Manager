@@ -40,6 +40,7 @@ $portTypes = $t->portTypes;
                                 <th>Active</th>
                                 <th>Priority</th>
                                 <th>Match patterns (regex, one per line)</th>
+                                <th title="Which sites offer this type. 'where detected' = unrestricted; a site count = restricted to those sites (stock, order form and alerts only there — and alerts fire there even at zero ports).">Offered at</th>
                                 <th>Low-stock threshold</th>
                                 <th title="Every switch port whose detected optic classifies as this type — all states (in service, free, core). For sellable availability see Port Stock.">Detected ports (fleet total)</th>
                                 <th></th>
@@ -59,6 +60,13 @@ $portTypes = $t->portTypes;
                                     </td>
                                     <td><?= (int)$pt->priority ?></td>
                                     <td><code class="tw-text-xs tw-whitespace-pre-line"><?= $t->ee( $pt->match_patterns ?? '' ) ?></code></td>
+                                    <td>
+                                        <?php if( $pt->offered_locations_count ): ?>
+                                            <span class="badge badge-info"><?= (int)$pt->offered_locations_count ?> site<?= $pt->offered_locations_count === 1 ? '' : 's' ?></span>
+                                        <?php else: ?>
+                                            <span class="tw-text-gray-500">where detected</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= $pt->low_stock_threshold !== null ? (int)$pt->low_stock_threshold : '—' ?></td>
                                     <td><?= (int)$pt->switch_ports_count ?></td>
                                     <td class="text-right tw-whitespace-nowrap">

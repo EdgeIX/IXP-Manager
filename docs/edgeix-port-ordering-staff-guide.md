@@ -102,6 +102,13 @@ of a type than the threshold gets its own line in the digest email (e.g.
 shows a red *low* badge on that exact DC cell. Locations that never stock
 a type don't alert. The email also nags about unmatched optics.
 
+**Types only offered at some sites (e.g. 400G):** on the type's edit page,
+tick the sites under **Offered at**. Nothing ticked = offered wherever the
+optic is detected (fine for common types). Ticked = only those sites count
+for stock, ordering and alerts — and a ticked site alerts even when it has
+ZERO ports of the type, so "P1 is supposed to have 400G and has none"
+can't go unnoticed.
+
 **Pre-wire before it alerts at zero** — ordering is self-service, so stock
 gets consumed without anyone phoning first.
 

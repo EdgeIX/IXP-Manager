@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 use IXP\Http\Controllers\Controller;
+use IXP\Models\Location;
 use IXP\Models\PortType;
 
 use IXP\Utils\View\Alert\Alert;
@@ -25,13 +26,17 @@ class PortTypeController extends Controller
     public function index(): View
     {
         return view( 'porttype.index', [
-            'portTypes' => PortType::withCount( 'switchPorts' )->orderBy( 'priority' )->orderBy( 'speed' )->get(),
+            'portTypes' => PortType::withCount( [ 'switchPorts', 'offeredLocations' ] )->orderBy( 'priority' )->orderBy( 'speed' )->get(),
         ] );
     }
 
     public function create(): View
     {
-        return view( 'porttype.edit', [ 'portType' => null ] );
+        return view( 'porttype.edit', [
+            'portType'     => null,
+            'ptLocations'  => Location::orderBy( 'name' )->get(),
+            'ptOfferedIds' => [],
+        ] );
     }
 
     public function store( Request $r ): RedirectResponse
@@ -39,6 +44,7 @@ class PortTypeController extends Controller
         $data = $this->checkForm( $r );
 
         $pt = PortType::create( $data );
+        $pt->offeredLocations()->sync( $r->input( 'offered_locations', [] ) );
 
         AlertContainer::push( "Port type <em>" . e( $pt->name ) . "</em> created.", Alert::SUCCESS );
         return redirect()->route( 'port-type@index' );
@@ -46,7 +52,11 @@ class PortTypeController extends Controller
 
     public function edit( PortType $portType ): View
     {
-        return view( 'porttype.edit', [ 'portType' => $portType ] );
+        return view( 'porttype.edit', [
+            'portType'     => $portType,
+            'ptLocations'  => Location::orderBy( 'name' )->get(),
+            'ptOfferedIds' => $portType->offeredLocations()->pluck( 'location.id' )->all(),
+        ] );
     }
 
     public function update( Request $r, PortType $portType ): RedirectResponse
@@ -54,6 +64,7 @@ class PortTypeController extends Controller
         $data = $this->checkForm( $r, $portType );
 
         $portType->update( $data );
+        $portType->offeredLocations()->sync( $r->input( 'offered_locations', [] ) );
 
         AlertContainer::push( "Port type <em>" . e( $portType->name ) . "</em> updated.", Alert::SUCCESS );
         return redirect()->route( 'port-type@index' );
@@ -86,7 +97,11 @@ class PortTypeController extends Controller
             'match_patterns'      => 'nullable|string|max:65535',
             'low_stock_threshold' => 'nullable|integer|min:0',
             'notes'               => 'nullable|string|max:65535',
+            'offered_locations'   => 'nullable|array',
+            'offered_locations.*' => 'integer|exists:location,id',
         ] );
+
+        unset( $data['offered_locations'] );
 
         $data['active'] = (bool)( $data['active'] ?? false );
 

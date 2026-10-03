@@ -2,6 +2,7 @@
 /** @var Foil\Template\Template $t */
 $this->layout( 'layouts/ixpv4' );
 
+$stockLow          = $t->stockLow;
 $stockMatrix       = $t->stockMatrix;
 $stockLocations    = $t->stockLocations;
 $stockTypes        = $t->stockTypes;
@@ -59,7 +60,7 @@ $stockUnmatched    = $t->stockUnmatched;
                                         <td><?= $t->ee( $loc->name ) ?></td>
                                         <?php foreach( $stockTypes as $pt ):
                                             $n = $stockMatrix[ $loc->id ][ $pt->id ] ?? 0;
-                                            $low = $pt->low_stock_threshold !== null && $n < $pt->low_stock_threshold;
+                                            $low = isset( $stockLow[ $loc->id . ':' . $pt->id ] );
                                         ?>
                                             <td class="text-center">
                                                 <?php if( $n === 0 ): ?>

@@ -4,6 +4,7 @@ namespace IXP\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -46,6 +47,17 @@ class PortType extends Model
     public function switchPorts(): HasMany
     {
         return $this->hasMany( SwitchPort::class, 'port_type_id' );
+    }
+
+    /**
+     * Offering map: the locations this type is offered at (e.g. 400G only
+     * at certain sites). EMPTY = offered wherever its optics are detected;
+     * non-empty = authoritative (stock/order form/alerting only at these
+     * sites, and low-stock alerts fire even at zero ports).
+     */
+    public function offeredLocations(): BelongsToMany
+    {
+        return $this->belongsToMany( Location::class, 'port_type_location', 'port_type_id', 'locationid' );
     }
 
     public function scopeActive( Builder $query ): Builder

@@ -603,6 +603,18 @@ All read via config files — run `php artisan config:clear` after changing.
 | `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |
 | `PORT_STOCK_ALERT_EMAIL` | `porttype.low_stock_alert_email` | unset | Recipient for the daily low-stock digest. Unset = job not scheduled. |
 
+**Thresholds & the offering map (2026-10-04):** the low-stock threshold is
+one number per port type (Port Types → edit), evaluated **per DC** — each
+DC below it gets its own digest line and matrix badge. By default a type
+alerts at every DC that *deploys* it (any detected port). For types only
+offered at certain sites (400G), each type has an **"Offered at"**
+location checklist (`port_type_location`): no sites ticked = offered
+wherever detected (default); sites ticked = authoritative — sellable
+stock, the order form and alerting apply ONLY at ticked sites, stray
+optics elsewhere can't become stock or alert noise, and offered sites
+alert **even with zero ports of the type** (capable-but-empty). The stock
+matrix's *low* badges use the exact same shortfall logic as the digest.
+
 ## Catalogue seeds: adding shipped types to an existing install
 
 The canonical port-type seed rows live in

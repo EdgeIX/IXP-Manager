@@ -5,7 +5,9 @@ $this->layout( 'layouts/ixpv4' );
 // Foil throws on vars passed as null ("X is not defined") — the project's
 // documented safe pattern is a try/catch snapshot, not `?? null`.
 try { $portType = $t->portType; } catch( \RuntimeException $e ) { $portType = null; }
-$editing = (bool)$portType;
+$editing      = (bool)$portType;
+$ptLocations  = $t->ptLocations;
+$ptOfferedIds = array_map( 'intval', old( 'offered_locations', $t->ptOfferedIds ) ?: [] );
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>
@@ -85,6 +87,31 @@ $editing = (bool)$portType;
                                        value="<?= $t->ee( (string)( old( 'low_stock_threshold', $portType?->low_stock_threshold ) ?? '' ) ) ?>">
                                 <small class="form-text text-muted">
                                     Alert admins when sellable stock of this type at any location drops below this. Blank = no alerting.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Offered at</label>
+                            <div class="col-sm-9">
+                                <div class="row">
+                                    <?php foreach( $ptLocations as $ptLoc ): ?>
+                                        <div class="col-md-4">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="offered-<?= (int)$ptLoc->id ?>"
+                                                       name="offered_locations[]" value="<?= (int)$ptLoc->id ?>"
+                                                    <?= in_array( (int)$ptLoc->id, $ptOfferedIds, true ) ? 'checked' : '' ?>>
+                                                <label class="custom-control-label" for="offered-<?= (int)$ptLoc->id ?>"><?= $t->ee( $ptLoc->name ) ?></label>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <strong>None ticked = offered wherever this optic type is detected</strong> (the
+                                    default — right for common types). Tick sites to restrict (e.g. 400G): stock,
+                                    the order form and low-stock alerts then apply ONLY at ticked sites — and the
+                                    low-stock alert fires there even when the site currently has zero ports of
+                                    this type.
                                 </small>
                             </div>
                         </div>

@@ -28,7 +28,15 @@ class PortStockController extends Controller
     {
         $rows = $stock->rows();
 
+        // Same logic as the low-stock alerter — the matrix badges what the
+        // 09:00 digest would report, keyed "locId:typeId".
+        $stockLow = [];
+        foreach( $stock->shortfalls( $rows ) as $s ) {
+            $stockLow[ ( $s->location?->id ?? 0 ) . ':' . $s->type->id ] = $s;
+        }
+
         return view( 'porttype.stock', [
+            'stockLow'         => $stockLow,
             'stockMatrix'      => $stock->sellableMatrix( $rows ),
             'stockLocations'   => $rows->pluck( 'location' )->filter()->unique( 'id' )->sortBy( 'name' )->values(),
             'stockTypes'       => PortType::active()->orderBy( 'speed' )->orderBy( 'name' )->get(),
