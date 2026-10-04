@@ -102,7 +102,7 @@ class PortType extends Model
      * links (same-rack) — it should classify cleanly for inventory, while
      * `active=false` keeps it out of sellable stock and the order form.
      */
-    public static function matchXcvr( string $xcvr, ?int $portSpeed = null ): ?self
+    public static function matchXcvr( string $xcvr, ?int $portSpeed = null, ?bool $breakoutSiblings = null ): ?self
     {
         static $catalogue = null;
         $catalogue ??= self::orderBy( 'priority' )->orderBy( 'id' )->get();
@@ -119,6 +119,17 @@ class PortType extends Model
                     return $pt;
                 }
             }
+        }
+
+        // No usable speed (typical for prewired legs that have never been
+        // up — exactly the sellable stock): use the breakout hint. Sibling
+        // leg interfaces (EthernetX/2..) only exist when the cage is in
+        // breakout mode, so siblings → the lowest-speed match (the leg
+        // type); no siblings → the highest (the straight-run type).
+        if( !$portSpeed && $breakoutSiblings !== null && $matches->count() > 1 ) {
+            return $breakoutSiblings
+                ? $matches->sortBy( fn( self $pt ) => (int)$pt->speed )->first()
+                : $matches->sortByDesc( fn( self $pt ) => (int)$pt->speed )->first();
         }
 
         return $matches->first();

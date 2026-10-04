@@ -138,8 +138,10 @@ class TransceiverDetector
                 }
                 // Type is per PORT, not per optic: the port's configured
                 // speed (ifHighSpeed) disambiguates breakout legs vs a
-                // straight run of the same optic family.
-                $type = PortType::matchXcvr( $matchString, (int)$port->ifHighSpeed ?: null );
+                // straight run of the same optic family; for speedless
+                // ports (prewired legs never been up) the existence of
+                // sibling leg interfaces is the breakout signal.
+                $type = PortType::matchXcvr( $matchString, (int)$port->ifHighSpeed ?: null, $this->hasSiblingLegs( $port->ifName, $ports ) );
                 $detected[ $port->id ] = [ 'port' => $port, 'xcvr' => $xcvr, 'mau' => null, 'type' => $type, 'source' => 'entity' ];
             }
         }
@@ -170,10 +172,11 @@ class TransceiverDetector
             }
 
             $portSpeed = (int)$port->ifHighSpeed ?: null;
+            $siblings  = $this->hasSiblingLegs( $port->ifName, $ports );
 
             if( isset( $detected[ $port->id ] ) ) {
                 $detected[ $port->id ]['mau'] = $mau;
-                if( !$detected[ $port->id ]['type'] && ( $mauType = PortType::matchXcvr( $mau, $portSpeed ) ) ) {
+                if( !$detected[ $port->id ]['type'] && ( $mauType = PortType::matchXcvr( $mau, $portSpeed, $siblings ) ) ) {
                     $detected[ $port->id ]['type']   = $mauType;
                     $detected[ $port->id ]['source'] = 'entity+mau';
                 }
@@ -182,7 +185,7 @@ class TransceiverDetector
                     'port'   => $port,
                     'xcvr'   => $mau,
                     'mau'    => $mau,
-                    'type'   => PortType::matchXcvr( $mau, $portSpeed ),
+                    'type'   => PortType::matchXcvr( $mau, $portSpeed, $siblings ),
                     'source' => 'mau',
                 ];
             }
@@ -284,6 +287,27 @@ class TransceiverDetector
         }
 
         return $out;
+    }
+
+    /**
+     * Does this port have sibling breakout-leg interfaces (same cage,
+     * different leg)? Arista only creates EthernetX/2.. when the cage is
+     * in breakout mode, so siblings = broken out. Ports without a leg
+     * suffix return false.
+     *
+     * @param \Illuminate\Support\Collection<string, SwitchPort> $ports keyed by ifName
+     */
+    private function hasSiblingLegs( ?string $ifName, $ports ): bool
+    {
+        if( !$ifName || !str_contains( $ifName, '/' ) ) {
+            return false;
+        }
+
+        $cage = substr( $ifName, 0, strrpos( $ifName, '/' ) + 1 );
+
+        return $ports->keys()->contains(
+            fn( $name ) => $name !== $ifName && str_starts_with( (string)$name, $cage )
+        );
     }
 
     /**
