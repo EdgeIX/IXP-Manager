@@ -735,6 +735,10 @@ production-proven.
 - `app/Services/EdgeIX/PortOrderService.php` — place/approve/cancel/expire;
   locked reservation; approval policy; admin notify email.
 - `app/Console/Commands/EdgeIX/ExpirePortOrderHolds.php` — hourly hold expiry.
+- `app/Console/Commands/EdgeIX/ExplainPortStock.php` —
+  `port-stock:explain {switch} {--only-failing}`: per-port first-failing
+  sellable condition (the stock-discrepancy debugger; covers ports the
+  stock page's base query filters out, e.g. non-Peering use).
 - `app/Http/Controllers/EdgeIX/OrderController.php` — New Port wizard +
   customer order status (replaces the placeholder).
 - `app/Http/Controllers/EdgeIX/PortOrderAdminController.php` — admin queue.

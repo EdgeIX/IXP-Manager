@@ -175,11 +175,21 @@ Every order lands in **Order Queue** and emails the order notify address —
 
 ## Troubleshooting
 
-**"A port should be orderable but isn't showing as stock"** — check the
-five sellable conditions in order: port active + type Peering? optic
-classified (Port Transceivers)? type Active in the catalogue? no service on
-the port? panel port marked Prewired? not already reserved by an open order
-(Order Queue)?
+**"A port should be orderable but isn't showing as stock" / "the stock
+count looks too low"** — ask engineering to run, per switch:
+
+```
+php artisan port-stock:explain <switch>            # every port, one verdict each
+php artisan port-stock:explain <switch> --only-failing
+```
+
+It prints each port's FIRST failing condition in plain words ("panel state
+Available (needs Prewired)", "no patch panel port linked", "port use is
+unset (needs Peering)", "type not offered at this site", …) — fix what it
+names and the port appears in stock on the next page load. Common causes:
+the panel port isn't linked in IXP-Manager at all, the panel state is
+something other than *Prewired*, or the switch port's use isn't set to
+*Peering*.
 
 **"Customer says they can't order"** — in order: do they have an MSA
 recorded (or exempt type)? are they a **customer admin** (regular users
