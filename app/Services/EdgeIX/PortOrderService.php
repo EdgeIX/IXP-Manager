@@ -54,7 +54,24 @@ class PortOrderService
         $type = PortType::findOrFail( $data['port_type_id'] );
         $qty  = max( 1, (int)( $data['quantity'] ?? 1 ) );
 
-        $order = DB::transaction( function () use ( $cust, $user, $data, $type, $qty ) {
+        // Served-via alias (passive/campus site): remember what the
+        // customer selected, resolve stock/reservation/LOA to the demarc.
+        $selectedLoc = \IXP\Models\Location::findOrFail( (int)$data['locationid'] );
+        $customerLocationId = null;
+        if( $selectedLoc->served_via_locationid ) {
+            $customerLocationId  = $selectedLoc->id;
+            $data['locationid']  = $selectedLoc->served_via_locationid;
+        }
+
+        // Manual-only sites never take self-serve orders, whatever the UI
+        // was coaxed into submitting — selected site and demarc both.
+        $excluded = config( 'ordering.excluded_locations', [] );
+        if( in_array( (int)$selectedLoc->id, $excluded, true )
+            || in_array( (int)$data['locationid'], $excluded, true ) ) {
+            throw new InsufficientPortStockException( 'Location ' . (int)$selectedLoc->id . ' is excluded from self-serve ordering (ORDER_EXCLUDED_LOCATIONS)' );
+        }
+
+        $order = DB::transaction( function () use ( $cust, $user, $data, $type, $qty, $customerLocationId ) {
 
             $ports = $this->reserveCandidates( $cust, (int)$data['locationid'], $type, $qty );
 
@@ -64,6 +81,7 @@ class PortOrderService
                 'kind'             => PortOrder::KIND_NEW_PORT,
                 'state'            => PortOrder::STATE_SUBMITTED,
                 'locationid'       => (int)$data['locationid'],
+                'customer_locationid' => $customerLocationId,
                 'port_type_id'     => $type->id,
                 'quantity'         => $qty,
                 'tagged'           => (bool)( $data['tagged'] ?? false ),
@@ -180,11 +198,16 @@ class PortOrderService
      */
     private function reserveCandidates( Customer $cust, int $locationId, PortType $type, int $qty )
     {
+        // Location is matched on the PANEL side (the demarc the customer
+        // x-connects to / the LOA names) — same as PortStockService's
+        // attribution. For co-located pairs this equals the switch's site;
+        // for long-lined pairs it's the remote passive site.
         $candidates = SwitchPort::query()
             ->select( 'switchport.*' )
             ->join( 'switch', 'switch.id', 'switchport.switchid' )
-            ->join( 'cabinet', 'cabinet.id', 'switch.cabinetid' )
             ->join( 'patch_panel_port', 'patch_panel_port.switch_port_id', 'switchport.id' )
+            ->join( 'patch_panel', 'patch_panel.id', 'patch_panel_port.patch_panel_id' )
+            ->join( 'cabinet', 'cabinet.id', 'patch_panel.cabinet_id' )
             ->leftJoin( 'physicalinterface', 'physicalinterface.switchportid', 'switchport.id' )
             ->where( 'switch.active', true )
             ->where( 'cabinet.locationid', $locationId )
@@ -262,7 +285,7 @@ class PortOrderService
             return;
         }
 
-        $order->loadMissing( [ 'customer', 'location', 'portType', 'portOrderPorts.switchPort.switcher' ] );
+        $order->loadMissing( [ 'customer', 'location', 'customerLocation', 'portType', 'portOrderPorts.switchPort.switcher' ] );
 
         $lines = [
             'New port order #' . $order->id,
@@ -270,7 +293,10 @@ class PortOrderService
             'Customer:  [' . $order->custid . '] ' . $order->customer?->name,
             'Order:     ' . $order->quantity . ' x ' . $order->portType?->name
                 . ( $order->quantity > 1 ? ' (LACP LAG)' : '' )
-                . ' at ' . ( $order->location?->name ?? ( 'location ' . $order->locationid ) ),
+                . ' at ' . ( $order->location?->name ?? ( 'location ' . $order->locationid ) )
+                . ( $order->customer_locationid
+                    ? ' (customer at ' . ( $order->customerLocation?->name ?? $order->customer_locationid ) . ' — served-via site, demarc/LOA at ' . $order->location?->name . ')'
+                    : '' ),
             'Tagged:    ' . ( $order->tagged ? ( 'yes, VLAN ' . $order->vlan_tag ) : 'no' ),
             'MAC(s):    ' . ( $order->macMissing() ? 'not provided yet (provisioning nag active)' : implode( ', ', $order->macs ) ),
             'Reserved:  ' . $order->portOrderPorts->map( fn( $p ) =>

@@ -20,6 +20,9 @@ $stockUnmatched    = $t->stockUnmatched;
         <a class="btn btn-white" href="<?= route( 'port-order-admin@index' ) ?>">
             <i class="fa fa-shopping-cart"></i> Port Orders
         </a>
+        <a class="btn btn-white" href="<?= route( 'port-stock@served-via' ) ?>">
+            <i class="fa fa-random"></i> Served-via Sites
+        </a>
         <a class="btn btn-white" href="<?= route( 'port-type@index' ) ?>">
             <i class="fa fa-list"></i> Port Types
         </a>
@@ -94,7 +97,12 @@ $stockUnmatched    = $t->stockUnmatched;
                         <tbody>
                             <?php foreach( $stockSellable as $r ): ?>
                                 <tr>
-                                    <td><?= $t->ee( $r->location?->name ?? '—' ) ?></td>
+                                    <td>
+                                        <?= $t->ee( $r->location?->name ?? '—' ) ?>
+                                        <?php if( $r->longLined ): ?>
+                                            <span class="badge badge-info" title="Panel demarc here; switch is at <?= $t->ee( $r->switchLocation?->name ?? '?' ) ?> (long-lined)">long-lined</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= $t->ee( $r->sp->switcher?->name ?? '—' ) ?></td>
                                     <td><?= $t->ee( $r->sp->ifName ) ?></td>
                                     <td>

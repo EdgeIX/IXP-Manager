@@ -42,7 +42,7 @@ class PortOrderAdminController extends Controller
     public function view( PortOrder $order ): View
     {
         return view( 'portorder.view', [
-            'poOrder' => $order->load( [ 'customer', 'user', 'location', 'portType', 'portOrderPorts.switchPort.switcher', 'portOrderPorts.patchPanelPort.patchPanel' ] ),
+            'poOrder' => $order->load( [ 'customer', 'user', 'location', 'customerLocation', 'portType', 'portOrderPorts.switchPort.switcher', 'portOrderPorts.patchPanelPort.patchPanel' ] ),
         ] );
     }
 

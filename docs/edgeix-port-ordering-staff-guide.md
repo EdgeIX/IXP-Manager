@@ -102,6 +102,23 @@ of a type than the threshold gets its own line in the digest email (e.g.
 shows a red *low* badge on that exact DC cell. Locations that never stock
 a type don't alert. The email also nags about unmatched optics.
 
+**Long-lined / passive sites:** a port counts at the site of its **patch
+panel** (where the customer's cross-connect lands), even when the switch
+is elsewhere — such ports show a *long-lined* badge on Port Stock.
+Fully manual sites (e.g. Vocus DC PER01) are excluded from
+online ordering altogether — engineering maintains that list; those sites
+never show stock, never alert, and orders there stay a sales/manual
+process.
+
+**Campus / served-via sites (Equinix SY3/SY4/SY5):** so a customer sitting
+in SY4 can find us on the order form, mark those sites as **served via**
+the demarc site at **Port Stock → Served-via Sites** (SY3/4/5 → "Equinix
+SY1/SY2"). The order form then lists "Equinix SY4 — delivered at Equinix
+SY1/SY2", the customer is told their LOA will be for SY1/SY2 and that
+they order the campus cross-connect from their site, and the admin queue
+shows a *customer at SY4* badge on the order. Stock and provisioning all
+happen at the demarc site as always.
+
 **Types only offered at some sites (e.g. 400G):** on the type's edit page,
 tick the sites under **Offered at**. Nothing ticked = offered wherever the
 optic is detected (fine for common types). Ticked = only those sites count

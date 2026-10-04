@@ -40,7 +40,12 @@ $o = $t->poOrder;
                         <tr><td><strong>Placed</strong></td>
                             <td><?= $t->ee( $o->created_at?->format( 'j M Y H:i' ) ) ?> by <?= $t->ee( $o->user?->username ?? 'n/a' ) ?></td></tr>
                         <tr><td><strong>Order</strong></td>
-                            <td><?= (int)$o->quantity ?> x <?= $t->ee( $o->portType?->name ?? '?' ) ?><?= $o->quantity > 1 ? ' — LACP LAG' : '' ?> at <?= $t->ee( $o->location?->name ?? '?' ) ?></td></tr>
+                            <td>
+                                <?= (int)$o->quantity ?> x <?= $t->ee( $o->portType?->name ?? '?' ) ?><?= $o->quantity > 1 ? ' — LACP LAG' : '' ?> at <?= $t->ee( $o->location?->name ?? '?' ) ?>
+                                <?php if( $o->customer_locationid ): ?>
+                                    <span class="badge badge-info" title="Customer is at a served-via site — LOA/demarc is <?= $t->ee( $o->location?->name ?? '?' ) ?>">customer at <?= $t->ee( $o->customerLocation?->name ?? '?' ) ?></span>
+                                <?php endif; ?>
+                            </td></tr>
                         <tr><td><strong>Tagged / VLAN</strong></td>
                             <td><?= $o->tagged ? 'Tagged, VLAN ' . (int)$o->vlan_tag : 'Untagged' ?></td></tr>
                         <tr><td><strong>MACs</strong></td>

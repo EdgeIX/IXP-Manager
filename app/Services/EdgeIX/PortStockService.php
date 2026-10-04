@@ -58,35 +58,54 @@ class PortStockService
                 $q->whereIn( 'state', PortOrder::OPEN_STATES ) )
             ->pluck( 'switchportid' )->flip();
 
-        return SwitchPort::with( [ 'switcher.cabinet.location', 'patchPanelPort.patchPanel', 'physicalInterface', 'portType', 'portTypeOverride' ] )
+        $excluded = array_flip( config( 'ordering.excluded_locations', [] ) );
+
+        return SwitchPort::with( [ 'switcher.cabinet.location', 'patchPanelPort.patchPanel.cabinet.location', 'physicalInterface', 'portType', 'portTypeOverride' ] )
             ->where( 'active', true )
             ->where( 'type', SwitchPort::TYPE_PEERING )
             ->whereHas( 'switcher', fn( $q ) => $q->where( 'active', true ) )
             ->get()
-            ->map( function( SwitchPort $sp ) use ( $reserved, $offered ) {
-                $type = $sp->effectivePortType();
-                $ppp  = $sp->patchPanelPort;
-                $loc  = $sp->switcher?->cabinet?->location;
-                $free = !$sp->physicalInterface;
+            ->map( function( SwitchPort $sp ) use ( $reserved, $offered, $excluded ) {
+                $type      = $sp->effectivePortType();
+                $ppp       = $sp->patchPanelPort;
+                $switchLoc = $sp->switcher?->cabinet?->location;
+                $panelLoc  = $ppp?->patchPanel?->cabinet?->location;
+
+                // DEMARC attribution: a port's location is its PANEL's site
+                // when linked — that's where the customer x-connects and
+                // what the LOA will name. Long-lined pairs (panel at a
+                // remote passive site, switch elsewhere) therefore count
+                // at the remote site, not the switch's. No panel = switch
+                // site (hygiene rows only; sellable requires a panel).
+                $loc       = $panelLoc ?? $switchLoc;
+                $longLined = $panelLoc && $switchLoc && $panelLoc->id !== $switchLoc->id;
+
+                $free       = !$sp->physicalInterface;
                 $prewired   = $ppp && (int)$ppp->state === PatchPanelPort::STATE_PREWIRED;
                 $isReserved = isset( $reserved[ $sp->id ] );
                 // Offering map: a stray optic at a site that doesn't offer
                 // the type never becomes stock or prewire-hygiene noise.
                 $offeredHere = $type && $this->offeredAt( $offered, $type->id, $loc?->id );
+                // Manual-only sites (ORDER_EXCLUDED_LOCATIONS) are invisible
+                // to self-serve: no stock, no hygiene nag, no alerts.
+                $excludedHere = $loc && isset( $excluded[ $loc->id ] );
 
                 return (object)[
                     'sp'        => $sp,
                     'location'  => $loc,
+                    'switchLocation' => $switchLoc,
+                    'longLined' => $longLined,
                     'type'      => $type,
                     'free'      => $free,
                     'prewired'  => $prewired,
                     'reserved'  => $isReserved,
                     'offered'   => $offeredHere,
+                    'excluded'  => $excludedHere,
                     'ppp'       => $ppp,
                     // sellable = what the order form may offer
-                    'sellable'  => $free && $type && $type->active && $prewired && !$isReserved && $offeredHere,
+                    'sellable'  => $free && $type && $type->active && $prewired && !$isReserved && $offeredHere && !$excludedHere,
                     // hygiene: free port with a sellable type but panel side not prewired
-                    'needsPrewireFlag' => $free && $type && $type->active && !$prewired && !$isReserved && $offeredHere,
+                    'needsPrewireFlag' => $free && $type && $type->active && !$prewired && !$isReserved && $offeredHere && !$excludedHere,
                     // hygiene: optic detected but no catalogue match, port free
                     'unmatchedOptic'   => $free && !$type && $sp->detected_xcvr,
                 ];
@@ -140,6 +159,27 @@ class PortStockService
         }
         unset( $loc );
 
+        // Served-via aliases: passive/campus sites (Equinix SY3/4/5 →
+        // "Equinix SY1/SY2") are listed so customers THERE can find us —
+        // they draw on the demarc site's stock and the order resolves to
+        // it. 'via' carries the demarc name for the form's explainer.
+        $excluded = array_flip( config( 'ordering.excluded_locations', [] ) );
+
+        foreach( Location::whereNotNull( 'served_via_locationid' )->get() as $alias ) {
+            if( isset( $excluded[ $alias->id ] ) || isset( $out[ $alias->id ] ) ) {
+                continue;
+            }
+            $demarc = $out[ $alias->served_via_locationid ] ?? null;
+            if( !$demarc ) {
+                continue;   // demarc has no sellable stock → alias hidden too
+            }
+            $out[ $alias->id ] = [
+                'name'  => $alias->name,
+                'via'   => $demarc['name'],
+                'types' => $demarc['types'],
+            ];
+        }
+
         return $out;
     }
 
@@ -166,12 +206,19 @@ class PortStockService
         $byLoc = $rows->filter( fn( $r ) => $r->type && $r->type->active && $r->type->low_stock_threshold !== null )
             ->groupBy( fn( $r ) => ( $r->location?->id ?? 0 ) . ':' . $r->type->id );
 
+        $excluded = array_flip( config( 'ordering.excluded_locations', [] ) );
+
         foreach( $byLoc as $key => $group ) {
             $first = $group->first();
             $type  = $first->type;
 
             // Restricted type at a non-offering site: stray optics, no alert.
             if( !$this->offeredAt( $offered, $type->id, $first->location?->id ) ) {
+                continue;
+            }
+
+            // Manual-only sites don't low-stock alert.
+            if( $first->location && isset( $excluded[ $first->location->id ] ) ) {
                 continue;
             }
 
@@ -201,7 +248,7 @@ class PortStockService
 
         foreach( $restrictedTypes as $type ) {
             foreach( array_keys( $offered[ $type->id ] ) as $locId ) {
-                if( isset( $seen[ $locId . ':' . $type->id ] ) ) {
+                if( isset( $seen[ $locId . ':' . $type->id ] ) || isset( $excluded[ $locId ] ) ) {
                     continue;
                 }
                 $out[] = (object)[

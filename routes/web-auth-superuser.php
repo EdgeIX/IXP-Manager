@@ -303,6 +303,8 @@ Route::group( [ 'namespace' => 'EdgeIX' ], function() {
     });
 
     Route::get( 'admin/port-stock', 'PortStockController@index' )->name( 'port-stock@index' );
+    Route::get(  'admin/port-stock/served-via', 'PortStockController@servedVia'     )->name( 'port-stock@served-via'      );
+    Route::post( 'admin/port-stock/served-via', 'PortStockController@saveServedVia' )->name( 'port-stock@save-served-via' );
 
     Route::group( [ 'prefix' => 'admin/port-order' ], function() {
         Route::get(  'list',             'PortOrderAdminController@index'   )->name( 'port-order-admin@index'   );

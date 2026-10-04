@@ -77,11 +77,13 @@ $stateBadge = [
                                     <select class="form-control" id="locationid" name="locationid" required>
                                         <option value="">— select —</option>
                                         <?php foreach( $orderAvailability as $locId => $loc ): ?>
-                                            <option value="<?= (int)$locId ?>" <?= (string)old( 'locationid' ) === (string)$locId ? 'selected' : '' ?>>
-                                                <?= $t->ee( $loc['name'] ) ?>
+                                            <option value="<?= (int)$locId ?>" <?= (string)old( 'locationid' ) === (string)$locId ? 'selected' : '' ?>
+                                                    <?= isset( $loc['via'] ) ? 'data-via="' . $t->ee( $loc['via'] ) . '"' : '' ?>>
+                                                <?= $t->ee( $loc['name'] ) ?><?= isset( $loc['via'] ) ? ' — delivered at ' . $t->ee( $loc['via'] ) : '' ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <small class="form-text text-muted" id="via-note" style="display:none"></small>
                                     <small class="form-text text-muted">
                                         Only locations with ports ready for immediate provisioning are listed —
                                         need somewhere else? <a href="mailto:sales@edgeix.net">sales@edgeix.net</a>.
@@ -289,6 +291,22 @@ $stateBadge = [
         function toggleVlan() {
             vlanRow.style.display = tagged.value === '1' ? '' : 'none';
         }
+
+        function viaNote() {
+            var note = document.getElementById( 'via-note' );
+            var opt  = locSel.options[ locSel.selectedIndex ];
+            var via  = opt ? opt.getAttribute( 'data-via' ) : null;
+            if( via ) {
+                note.textContent = 'Your port is delivered at ' + via + ': your Letter of Authorisation will be for '
+                    + via + ', and you order a cross-connect from your site to ' + via + '.';
+                note.style.display = '';
+            } else {
+                note.style.display = 'none';
+            }
+        }
+
+        locSel.addEventListener( 'change', viaNote );
+        viaNote();
 
         locSel.addEventListener( 'change', fillTypes );
         typeSel.addEventListener( 'change', fillQty );

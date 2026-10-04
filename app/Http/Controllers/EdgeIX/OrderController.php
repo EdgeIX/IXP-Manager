@@ -117,7 +117,7 @@ class OrderController extends Controller
         }
 
         return view( 'order.view', [
-            'orderOrder' => $order->load( [ 'location', 'portType', 'portOrderPorts.switchPort.switcher' ] ),
+            'orderOrder' => $order->load( [ 'location', 'customerLocation', 'portType', 'portOrderPorts.switchPort.switcher' ] ),
         ] );
     }
 }

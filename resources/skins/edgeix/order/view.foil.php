@@ -50,7 +50,16 @@ $stateLabel = [
                         <tr><td><strong>Order</strong></td>
                             <td><?= (int)$o->quantity ?> x <?= $t->ee( $o->portType?->name ?? '?' ) ?><?= $o->quantity > 1 ? ' — LACP LAG' : '' ?></td></tr>
                         <tr><td><strong>Location</strong></td>
-                            <td><?= $t->ee( $o->location?->name ?? '?' ) ?></td></tr>
+                            <td>
+                                <?php if( $o->customer_locationid ): ?>
+                                    <?= $t->ee( $o->customerLocation?->name ?? '?' ) ?> —
+                                    delivered at <strong><?= $t->ee( $o->location?->name ?? '?' ) ?></strong>
+                                    (your LOA will be for <?= $t->ee( $o->location?->name ?? '?' ) ?>; order your
+                                    cross-connect from your site to there)
+                                <?php else: ?>
+                                    <?= $t->ee( $o->location?->name ?? '?' ) ?>
+                                <?php endif; ?>
+                            </td></tr>
                         <tr><td><strong>Tagged</strong></td>
                             <td><?= $o->tagged ? 'Yes — VLAN ' . (int)$o->vlan_tag : 'No (untagged)' ?></td></tr>
                         <tr><td><strong>MAC address(es)</strong></td>

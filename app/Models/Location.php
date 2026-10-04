@@ -26,6 +26,7 @@ namespace IXP\Models;
 use Illuminate\Database\Eloquent\{
     Builder,
     Model,
+    Relations\BelongsTo,
     Relations\HasMany
 };
 
@@ -116,6 +117,24 @@ class Location extends Model
     public function cabinets(): HasMany
     {
         return $this->hasMany(Cabinet::class, 'locationid' );
+    }
+
+    /**
+     * EdgeIX: the demarc site this passive/campus site is served from
+     * (e.g. Equinix SY4 → "Equinix SY1/SY2"). Null = a normal active site.
+     * See docs/ordering.md "served via".
+     */
+    public function servedVia(): BelongsTo
+    {
+        return $this->belongsTo( Location::class, 'served_via_locationid' );
+    }
+
+    /**
+     * EdgeIX: passive/campus sites served from this site.
+     */
+    public function servesSites(): HasMany
+    {
+        return $this->hasMany( Location::class, 'served_via_locationid' );
     }
 
     /**

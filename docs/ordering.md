@@ -603,6 +603,32 @@ All read via config files — run `php artisan config:clear` after changing.
 | `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |
 | `PORT_STOCK_ALERT_EMAIL` | `porttype.low_stock_alert_email` | unset | Recipient for the daily low-stock digest. Unset = job not scheduled. |
 
+**Served-via sites (2026-10-04):** so campus customers can FIND us, a
+passive/campus site can be marked *served via* a demarc site
+(`location.served_via_locationid`, managed at Port Stock → Served-via
+Sites). The order form then lists it ("Equinix SY4 — delivered at Equinix
+SY1/SY2") drawing on the demarc's stock, with an inline explainer that
+the LOA will be for the demarc and the customer orders the x-connect from
+their site. On placement the order stores both: `customer_locationid`
+(what they picked) and `locationid` (resolved demarc — used for
+reservation/provisioning/LOA). Admin queue badges "customer at SY4".
+Chained aliases are rejected; aliases hide automatically when the demarc
+has no stock, and excluded sites can't be aliases.
+
+**Demarc attribution & long-lined sites (2026-10-04):** a sellable port's
+location is its **patch panel's site** (where the customer x-connects and
+what the LOA names), not the switch's — identical for co-located pairs,
+and truthful for long-lined ones (panel at a remote passive site, switch
+elsewhere; badged *long-lined* on Port Stock). The reservation query
+matches on the panel side too. Equinix campus needs nothing special: the
+demarc panels are at SY1/SY2, so campus sites never show stock of their
+own — customers get an SY1 LOA and arrange the campus x-connect, as
+today. Manual-only sites (e.g. Vocus DC PER01) are excluded from
+self-serve entirely via `ORDER_EXCLUDED_LOCATIONS` (comma-separated
+location IDs; config `ordering.excluded_locations`): no sellable stock,
+no order form, no low-stock alerts, no prewire hygiene — and `place()`
+refuses the location server-side regardless of UI.
+
 **Thresholds & the offering map (2026-10-04):** the low-stock threshold is
 one number per port type (Port Types → edit), evaluated **per DC** — each
 DC below it gets its own digest line and matrix badge. By default a type

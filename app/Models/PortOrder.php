@@ -68,9 +68,9 @@ class PortOrder extends Model
 
     protected $fillable = [
         'custid', 'user_id', 'kind', 'target_virtual_interface_id', 'state',
-        'locationid', 'port_type_id', 'quantity', 'tagged', 'vlan_tag',
-        'macs', 'delivery_contact', 'po_number', 'preferred_golive',
-        'admin_notes', 'reserved_until',
+        'locationid', 'customer_locationid', 'port_type_id', 'quantity',
+        'tagged', 'vlan_tag', 'macs', 'delivery_contact', 'po_number',
+        'preferred_golive', 'admin_notes', 'reserved_until',
     ];
 
     protected $casts = [
@@ -98,6 +98,15 @@ class PortOrder extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo( Location::class, 'locationid' );
+    }
+
+    /**
+     * The site the customer selected when it was a served-via alias
+     * (campus/passive site); `location` is always the resolved demarc.
+     */
+    public function customerLocation(): BelongsTo
+    {
+        return $this->belongsTo( Location::class, 'customer_locationid' );
     }
 
     public function portType(): BelongsTo

@@ -26,6 +26,14 @@ return [
     // and the manual-billing trigger). Blank = no emails.
     'notify_email' => env( 'ORDER_NOTIFY_EMAIL' ),
 
+    // Location IDs excluded from self-serve ordering entirely (manual-only
+    // sites, e.g. long-lined DCs with no active gear where provisioning is
+    // hands-on). Comma-separated location ids. Excluded sites never count
+    // as sellable stock, never appear on the order form, never low-stock
+    // alert and never appear in prewire hygiene.
+    'excluded_locations' => array_values( array_filter( array_map( 'intval',
+        explode( ',', (string)env( 'ORDER_EXCLUDED_LOCATIONS', '' ) ) ) ) ),
+
     // Customer types exempt from the MSA order gate (Customer::TYPE_*
     // values). Internal (3) and pro-bono (4) accounts have no commercial
     // agreement to execute.
