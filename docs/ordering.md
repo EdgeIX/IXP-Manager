@@ -736,9 +736,16 @@ production-proven.
   locked reservation; approval policy; admin notify email.
 - `app/Console/Commands/EdgeIX/ExpirePortOrderHolds.php` — hourly hold expiry.
 - `app/Console/Commands/EdgeIX/ExplainPortStock.php` —
-  `port-stock:explain {switch} {--only-failing}`: per-port first-failing
-  sellable condition (the stock-discrepancy debugger; covers ports the
-  stock page's base query filters out, e.g. non-Peering use).
+  `port-stock:explain {switch} {--only-failing} {--all}`: per-port
+  first-failing sellable condition (the stock-discrepancy debugger; covers
+  ports the stock page's base query filters out, e.g. non-Peering use;
+  Port-Channel/Management hidden unless --all).
+- `app/Console/Commands/EdgeIX/PruneStaleSwitchPorts.php` —
+  `switch:prune-stale-ports {switch?} {--delete}`: bulk-deletes DB port
+  rows the switch no longer has (stale by lastSnmpPoll, or duplicate
+  ifName) when unattached (no service/panel/order); attached-but-stale is
+  reported, never deleted. Dry run by default — upstream has no bulk tool
+  (the poller only warns).
 - `app/Http/Controllers/EdgeIX/OrderController.php` — New Port wizard +
   customer order status (replaces the placeholder).
 - `app/Http/Controllers/EdgeIX/PortOrderAdminController.php` — admin queue.

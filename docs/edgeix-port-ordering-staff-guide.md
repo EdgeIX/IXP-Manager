@@ -196,6 +196,12 @@ recorded (or exempt type)? are they a **customer admin** (regular users
 can't order)? is maintenance mode on? is there stock of what they want at
 that DC?
 
+**"IXP-Manager lists ports the switch doesn't have (stale/duplicate
+rows)"** — engineering runs `php artisan switch:prune-stale-ports
+<switch>` (dry run — shows what it would remove) then adds `--delete`.
+It only ever removes rows with no service, no panel link and no order
+attached; anything attached is reported for a human decision.
+
 **"Detection shows something weird"** — screenshot the Detect Transceivers
 page (expand the raw rows) and send it to engineering; don't Save if it
 looks wrong.

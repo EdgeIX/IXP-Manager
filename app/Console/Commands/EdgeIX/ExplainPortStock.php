@@ -31,7 +31,8 @@ class ExplainPortStock extends Command
 {
     protected $signature = 'port-stock:explain
                             {switch : The switch name}
-                            {--only-failing : Hide ports that are sellable or in service}';
+                            {--only-failing : Hide ports that are sellable or in service}
+                            {--all : Include Port-Channel / Management rows (never stock; hidden by default)}';
 
     protected $description = 'EdgeIX: per-port explanation of why each port is / is not sellable stock';
 
@@ -54,7 +55,9 @@ class ExplainPortStock extends Command
         $ports = $s->switchPorts()
             ->with( [ 'patchPanelPort.patchPanel.cabinet.location', 'physicalInterface', 'portType', 'portTypeOverride' ] )
             ->orderBy( 'id' )->get()
-            ->filter( fn( SwitchPort $sp ) => $sp->ifName && !str_contains( $sp->ifName, '.' ) );
+            ->filter( fn( SwitchPort $sp ) => $sp->ifName && !str_contains( $sp->ifName, '.' ) )
+            ->when( !$this->option( 'all' ), fn( $c ) => $c->filter(
+                fn( SwitchPort $sp ) => !preg_match( '/^(Port-Channel|Management)/i', $sp->ifName ) ) );
 
         foreach( $ports as $sp ) {
             $type     = $sp->effectivePortType();
