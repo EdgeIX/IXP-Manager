@@ -58,6 +58,28 @@ class PortOrderAdminController extends Controller
         return redirect()->route( 'port-order-admin@view', [ 'order' => $order->id ] );
     }
 
+    /**
+     * BACKORDER fulfilment: capacity has been built — reserve the port(s)
+     * and approve in one go.
+     */
+    public function reserveBackorder( Request $r, PortOrder $order, PortOrderService $orders ): RedirectResponse
+    {
+        if( $order->state !== PortOrder::STATE_BACKORDER ) {
+            AlertContainer::push( "Order #{$order->id} is not a backorder.", Alert::WARNING );
+        } else {
+            try {
+                $orders->reserveBackorder( $order, $r->user() );
+                AlertContainer::push( "Order #{$order->id}: port(s) reserved and order approved.", Alert::SUCCESS );
+            } catch( \IXP\Exceptions\EdgeIX\InsufficientPortStockException $e ) {
+                AlertContainer::push( "Order #{$order->id}: still no sellable stock for "
+                    . (int)$order->quantity . " x " . e( $order->portType?->name ?? '?' )
+                    . " at this site — check Port Stock (prewired? detected? typed Peering?).", Alert::DANGER );
+            }
+        }
+
+        return redirect()->route( 'port-order-admin@view', [ 'order' => $order->id ] );
+    }
+
     public function cancel( Request $r, PortOrder $order, PortOrderService $orders ): RedirectResponse
     {
         $r->validate( [ 'cancel_reason' => 'required|string|max:255' ] );

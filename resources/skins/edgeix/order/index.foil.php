@@ -11,6 +11,7 @@ $orderAvailability = $t->orderAvailability;
 $orderMyOrders     = $t->orderMyOrders;
 
 $stateBadge = [
+    PortOrder::STATE_BACKORDER         => 'badge-warning',
     PortOrder::STATE_SUBMITTED         => 'badge-warning',
     PortOrder::STATE_APPROVED          => 'badge-info',
     PortOrder::STATE_PROVISIONED       => 'badge-info',
@@ -97,6 +98,11 @@ $stateBadge = [
                                     <select class="form-control" id="port_type_id" name="port_type_id" required>
                                         <option value="">— select a data centre first —</option>
                                     </select>
+                                    <small class="form-text tw-text-yellow-700" id="leadtime-note" style="display:none">
+                                        No pre-provisioned capacity for this selection right now — your order will
+                                        still be accepted, and our team will build the capacity. A delivery lead
+                                        time applies; we'll be in touch with timing.
+                                    </small>
                                 </div>
                             </div>
 
@@ -266,18 +272,21 @@ $stateBadge = [
                 var tp  = loc.types[ id ];
                 var opt = document.createElement( 'option' );
                 opt.value = id;
-                opt.textContent = tp.name + ' (' + tp.speedLabel + ')';
+                opt.textContent = tp.name + ' (' + tp.speedLabel + ')' + ( tp.leadTime ? ' — lead time applies' : '' );
+                opt.setAttribute( 'data-leadtime', tp.leadTime ? '1' : '0' );
                 if( String( <?= json_encode( old( 'port_type_id' ) ) ?> ) === String( id ) ) { opt.selected = true; }
                 typeSel.appendChild( opt );
             } );
             fillQty( 1 );
+            leadNote();
         }
 
         function fillQty() {
             var loc = availability[ locSel.value ];
             var max = 1;
             if( loc && loc.types[ typeSel.value ] ) {
-                max = Math.min( 8, loc.types[ typeSel.value ].maxSameSwitch );
+                var tp = loc.types[ typeSel.value ];
+                max = tp.leadTime ? 8 : Math.min( 8, tp.maxSameSwitch );
             }
             qtySel.innerHTML = '';
             for( var i = 1; i <= max; i++ ) {
@@ -286,6 +295,13 @@ $stateBadge = [
                 opt.textContent = i === 1 ? '1' : ( i + ' (LACP LAG)' );
                 qtySel.appendChild( opt );
             }
+        }
+
+        function leadNote() {
+            var note = document.getElementById( 'leadtime-note' );
+            var loc  = availability[ locSel.value ];
+            var lead = loc && loc.types[ typeSel.value ] && loc.types[ typeSel.value ].leadTime;
+            note.style.display = lead ? '' : 'none';
         }
 
         function toggleVlan() {
@@ -310,6 +326,7 @@ $stateBadge = [
 
         locSel.addEventListener( 'change', fillTypes );
         typeSel.addEventListener( 'change', fillQty );
+        typeSel.addEventListener( 'change', leadNote );
         tagged.addEventListener( 'change', toggleVlan );
 
         fillTypes();

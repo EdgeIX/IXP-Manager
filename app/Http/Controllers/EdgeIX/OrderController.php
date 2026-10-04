@@ -96,16 +96,21 @@ class OrderController extends Controller
         try {
             $order = $orders->place( $cust, $r->user(), $data );
         } catch( InsufficientPortStockException $e ) {
+            // Only thrown for excluded (manual-only) locations now — no
+            // stock is accepted as a backorder instead.
             AlertContainer::push(
-                "We don't currently have pre-provisioned capacity matching that request. "
-                . "Your order has NOT been placed — please email <a href=\"mailto:sales@edgeix.net\">sales@edgeix.net</a> "
-                . "and we'll arrange it with a short lead time.",
+                "Online ordering isn't available at that site — please email "
+                . "<a href=\"mailto:sales@edgeix.net\">sales@edgeix.net</a> and we'll arrange it directly.",
                 Alert::WARNING
             );
             return redirect()->route( 'order@index' )->withInput();
         }
 
-        AlertContainer::push( "Order #{$order->id} placed.", Alert::SUCCESS );
+        if( $order->state === PortOrder::STATE_BACKORDER ) {
+            AlertContainer::push( "Order #{$order->id} accepted. There's no pre-provisioned capacity for this right now — our team will build it and be in touch with delivery timing.", Alert::SUCCESS );
+        } else {
+            AlertContainer::push( "Order #{$order->id} placed.", Alert::SUCCESS );
+        }
         return redirect()->route( 'order@view', [ 'order' => $order->id ] );
     }
 

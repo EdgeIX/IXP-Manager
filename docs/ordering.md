@@ -603,6 +603,19 @@ All read via config files — run `php artisan config:clear` after changing.
 | `ORDER_NOTIFY_EMAIL` | `ordering.notify_email` | unset | Every placed order emails this address (awareness + manual-billing trigger). Unset = no emails. |
 | `PORT_STOCK_ALERT_EMAIL` | `porttype.low_stock_alert_email` | unset | Recipient for the daily low-stock digest. Unset = job not scheduled. |
 
+**Backorders — never refuse an order (2026-10-04):** the wizard offers
+every (site × active type) combination we could BUILD (offering map still
+restricts restricted types; excluded sites stay out), with zero-stock
+combos labelled *"lead time applies"* + an inline explainer. Placement
+with no stock creates the order in state **`backorder`**: accepted, no
+reservation, NO hold clock (waits indefinitely), loud admin notification
+("** BACKORDER — ACTION NEEDED **"). Admins arrange the capacity (prewire
+/ structured / new switch), confirm it's sellable on Port Stock, then
+**"Reserve ports & approve"** on the order — reserves and approves in one
+click (the click is the approval, regardless of auto-approve policy) and
+the order rejoins the normal pipeline. Only excluded (manual-only) sites
+still refuse online placement.
+
 **Served-via sites (2026-10-04):** so campus customers can FIND us, a
 passive/campus site can be marked *served via* a demarc site
 (`location.served_via_locationid`, managed at Port Stock → Served-via

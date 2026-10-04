@@ -310,6 +310,7 @@ Route::group( [ 'namespace' => 'EdgeIX' ], function() {
         Route::get(  'list',             'PortOrderAdminController@index'   )->name( 'port-order-admin@index'   );
         Route::get(  'view/{order}',     'PortOrderAdminController@view'    )->name( 'port-order-admin@view'    );
         Route::post( 'approve/{order}',  'PortOrderAdminController@approve' )->name( 'port-order-admin@approve' );
+        Route::post( 'reserve/{order}',  'PortOrderAdminController@reserveBackorder' )->name( 'port-order-admin@reserve' );
         Route::post( 'cancel/{order}',   'PortOrderAdminController@cancel'  )->name( 'port-order-admin@cancel'  );
     });
 

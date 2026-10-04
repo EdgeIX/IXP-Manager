@@ -71,27 +71,83 @@ class PortOrderService
             throw new InsufficientPortStockException( 'Location ' . (int)$selectedLoc->id . ' is excluded from self-serve ordering (ORDER_EXCLUDED_LOCATIONS)' );
         }
 
-        $order = DB::transaction( function () use ( $cust, $user, $data, $type, $qty, $customerLocationId ) {
+        $fields = [
+            'custid'           => $cust->id,
+            'user_id'          => $user?->id,
+            'kind'             => PortOrder::KIND_NEW_PORT,
+            'locationid'       => (int)$data['locationid'],
+            'customer_locationid' => $customerLocationId,
+            'port_type_id'     => $type->id,
+            'quantity'         => $qty,
+            'tagged'           => (bool)( $data['tagged'] ?? false ),
+            'vlan_tag'         => $data['vlan_tag'] ?? null,
+            'macs'             => $data['macs'] ?? null,
+            'delivery_contact' => $data['delivery_contact'] ?? null,
+            'po_number'        => $data['po_number'] ?? null,
+            'preferred_golive' => $data['preferred_golive'] ?? null,
+        ];
 
-            $ports = $this->reserveCandidates( $cust, (int)$data['locationid'], $type, $qty );
+        try {
+            $order = DB::transaction( function () use ( $cust, $data, $type, $qty, $fields ) {
 
-            $order = PortOrder::create( [
-                'custid'           => $cust->id,
-                'user_id'          => $user?->id,
-                'kind'             => PortOrder::KIND_NEW_PORT,
-                'state'            => PortOrder::STATE_SUBMITTED,
-                'locationid'       => (int)$data['locationid'],
-                'customer_locationid' => $customerLocationId,
-                'port_type_id'     => $type->id,
-                'quantity'         => $qty,
-                'tagged'           => (bool)( $data['tagged'] ?? false ),
-                'vlan_tag'         => $data['vlan_tag'] ?? null,
-                'macs'             => $data['macs'] ?? null,
-                'delivery_contact' => $data['delivery_contact'] ?? null,
-                'po_number'        => $data['po_number'] ?? null,
-                'preferred_golive' => $data['preferred_golive'] ?? null,
-                'reserved_until'   => now()->addDays( (int)config( 'ordering.hold_days', 14 ) ),
+                $ports = $this->reserveCandidates( $cust, (int)$data['locationid'], $type, $qty );
+
+                $order = PortOrder::create( $fields + [
+                    'state'          => PortOrder::STATE_SUBMITTED,
+                    'reserved_until' => now()->addDays( (int)config( 'ordering.hold_days', 14 ) ),
+                ] );
+
+                foreach( $ports as $sp ) {
+                    PortOrderPort::create( [
+                        'port_order_id'       => $order->id,
+                        'switchportid'        => $sp->id,
+                        'patch_panel_port_id' => $sp->patchPanelPort?->id,
+                    ] );
+                }
+
+                return $order;
+            } );
+        } catch( InsufficientPortStockException $e ) {
+            // NEVER refuse an order: no stock → accept as BACKORDER (no
+            // reservation, no hold clock). Admins arrange cabling / a new
+            // switch, then "Reserve ports" from the queue when capacity
+            // exists.
+            $order = PortOrder::create( $fields + [
+                'state'          => PortOrder::STATE_BACKORDER,
+                'reserved_until' => null,
             ] );
+
+            Log::warning( "[PortOrder] #{$order->id} BACKORDER — no stock ({$e->getMessage()})" );
+        }
+
+        Log::info( sprintf( "[PortOrder] #%d placed (%s): [%d|%s] %dx %s at location %d by %s",
+            $order->id, $order->state, $cust->id, $cust->name, $qty, $type->name, $order->locationid, $user?->username ?? 'n/a' ) );
+
+        $this->notifyAdmins( $order );
+
+        if( $order->state === PortOrder::STATE_SUBMITTED && $this->policyAutoApproves( $cust ) ) {
+            $this->approve( $order, null );
+        }
+
+        return $order;
+    }
+
+    /**
+     * Admin action on a BACKORDER once capacity has been built: reserve
+     * the port(s) and approve in one go (the admin's click IS the
+     * approval). Throws InsufficientPortStockException when there is
+     * still nothing to reserve.
+     */
+    public function reserveBackorder( PortOrder $order, ?User $admin ): PortOrder
+    {
+        if( $order->state !== PortOrder::STATE_BACKORDER ) {
+            return $order;
+        }
+
+        $order->loadMissing( [ 'customer', 'portType' ] );
+
+        DB::transaction( function () use ( $order ) {
+            $ports = $this->reserveCandidates( $order->customer, (int)$order->locationid, $order->portType, (int)$order->quantity );
 
             foreach( $ports as $sp ) {
                 PortOrderPort::create( [
@@ -101,19 +157,13 @@ class PortOrderService
                 ] );
             }
 
-            return $order;
+            $order->state = PortOrder::STATE_SUBMITTED;
+            $order->save();
         } );
 
-        Log::info( sprintf( "[PortOrder] #%d placed: [%d|%s] %dx %s at location %d by %s",
-            $order->id, $cust->id, $cust->name, $qty, $type->name, $order->locationid, $user?->username ?? 'n/a' ) );
+        Log::info( "[PortOrder] #{$order->id} backorder reserved by " . ( $admin?->username ?? 'system' ) );
 
-        $this->notifyAdmins( $order );
-
-        if( $this->policyAutoApproves( $cust ) ) {
-            $this->approve( $order, null );
-        }
-
-        return $order;
+        return $this->approve( $order, $admin );
     }
 
     /**
@@ -288,7 +338,8 @@ class PortOrderService
         $order->loadMissing( [ 'customer', 'location', 'customerLocation', 'portType', 'portOrderPorts.switchPort.switcher' ] );
 
         $lines = [
-            'New port order #' . $order->id,
+            'New port order #' . $order->id
+                . ( $order->state === PortOrder::STATE_BACKORDER ? '  ** BACKORDER — ACTION NEEDED **' : '' ),
             str_repeat( '=', 40 ),
             'Customer:  [' . $order->custid . '] ' . $order->customer?->name,
             'Order:     ' . $order->quantity . ' x ' . $order->portType?->name
@@ -299,11 +350,13 @@ class PortOrderService
                     : '' ),
             'Tagged:    ' . ( $order->tagged ? ( 'yes, VLAN ' . $order->vlan_tag ) : 'no' ),
             'MAC(s):    ' . ( $order->macMissing() ? 'not provided yet (provisioning nag active)' : implode( ', ', $order->macs ) ),
-            'Reserved:  ' . $order->portOrderPorts->map( fn( $p ) =>
-                ( $p->switchPort?->switcher?->name ?? '?' ) . ':' . ( $p->switchPort?->ifName ?? '?' ) )->implode( ', ' ),
+            'Reserved:  ' . ( $order->state === PortOrder::STATE_BACKORDER
+                ? 'NONE — no sellable stock at this site. Arrange cabling / capacity, then use "Reserve ports" on the order.'
+                : $order->portOrderPorts->map( fn( $p ) =>
+                    ( $p->switchPort?->switcher?->name ?? '?' ) . ':' . ( $p->switchPort?->ifName ?? '?' ) )->implode( ', ' ) ),
             '',
             'Billing is manual — action per trial/contract terms.',
-            'Admin: ' . url( '/admin/port-stock' ),
+            'Admin: ' . url( '/admin/port-order/view/' . $order->id ),
         ];
 
         try {

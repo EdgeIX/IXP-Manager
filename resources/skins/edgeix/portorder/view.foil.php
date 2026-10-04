@@ -82,7 +82,22 @@ $o = $t->poOrder;
                         </tbody>
                     </table>
 
+                    <?php if( $o->state === PortOrder::STATE_BACKORDER ): ?>
+                        <div class="alert alert-warning">
+                            <strong>Backorder — no stock was available at placement.</strong>
+                            Arrange the capacity (prewire / structured cabling / new switch), confirm it shows as
+                            sellable on <a href="<?= route( 'port-stock@index' ) ?>">Port Stock</a>, then click
+                            <em>Reserve ports &amp; approve</em>.
+                        </div>
+                    <?php endif; ?>
+
                     <div class="tw-flex tw-gap-2">
+                        <?php if( $o->state === PortOrder::STATE_BACKORDER ): ?>
+                            <form method="POST" action="<?= route( 'port-order-admin@reserve', [ 'order' => $o->id ] ) ?>" class="d-inline">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-success">Reserve ports &amp; approve</button>
+                            </form>
+                        <?php endif; ?>
                         <?php if( $o->state === PortOrder::STATE_SUBMITTED ): ?>
                             <form method="POST" action="<?= route( 'port-order-admin@approve', [ 'order' => $o->id ] ) ?>" class="d-inline">
                                 <?= csrf_field() ?>

@@ -50,6 +50,10 @@ class PortOrder extends Model
     public const KIND_ADD_LAG  = 'add_lag';
     public const KIND_UPGRADE  = 'upgrade';
 
+    // Accepted with NO stock to reserve ("never refuse an order"): admins
+    // arrange cabling/switch capacity, then an admin action reserves the
+    // port(s) and approves. No hold clock — backorders wait indefinitely.
+    public const STATE_BACKORDER         = 'backorder';
     public const STATE_SUBMITTED         = 'submitted';
     public const STATE_APPROVED          = 'approved';
     public const STATE_PROVISIONED       = 'provisioned';
@@ -58,8 +62,10 @@ class PortOrder extends Model
     public const STATE_CANCELLED         = 'cancelled';
     public const STATE_EXPIRED           = 'expired';
 
-    /** States that hold their port reservation. */
+    /** Open (live) states. Backorder holds no reservation (it has no
+     *  port rows), so including it here never affects stock queries. */
     public const OPEN_STATES = [
+        self::STATE_BACKORDER,
         self::STATE_SUBMITTED,
         self::STATE_APPROVED,
         self::STATE_PROVISIONED,

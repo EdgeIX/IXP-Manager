@@ -7,6 +7,7 @@ use IXP\Models\PortOrder;
 $o = $t->orderOrder;
 
 $stateLabel = [
+    PortOrder::STATE_BACKORDER         => [ 'badge-warning', 'Accepted — capacity being arranged (lead time applies)' ],
     PortOrder::STATE_SUBMITTED         => [ 'badge-warning', 'Submitted — awaiting approval' ],
     PortOrder::STATE_APPROVED          => [ 'badge-info',    'Approved — provisioning in progress' ],
     PortOrder::STATE_PROVISIONED       => [ 'badge-info',    'Provisioned' ],
@@ -84,7 +85,12 @@ $stateLabel = [
                     <div class="card-header">What happens next</div>
                     <div class="card-body">
                         <ol class="tw-text-sm tw-text-gray-700 mb-0">
-                            <li>Your port has been reserved<?= $o->state === PortOrder::STATE_SUBMITTED ? ' and your order is awaiting approval' : '' ?>.</li>
+                            <?php if( $o->state === PortOrder::STATE_BACKORDER ): ?>
+                                <li>We're building capacity for your order at <?= $t->ee( $o->location?->name ?? 'the site' ) ?> —
+                                    our team will be in touch with delivery timing.</li>
+                            <?php else: ?>
+                                <li>Your port has been reserved<?= $o->state === PortOrder::STATE_SUBMITTED ? ' and your order is awaiting approval' : '' ?>.</li>
+                            <?php endif; ?>
                             <li>We provision your service and issue a Letter of Authorisation (LOA) for your cross-connect.</li>
                             <li>You order the cross-connect from the data centre using the LOA.</li>
                             <li>Once the cross-connect is in<?= $o->macMissing() ? ' and your MAC address is provided' : '' ?>, we bring your port live.</li>

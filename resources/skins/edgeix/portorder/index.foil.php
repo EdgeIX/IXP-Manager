@@ -8,6 +8,7 @@ $poOrders = $t->poOrders;
 $poState  = $t->poState;
 
 $stateBadge = [
+    PortOrder::STATE_BACKORDER         => 'badge-danger',
     PortOrder::STATE_SUBMITTED         => 'badge-warning',
     PortOrder::STATE_APPROVED          => 'badge-info',
     PortOrder::STATE_PROVISIONED       => 'badge-info',
@@ -17,7 +18,7 @@ $stateBadge = [
     PortOrder::STATE_EXPIRED           => 'badge-secondary',
 ];
 
-$filters = [ 'open', PortOrder::STATE_SUBMITTED, PortOrder::STATE_AWAITING_XCONNECT, PortOrder::STATE_ACTIVE, 'all' ];
+$filters = [ 'open', PortOrder::STATE_BACKORDER, PortOrder::STATE_SUBMITTED, PortOrder::STATE_AWAITING_XCONNECT, PortOrder::STATE_ACTIVE, 'all' ];
 ?>
 
 <?php $this->section( 'page-header-preamble' ) ?>

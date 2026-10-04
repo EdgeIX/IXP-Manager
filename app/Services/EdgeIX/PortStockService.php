@@ -153,11 +153,44 @@ class PortStockService
                     'speedLabel'    => $type->speedLabel(),
                     'maxSameSwitch' => (int)$bySwitch->max(),
                     'total'         => count( $t['ports'] ),
+                    'leadTime'      => false,
                 ];
             }
             unset( $t );
         }
         unset( $loc );
+
+        // NEVER refuse an order: every (site × active type) we could BUILD
+        // is offered too, flagged leadTime — placement with no stock lands
+        // as a BACKORDER for admins to arrange cabling/capacity. The
+        // offering map still restricts restricted types (400G) to their
+        // sites; excluded (manual) sites and alias sites stay out here.
+        $excludedIds  = array_flip( config( 'ordering.excluded_locations', [] ) );
+        $offered      = $this->offeredMap();
+        $activeTypes  = PortType::active()->orderBy( 'speed' )->get();
+
+        foreach( Location::whereNull( 'served_via_locationid' )->get() as $site ) {
+            if( isset( $excludedIds[ $site->id ] ) ) {
+                continue;
+            }
+            foreach( $activeTypes as $type ) {
+                if( isset( $out[ $site->id ]['types'][ $type->id ] ) ) {
+                    continue;
+                }
+                if( !$this->offeredAt( $offered, $type->id, $site->id ) ) {
+                    continue;
+                }
+                $out[ $site->id ]['name'] ??= $site->name;
+                $out[ $site->id ]['types'][ $type->id ] = [
+                    'name'          => $type->name,
+                    'speed'         => (int)$type->speed,
+                    'speedLabel'    => $type->speedLabel(),
+                    'maxSameSwitch' => 0,
+                    'total'         => 0,
+                    'leadTime'      => true,
+                ];
+            }
+        }
 
         // Served-via aliases: passive/campus sites (Equinix SY3/4/5 →
         // "Equinix SY1/SY2") are listed so customers THERE can find us —
@@ -217,8 +250,9 @@ class PortStockService
                 continue;
             }
 
-            // Manual-only sites don't low-stock alert.
-            if( $first->location && isset( $excluded[ $first->location->id ] ) ) {
+            // Manual-only sites don't low-stock alert; neither do
+            // served-via alias sites (their stock lives at the demarc).
+            if( $first->location && ( isset( $excluded[ $first->location->id ] ) || $first->location->served_via_locationid ) ) {
                 continue;
             }
 
@@ -248,7 +282,8 @@ class PortStockService
 
         foreach( $restrictedTypes as $type ) {
             foreach( array_keys( $offered[ $type->id ] ) as $locId ) {
-                if( isset( $seen[ $locId . ':' . $type->id ] ) || isset( $excluded[ $locId ] ) ) {
+                if( isset( $seen[ $locId . ':' . $type->id ] ) || isset( $excluded[ $locId ] )
+                    || ( $locations[ $locId ] ?? null )?->served_via_locationid ) {
                     continue;
                 }
                 $out[] = (object)[

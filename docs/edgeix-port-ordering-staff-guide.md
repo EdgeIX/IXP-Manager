@@ -150,6 +150,22 @@ signed outside the portal:
 E-signature (customer self-serve signing) is coming; recording stays the
 tool for paper and custom agreements.
 
+## Backorders — orders we accepted without stock
+
+We never refuse an order: when a customer orders something with no
+pre-provisioned capacity, the order is accepted as a **backorder** (red
+badge in the queue, "ACTION NEEDED" in the notification email). Your job:
+
+1. Arrange the capacity — prewire, run structured cabling, or install a
+   switch, as appropriate.
+2. Make sure the new ports show as **sellable** on Port Stock (detected,
+   typed Peering, panel linked + Prewired).
+3. Open the order → **Reserve ports & approve**. Done — it continues like
+   any other order. (If it complains there's still no stock, run the
+   explain command from Troubleshooting.)
+
+Backorders never expire — they wait until you fulfil or cancel them.
+
 ## The order queue
 
 Every order lands in **Order Queue** and emails the order notify address —
