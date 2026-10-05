@@ -102,22 +102,34 @@ of a type than the threshold gets its own line in the digest email (e.g.
 shows a red *low* badge on that exact DC cell. Locations that never stock
 a type don't alert. The email also nags about unmatched optics.
 
-**Long-lined / passive sites:** a port counts at the site of its **patch
-panel** (where the customer's cross-connect lands), even when the switch
-is elsewhere — such ports show a *long-lined* badge on Port Stock.
-Fully manual sites (e.g. Vocus DC PER01) are excluded from
-online ordering altogether — engineering maintains that list; those sites
-never show stock, never alert, and orders there stay a sales/manual
-process.
+**Two kinds of remote site — pick the model by who owns the tail:**
 
-**Campus / served-via sites (Equinix SY3/SY4/SY5):** so a customer sitting
-in SY4 can find us on the order form, mark those sites as **served via**
-the demarc site at **Port Stock → Served-via Sites** (SY3/4/5 → "Equinix
-SY1/SY2"). The order form then lists "Equinix SY4 — delivered at Equinix
-SY1/SY2", the customer is told their LOA will be for SY1/SY2 and that
-they order the campus cross-connect from their site, and the admin queue
-shows a *customer at SY4* badge on the order. Stock and provisioning all
-happen at the demarc site as always.
+- **EdgeIX-owned fibre to the site (Vocus DC PER01 → our dark fibre →
+  NEXTDC P2):** modelled with ONE panel — the real one at PER01
+  (`VDC-PER01-Rack70-R21`) — whose ports are linked to the pe1per2
+  switch ports using the **"Remote switch?"** checkbox on the panel
+  port's edit form: tick it and the Switch dropdown lists every site's
+  switches (shown as `switch — site`); pick the remote switch, then the
+  port, and save as normal. Ports already linked cross-site open with
+  the box ticked and a *remote site* badge — safe to edit and re-save
+  like any other port. From there the site behaves like any other:
+  PER01 shows its own stock (*long-lined* badge), customers order
+  PER01 directly, LOAs are generated from the PER01 panel port as normal
+  and correctly say Vocus PER01, and the low-stock alert = dark-fibre
+  pairs running out.
+
+  Leave the box **unticked** for normal same-site patching — it exists
+  only for panels long-lined over EdgeIX-owned fibre.
+
+- **Campus / served-via (the CUSTOMER buys the tail — e.g. Equinix
+  SY3/SY4/SY5 → "Equinix SY1/SY2"):** mark the site served-via its demarc
+  at **Port Stock → Served-via Sites**. The order form lists "Equinix SY4
+  — delivered at Equinix SY1/SY2", the LOA is for the demarc site, the
+  customer orders the campus cross-connect, and the queue shows a
+  *customer at SY4* badge. Served-via sites never low-stock alert.
+
+(A fully manual site can still be excluded from online ordering entirely
+— ask engineering — but nothing currently is.)
 
 **Types only offered at some sites (e.g. 400G):** on the type's edit page,
 tick the sites under **Offered at**. Nothing ticked = offered wherever the

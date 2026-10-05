@@ -636,11 +636,53 @@ elsewhere; badged *long-lined* on Port Stock). The reservation query
 matches on the panel side too. Equinix campus needs nothing special: the
 demarc panels are at SY1/SY2, so campus sites never show stock of their
 own — customers get an SY1 LOA and arrange the campus x-connect, as
-today. Manual-only sites (e.g. Vocus DC PER01) are excluded from
-self-serve entirely via `ORDER_EXCLUDED_LOCATIONS` (comma-separated
-location IDs; config `ordering.excluded_locations`): no sellable stock,
-no order form, no low-stock alerts, no prewire hygiene — and `place()`
-refuses the location server-side regardless of UI.
+today. **Vocus DC PER01 — EdgeIX-owned dark fibre to NEXTDC P2 (final
+model, 2026-10-04):** ONE panel, the real one at PER01
+(`VDC-PER01-Rack70-R21`), with each dark-fibre pair's panel port linked
+to its pe1per2 switch port **directly in the database** (SQL/tinker:
+`UPDATE patch_panel_port SET switch_port_id = <sp>, state = 8` — state 8
+= Prewired; on a Duplex panel, link the master port of the pair).
+Upstream's same-site filter on the allocate form is a UI guard against
+accidents — the schema allows cross-site links, and this stock layer was
+built for them: stock counts at PER01 with the *long-lined* badge, the
+reservation matches panel-side, LOAs come from the PER01 panel (correct
+facility), and PER01's low-stock threshold = dark-fibre pair exhaustion.
+No served-via alias (REMOVED — PER01 is a real site), no dedicated port
+type, no duplicate panel data.
+
+**Verified in code (2026-10-04): the same-site restriction is
+DROPDOWN-ONLY** — `PatchPanel/Port/PortController@edit` filters the
+Switch select by the panel's location; `update()` and
+`StorePatchPanelPort` validate only `exists:switchport,id`, with no
+location check. A cross-site link is accepted server-side today.
+
+**BUILT (2026-10-05): "Remote switch?" checkbox** — skin override
+`resources/skins/edgeix/patch-panel-port/edit.foil.php` (covers all three
+form variants: edit / allocate / prewired — same view). A tick in the
+Switch card swaps the Switch dropdown from the panel-site list to the
+full active fleet, labelled `switch — site`. Mechanics:
+
+- Unticked = upstream behaviour, byte-identical dropdown.
+- The full list is embedded in the page (superuser-only form; no new
+  routes). The upstream Switch Port AJAX
+  (`/admin/api/v4/switch/{id}/switch-port-prewired` and
+  `switch-port-for-ppp`) filters by switch id only — verified no site
+  filter — so remote ports load and save unchanged.
+- A port already linked cross-site opens with the box ticked, the remote
+  switch selected and a *remote site* badge — the linked switch is ALWAYS
+  injected into the dropdown, so the old resave-drops-link caveat is
+  gone. The upstream Reset button is rebound to respect the toggle.
+- Server-side needed nothing: `update()` / `StorePatchPanelPort` validate
+  only `exists:switchport,id` (no location check). No core edits, no
+  migration. The SQL one-liner above remains as a fallback only.
+
+Rule of thumb: served-via = the CUSTOMER buys the tail to our demarc
+(Equinix campus); EdgeIX-owned tail = one panel at the remote site,
+cross-site-linked in the DB (long-lined model). `ORDER_EXCLUDED_LOCATIONS`
+(comma-separated location IDs; config `ordering.excluded_locations`)
+remains available for any genuinely manual-only site: no stock, no order
+form, no alerts, no hygiene, and `place()` refuses server-side —
+currently unused.
 
 **Thresholds & the offering map (2026-10-04):** the low-stock threshold is
 one number per port type (Port Types → edit), evaluated **per DC** — each
@@ -776,6 +818,9 @@ production-proven.
 - `resources/skins/edgeix/xcvr/{detect,index}.foil.php` — switch UI pages.
 - `resources/skins/edgeix/switches/list-row-menu.foil.php` — per-switch
   dropdown (skin override of upstream file; re-check on merges).
+- `resources/skins/edgeix/patch-panel-port/edit.foil.php` — "Remote
+  switch?" checkbox for cross-site panel→switch links (skin override of
+  upstream file; re-check on merges).
 - Migration `2026_10_02_000001_create_port_types_and_xcvr_detection.php` —
   `port_type` table (+seed) and `switchport` detection columns.
 
